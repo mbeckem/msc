@@ -39,6 +39,8 @@ if ((CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND (CMAKE_BUILD_TYPE STREQUAL "Releas
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto=4")
 endif()
 
+include_directories("${PROJECT_SOURCE_DIR}")
+
 add_subdirectory(deps)
 add_subdirectory(geodb)
 add_subdirectory(test)

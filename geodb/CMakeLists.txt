@@ -50,8 +50,5 @@ set(HEADERS
 add_library(geodb ${SOURCES} ${HEADERS})
 target_link_libraries(geodb PUBLIC tpie gsl boost "pthread")
 
-get_filename_component(PARENT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" DIRECTORY)
-target_include_directories(geodb PUBLIC "${PARENT_DIR}")
-
 add_executable(main main.cpp)
 target_link_libraries(main geodb)
