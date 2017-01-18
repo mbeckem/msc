@@ -204,11 +204,11 @@ public:
         auto& index = m_entries.template get<lookup_t>();
         auto iter = index.find(key);
         if (iter != index.end()) {
-            return pointer(intrusive_t(&*iter));
+            return pointer(to_intrusive(iter));
         }
 
         std::tie(iter, std::ignore) = index.emplace(this, key, factory());
-        return pointer(intrusive_t(&*iter));
+        return pointer(to_intrusive(iter));
     }
 
     /// Convert a const_pointer to a pointer. Pointers share the same reference count.
@@ -223,7 +223,7 @@ public:
         auto& index = m_entries.template get<lookup_t>();
         auto iter = index.find(key);
         if (iter != index.end()) {
-            return const_pointer(intrusive_t(&*iter));
+            return const_pointer(to_intrusive(iter));
         }
         return const_pointer();
     }
@@ -260,6 +260,14 @@ private:
     template<typename T>
     static const entry* raw(const pointer_impl<T>& ptr) {
         return ptr.p.get();
+    }
+
+    /// Convert the iterator to a reference counted pointer.
+    /// Iterator must point to a valid entry.
+    template<typename Iter>
+    static intrusive_t to_intrusive(const Iter& iter) {
+        const entry& e = *iter;
+        return intrusive_t(&e);
     }
 
 private:
