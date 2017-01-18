@@ -1,5 +1,5 @@
-#ifndef RANGE_UTILS_HPP
-#define RANGE_UTILS_HPP
+#ifndef UTILITY_RANGE_UTILS_HPP
+#define UTILITY_RANGE_UTILS_HPP
 
 #include "geodb/common.hpp"
 
@@ -109,4 +109,4 @@ auto transformed_member(MemberPointer ptr) {
 
 } // namespace geodb
 
-#endif // RANGE_UTILS_HPP
+#endif // UTILITY_RANGE_UTILS_HPP

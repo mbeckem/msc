@@ -1,5 +1,5 @@
-#ifndef FILE_ALLOCATOR_HPP
-#define FILE_ALLOCATOR_HPP
+#ifndef UTILITY_FILE_ALLOCATOR_HPP
+#define UTILITY_FILE_ALLOCATOR_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/filesystem.hpp"
@@ -112,4 +112,4 @@ private:
 
 } // namespace geodb
 
-#endif // FILE_ALLOCATOR_HPP
+#endif // UTILITY_FILE_ALLOCATOR_HPP

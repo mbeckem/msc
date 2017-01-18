@@ -602,6 +602,7 @@ public:
     /// Runtime complexity: O(size()).
     ///
     /// \post `contains(point)`.
+    /// \post `size() <= capacity()`.
     /// \return Returns true iff adding the point caused the set to change, i.e. when
     ///         the point was not already represented by one of the intervals.
     bool add(point_type point) {

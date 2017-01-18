@@ -1,5 +1,5 @@
-#ifndef TEMP_DIR_HPP
-#define TEMP_DIR_HPP
+#ifndef UTILITY_TEMP_DIR_HPP
+#define UTILITY_TEMP_DIR_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/filesystem.hpp"
@@ -33,4 +33,4 @@ private:
 
 } // namespace geodb
 
-#endif // TEMP_DIR_HPP
+#endif // UTILITY_TEMP_DIR_HPP

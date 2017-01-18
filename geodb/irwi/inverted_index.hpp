@@ -5,7 +5,7 @@
 #include "geodb/irwi/base.hpp"
 #include "geodb/irwi/postings_list.hpp"
 #include "geodb/utility/file_allocator.hpp"
-#include "geodb/utility//movable_adapter.hpp"
+#include "geodb/utility/movable_adapter.hpp"
 
 #include <boost/optional.hpp>
 #include <boost/iterator/iterator_adaptor.hpp>

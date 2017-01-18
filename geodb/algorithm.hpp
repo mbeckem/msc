@@ -113,7 +113,7 @@ void k_smallest(Range&& r, size_t k, OutRange& out, Compare&& cmp) {
 
 /// Uses `operator<` for comparisons.
 template<typename Range, typename OutRange>
-void k_smallest(Range&& r, size_t k, OutRange& out) {
+void k_smallest(Range&& r, size_t k, OutRange&& out) {
     k_smallest(r, k, out, std::less<>());
 }
 
