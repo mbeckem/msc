@@ -1,21 +1,22 @@
 set(SOURCES
-    main.cpp
-    id_allocator.cpp
-    file_allocator.cpp
-    inverted_index.cpp
-    irwi.cpp
-    point.cpp
+    algorithm.cpp
     bounding_box.cpp
-    trajectory.cpp
-    tuple_utils.cpp
-    movable_adapter.cpp
-    postings_list.cpp
+    file_allocator.cpp
+    id_allocator.cpp
     interval.cpp
     interval_set.cpp
-    string_map.cpp
+    inverted_index.cpp
+    irwi.cpp
+    main.cpp
+    movable_adapter.cpp
     parser.cpp
-    algorithm.cpp
+    point.cpp
+    postings_list.cpp
     range_utils.cpp
+    shared_values.cpp
+    string_map.cpp
+    trajectory.cpp
+    tuple_utils.cpp
 )
 
 add_executable("${PROJECT_NAME}-test" ${SOURCES})
