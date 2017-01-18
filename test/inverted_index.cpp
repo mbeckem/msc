@@ -8,7 +8,7 @@
 using namespace geodb;
 
 using internal = inverted_index_internal_storage;
-using external = inverted_index_external_storage<4096>;
+using external = inverted_index_external<4096>;
 
 static constexpr u32 Lambda = 16;
 

@@ -19,14 +19,18 @@ struct tree_internal_impl;
 ///
 /// As a user: do not use this class directly.
 template<size_t fanout, typename LeafData, u32 Lambda>
-struct tree_internal_impl {
+class tree_internal_impl {
+
     using index_storage = inverted_index_internal_storage;
 
+public:
     static constexpr size_t max_internal_entries() { return fanout; }
 
     static constexpr size_t max_leaf_entries() { return fanout; }
 
     using index_type = inverted_index<index_storage, Lambda>;
+
+private:
 
     // Base class for nodes.
     struct base {
@@ -67,6 +71,7 @@ struct tree_internal_impl {
 #endif
     }
 
+public:
     // ----------------------------------------
     //      Storage interface.
     //  Used by the tree class and the tree cursor.

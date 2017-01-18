@@ -5,6 +5,7 @@
 #include "geodb/irwi/inverted_index.hpp"
 #include "geodb/irwi/inverted_index_external.hpp"
 #include "geodb/utility/file_allocator.hpp"
+#include "geodb/utility/shared_values.hpp"
 
 #include <boost/noncopyable.hpp>
 #include <tpie/blocks/block_collection_cache.h>
@@ -26,14 +27,18 @@ struct tree_external_impl;
 /// The inverted index uses external memory with the same block size
 /// as this class.
 template<size_t block_size, typename LeafData, u32 Lambda>
-struct tree_external_impl : boost::noncopyable {
+class tree_external_impl : boost::noncopyable {
+private:
     // Uses external storage for storing the inverted file for each node.
     using index_id_type = u64;
+
     using directory_allocator_type = directory_allocator<index_id_type>;
-    using index_storage = inverted_index_external_storage<block_size>;
+
+    using index_storage = inverted_index_external<block_size>;
 
     using block_type = tpie::blocks::block;
 
+public:
     static constexpr size_t max_internal_entries() {
         size_t header = sizeof(index_id_type) + 4;  // Inverted index + child count.
         return (block_size - header) / sizeof(internal_entry);
@@ -43,6 +48,8 @@ struct tree_external_impl : boost::noncopyable {
         size_t header = 4; // Child count.
         return (block_size - header) / sizeof(LeafData);
     }
+
+private:
 
     // block sizes are always the same.
     // the IRWI block_handle class wastes space by
@@ -117,17 +124,21 @@ struct tree_external_impl : boost::noncopyable {
         m_blocks.write_block(p.handle);
     }
 
+public:
+    using index_type = inverted_index<index_storage, Lambda>;
 
+private:
+    using index_instances_type = shared_instances<index_id_type, index_type>;
+
+public:
     // ----------------------------------------
     //      Storage interface.
     //  Used by the tree class and the tree cursor.
     // ----------------------------------------
 
-    using index_type = inverted_index<index_storage, Lambda>;
+    using index_handle = typename index_instances_type::pointer;
 
-    using index_handle = tpie::unique_ptr<index_type>;
-
-    using const_index_handle = tpie::unique_ptr<const index_type>;
+    using const_index_handle = typename index_instances_type::const_pointer;
 
     /// Points to the location of a node of unknown type.
     struct node_ptr {
@@ -142,31 +153,13 @@ struct tree_external_impl : boost::noncopyable {
     };
 
     /// Points to the location of an internal node on disk.
-    struct internal_ptr {
-        internal_ptr() {}
-        internal_ptr(block_handle handle): handle(handle) {}
-
-        block_handle handle;
-
-        bool operator==(const internal_ptr& other) const {
-            return handle == other.handle;
-        }
-
-        operator node_ptr() const { return node_ptr(handle); }
+    struct internal_ptr : node_ptr {
+        using node_ptr::node_ptr;
     };
 
     /// Points to the location of a leaf node on disk.
-    struct leaf_ptr {
-        leaf_ptr() {}
-        leaf_ptr(block_handle handle): handle(handle) {}
-
-        block_handle handle;
-
-        bool operator==(const leaf_ptr& other) const {
-            return handle == other.handle;
-        }
-
-        operator node_ptr() const { return node_ptr(handle); }
+    struct leaf_ptr : node_ptr {
+        using node_ptr::node_ptr;
     };
 
     internal_ptr to_internal(node_ptr n) const {
@@ -218,13 +211,12 @@ struct tree_external_impl : boost::noncopyable {
 
     index_handle index(internal_ptr i) {
         internal* n = get_internal(read_block(i));
-        fs::path p = m_index_alloc.path(n->inverted_index);
-        return tpie::make_unique<index_type>(
-                    index_storage(std::move(p)));
+        return open_index(n->inverted_index);
     }
 
     const_index_handle const_index(internal_ptr i) const {
-        return const_cast<tree_external_impl*>(this)->index(i);
+        internal* n = get_internal(read_block(i));
+        return open_index(n->inverted_index);
     }
 
     u32 get_count(internal_ptr i) const {
@@ -290,6 +282,7 @@ struct tree_external_impl : boost::noncopyable {
         write_block(l);
     }
 
+public:
     // ----------------------------------------
     //      Construction/Destruction
     // ----------------------------------------
@@ -315,6 +308,7 @@ struct tree_external_impl : boost::noncopyable {
         rf.write_i(&m_root, sizeof(m_root));
     }
 
+private:
     static fs::path ensure_directory(fs::path path) {
         fs::create_directories(path);
         return path;
@@ -324,12 +318,38 @@ struct tree_external_impl : boost::noncopyable {
         return m_directory / "tree.state";
     }
 
+    const_index_handle open_index(index_id_type id) const {
+        return m_indexes.open(id, [&]{
+            fs::path p = m_index_alloc.path(id);
+            return index_type(index_storage(std::move(p)));
+        });
+    }
+
+    index_handle open_index(index_id_type id) {
+        return m_indexes.convert(const_cast<const tree_external_impl*>(this)->open_index(id));
+    }
+
+private:
+    /// Directory path of this tree.
     fs::path m_directory;
-    size_t m_size = 0;              ///< Number of items in the tree.
-    size_t m_height = 0;            ///< 0: Empty, 1: Only root (leaf), 2: everything else.
-    block_handle m_root;            ///< Handle to root block (if any).
-    mutable directory_allocator_type m_index_alloc;         ///< Allocator for inverted-index directories.
-    mutable tpie::blocks::block_collection_cache m_blocks;  ///< Block cache for rtree nodes.
+
+    /// Number of items in the tree.
+    size_t m_size = 0;
+
+    /// 0: Empty, 1: Only root (leaf), 2: everything else.
+    size_t m_height = 0;
+
+    /// Handle to root block (if any).
+    block_handle m_root;
+
+    /// Allocator for inverted-index directories.
+    mutable directory_allocator_type m_index_alloc;
+
+    /// Block cache for rtree nodes.
+    mutable tpie::blocks::block_collection_cache m_blocks;
+
+    /// Collection of opened index instances.
+    mutable index_instances_type m_indexes;
 };
 
 /// Instructs the irwi tree to use external storage with the specified

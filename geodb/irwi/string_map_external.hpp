@@ -3,7 +3,6 @@
 
 #include "geodb/common.hpp"
 #include "geodb/filesystem.hpp"
-#include "geodb/irwi/string_map.hpp"
 #include "geodb/irwi/string_map_bimap.hpp"
 
 #include <boost/noncopyable.hpp>
@@ -29,14 +28,10 @@ class string_map_external_impl : boost::noncopyable {
 
     using map_type = string_map_bimap;
 
-private:
+public:
     // ----------------------------------------
     //      Storage interface
     // ----------------------------------------
-
-    template<typename S>
-    friend class string_map;
-
     using iterator = typename map_type::iterator;
 
     iterator begin() const { return m_map.begin(); }

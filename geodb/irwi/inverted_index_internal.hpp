@@ -23,13 +23,10 @@ public:
 /// Backed by an in-memory map of (label -> postings list) entries.
 template<u32 Lambda>
 class inverted_index_internal_storage_impl : boost::noncopyable {
-private:
+public:
     // ----------------------------------------
-    //      Storage interface for friends
+    //      Storage interface for inverted index
     // ----------------------------------------
-
-    template<typename S, u32 L>
-    friend class inverted_index;
 
     using list_type = postings_list<postings_list_internal, Lambda>;
 

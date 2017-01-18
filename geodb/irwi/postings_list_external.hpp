@@ -3,7 +3,6 @@
 
 #include "geodb/common.hpp"
 #include "geodb/filesystem.hpp"
-#include "geodb/irwi/postings_list.hpp"
 
 #include <boost/noncopyable.hpp>
 #include <tpie/uncompressed_stream.h>
@@ -36,13 +35,6 @@ public:
     }
 
     postings_list_external_impl(postings_list_external_impl&&) = delete;
-
-private:
-    template<typename StorageSpec, u32 L>
-    friend class postings_list;
-
-    template<typename PostingList>
-    friend class postings_list_iterator;
 
     using posting_type = Posting;
 

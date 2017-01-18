@@ -2,7 +2,6 @@
 #define IRWI_POSTINGS_LIST_INTERNAL_HPP
 
 #include "geodb/common.hpp"
-#include "geodb/irwi/postings_list.hpp"
 
 #include <vector>
 
@@ -22,16 +21,9 @@ public:
 
 template<typename Posting>
 class postings_list_internal_impl {
-private:
-    template<typename StorageSpec, u32 L>
-    friend class postings_list;
-
-    template<typename PostingList>
-    friend class postings_list_iterator;
-
+public:
     using posting_type = Posting;
 
-private:
     void push_back(const posting_type& value) {
         m_entries.push_back(value);
     }
@@ -59,7 +51,6 @@ private:
         return m_entries.size();
     }
 
-public:
     postings_list_internal_impl(postings_list_internal) {}
 
 private:

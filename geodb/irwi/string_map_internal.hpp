@@ -1,7 +1,6 @@
 #ifndef IRWI_STRING_MAP_INTERNAL_HPP
 #define IRWI_STRING_MAP_INTERNAL_HPP
 
-#include "geodb/irwi/string_map.hpp"
 #include "geodb/irwi/string_map_bimap.hpp"
 
 namespace geodb {
@@ -21,13 +20,10 @@ class string_map_internal_impl {
 
     using map_type = string_map_bimap;
 
-private:
+public:
     // ----------------------------------------
     //      Storage interface
     // ----------------------------------------
-
-    template<typename S>
-    friend class string_map;
 
     using iterator = typename map_type::iterator;
 

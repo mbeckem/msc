@@ -120,8 +120,12 @@ private:
         }
 
         // Conversion to const pointer.
-        operator pointer_impl<const T>() const {
+        operator pointer_impl<const T>() const & {
             return pointer_impl<const T>(p);
+        }
+
+        operator pointer_impl<const T>() && {
+            return pointer_impl<const T>(std::move(p));
         }
 
         void reset() { p.reset(); }
