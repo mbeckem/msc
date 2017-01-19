@@ -26,6 +26,10 @@ struct is_specialization_of<Template<Args...>, Template> : std::true_type {};
 template<typename T, typename... Args>
 struct all_of_type : conjunction<std::is_same<T, Args>...> {};
 
+/// Negation of `std::enable_if_t`.
+template<bool b, typename T = void>
+using disable_if_t = std::enable_if_t<!b, T>;
+
 } // namespace geodb
 
 #endif // TYPE_TRAITS_HPP

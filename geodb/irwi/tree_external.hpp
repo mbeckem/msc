@@ -4,6 +4,7 @@
 #include "geodb/irwi/base.hpp"
 #include "geodb/irwi/inverted_index.hpp"
 #include "geodb/irwi/inverted_index_external.hpp"
+#include "geodb/utility/as_const.hpp"
 #include "geodb/utility/file_allocator.hpp"
 #include "geodb/utility/shared_values.hpp"
 
@@ -326,7 +327,7 @@ private:
     }
 
     index_handle open_index(index_id_type id) {
-        return m_indexes.convert(const_cast<const tree_external_impl*>(this)->open_index(id));
+        return m_indexes.convert(as_const(this)->open_index(id));
     }
 
 private:

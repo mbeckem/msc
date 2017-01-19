@@ -16,6 +16,7 @@ set(HEADERS
     trajectory.hpp
     type_traits.hpp
 
+    utility/as_const.hpp
     utility/id_allocator.hpp
     utility/file_allocator.hpp
     utility/movable_adapter.hpp

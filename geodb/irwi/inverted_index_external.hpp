@@ -5,6 +5,7 @@
 #include "geodb/irwi/inverted_index.hpp"
 #include "geodb/irwi/postings_list.hpp"
 #include "geodb/irwi/postings_list_external.hpp"
+#include "geodb/utility/as_const.hpp"
 #include "geodb/utility/shared_values.hpp"
 
 #include <tpie/btree.h>
@@ -159,7 +160,7 @@ private:
     }
 
     list_handle open_list(list_id_type id) {
-        return m_lists.convert(const_cast<const inverted_index_external_impl*>(this)->open_list(id));
+        return m_lists.convert(as_const(this)->open_list(id));
     }
 
 private:
