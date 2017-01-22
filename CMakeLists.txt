@@ -16,12 +16,13 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Set compiler specific flags.
+set(CMAKE_CXX_STANDARD 14)
 message(STATUS "Build configuration: ${CMAKE_BUILD_TYPE}")
 if ((CMAKE_CXX_COMPILER_ID MATCHES "GNU") OR (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
     # -O1 instead of -O2 for more helpful debug information.
     # set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O1 -g -DNDEBUG")
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Wextra -fvisibility=hidden")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -fvisibility=hidden")
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
     endif()
@@ -43,5 +44,6 @@ include_directories("${PROJECT_SOURCE_DIR}")
 
 add_subdirectory(deps)
 add_subdirectory(geodb)
+add_subdirectory(inspector)
 add_subdirectory(test)
 

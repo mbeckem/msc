@@ -137,6 +137,8 @@ public:
     //  Used by the tree class and the tree cursor.
     // ----------------------------------------
 
+    using node_id_type = u64;
+
     using index_handle = typename index_instances_type::pointer;
 
     using const_index_handle = typename index_instances_type::const_pointer;
@@ -170,6 +172,8 @@ public:
     leaf_ptr to_leaf(node_ptr n) const {
         return leaf_ptr(n.handle);
     }
+
+    node_id_type get_id(const node_ptr& n) const { return n.handle.index; }
 
     size_t get_height() const { return m_height; }
 
@@ -295,15 +299,27 @@ public:
     {
         tpie::default_raw_file_accessor rf;
         if (rf.try_open_rw(state_path().string())) {
+            size_t file_blocksize, file_lambda;
+            rf.read_i(&file_blocksize, sizeof(file_blocksize));
+            rf.read_i(&file_lambda, sizeof(file_lambda));
             rf.read_i(&m_size, sizeof(m_size));
             rf.read_i(&m_height, sizeof(m_height));
             rf.read_i(&m_root, sizeof(m_root));
+
+            if (file_blocksize != block_size || file_lambda != Lambda) {
+                throw std::invalid_argument("Format mismatch");
+            }
         }
     }
 
     ~tree_external_impl() {
         tpie::default_raw_file_accessor rf;
         rf.open_rw_new(state_path().string());
+
+        size_t file_blocksize = block_size;
+        size_t file_lambda = Lambda;
+        rf.write_i(&file_blocksize, sizeof(file_blocksize));
+        rf.write_i(&file_lambda, sizeof(file_lambda));
         rf.write_i(&m_size, sizeof(m_size));
         rf.write_i(&m_height, sizeof(m_height));
         rf.write_i(&m_root, sizeof(m_root));

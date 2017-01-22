@@ -5,6 +5,7 @@
 #include "geodb/type_traits.hpp"
 
 #include <tuple>
+#include <type_traits>
 #include <utility>
 
 namespace geodb {

@@ -33,8 +33,6 @@ class inverted_index {
 
     using storage_iterator = typename storage_type::iterator_type;
 
-    using list_type = typename storage_type::list_type;
-
     /// A (const or non-const) reference points to a valid entry
     /// of the inverted index.
     /// The postings list can be opened by calling \ref postings_list().
@@ -123,6 +121,7 @@ public:
     using reference = reference_impl<false>;
     using const_reference = reference_impl<true>;
 
+    using list_type = typename storage_type::list_type;
     using list_handle = typename storage_type::list_handle;
     using const_list_handle = typename storage_type::const_list_handle;
 

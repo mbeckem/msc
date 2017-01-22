@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
 
         tree<external, 40> e(external("asd"));
 
-        for (int i = 0; i < 5000; ++i) {
+        for (int i = 0; i < 10; ++i) {
             trajectory t = tr;
             t.id += i;
             e.insert(t);

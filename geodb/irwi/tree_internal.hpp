@@ -87,9 +87,13 @@ public:
 
     using leaf_ptr = leaf*;
 
+    using node_id_type = uintptr_t;
+
     internal_ptr to_internal(node_ptr n) const { return cast<internal>(n); }
 
     leaf_ptr to_leaf(node_ptr n) const { return cast<leaf>(n); }
+
+    node_id_type get_id(const node_ptr& p) { return static_cast<node_id_type>(p); }
 
     size_t get_height() const { return m_height; }
 

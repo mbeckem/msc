@@ -17,13 +17,9 @@ namespace geodb {
 ///
 /// Warning: The tree must not be modified while it is being inspected using a cursor.
 template<typename Tree>
-class cursor {
+class tree_cursor {
 public:
     using tree_type = Tree;
-
-    using index_handle = typename tree_type::const_index_handle;
-
-    using value_type = typename tree_type::value_type;
 
 private:
     using storage_type = typename tree_type::storage_type;
@@ -35,10 +31,24 @@ private:
     using leaf_ptr = typename tree_type::leaf_ptr;
 
 public:
+    using index_type = typename tree_type::index_type;
+
+    using index_handle = typename tree_type::const_index_handle;
+
+    using id_type = typename tree_type::node_id_type;
+
+    using value_type = typename tree_type::value_type;
+
+public:
     /// Use the `root()` function of a tree to obtain an instance.
-    cursor() = delete;
+    tree_cursor() = delete;
 
     // Access functions
+
+    /// Returns the numeric id of the current node.
+    id_type id() const {
+        return storage().get_id(current());
+    }
 
     /// Returns the level of the current node.
     /// The root is at level 1, thus the level is always in [1, tree_height].
@@ -104,6 +114,15 @@ public:
         }
     }
 
+    /// Returns the numeric id of the given child node.
+    /// \pre `is_internal() && index < size()`.
+    id_type child_id(size_t index) const {
+        geodb_assert(is_internal(), "not an internal node");
+        geodb_assert(index < size(), "index out of bounds");
+        internal_ptr n = storage().to_internal(current());
+        return storage().get_id(storage().get_child(n, index));
+    }
+
     /// Returns the value at the given index.
     /// \pre `is_leaf() && index < size()`.
     value_type value(size_t index) const {
@@ -140,24 +159,24 @@ public:
     // Immutable navigation
 
     /// Returns a new cursor that points to the root of the tree.
-    cursor root() const {
-        cursor c = *this;
+    tree_cursor root() const {
+        tree_cursor c = *this;
         c.move_root();
         return c;
     }
 
     /// Returns a new cursor that points to the parent of the current node.
     /// \pre 'has_parent()`.
-    cursor parent() const {
-        cursor c = *this;
+    tree_cursor parent() const {
+        tree_cursor c = *this;
         c.move_parent();
         return c;
     }
 
     /// Returns a new cursor that points to the child with the given index.
     /// \pre `is_internal() && index < size()`.
-    cursor child(size_t index) const {
-        cursor c = *this;
+    tree_cursor child(size_t index) const {
+        tree_cursor c = *this;
         c.move_child(index);
         return c;
     }
@@ -181,7 +200,7 @@ private:
     template<typename StorageSpec, u32 Lambda>
     friend class tree;
 
-    explicit cursor(const tree_type* tree): m_tree(tree) {}
+    explicit tree_cursor(const tree_type* tree): m_tree(tree) {}
 
     void add_to_path(node_ptr ptr) {
         m_path.push_back(ptr);

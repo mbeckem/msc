@@ -44,8 +44,10 @@ class tree {
 private:
     using storage_type = typename StorageSpec::template implementation<entry, Lambda>;
 
+public:
     using index_type = typename storage_type::index_type;
 
+private:
     using index_handle = typename storage_type::index_handle;
 
     using const_index_handle = typename storage_type::const_index_handle;
@@ -54,11 +56,15 @@ private:
 
     using const_list_handle = typename index_type::const_list_handle;
 
+public:
     using posting_type = typename index_type::posting_type;
 
+private:
     using id_set_type = typename posting_type::id_set_type;
 
     using dynamic_id_set_type = dynamic_interval_set<trajectory_id_type>;
+
+    using node_id_type = typename storage_type::node_id_type;
 
     using node_ptr = typename storage_type::node_ptr;
 
@@ -91,7 +97,7 @@ private:
 public:
     using value_type = entry;
 
-    using cursor_type = cursor<tree>;
+    using cursor = tree_cursor<tree>;
 
     /// Maximum fanout for internal nodes.
     static constexpr size_t max_internal_entries() {
@@ -151,9 +157,9 @@ public:
     /// Returns a cursor pointing to the root of the tree.
     /// \pre `!empty()`.
     // TODO optional
-    cursor_type root() const {
+    cursor root() const {
         geodb_assert(!empty(), "The tree must not be empty");
-        cursor_type cursor(this);
+        cursor cursor(this);
         cursor.add_to_path(storage().get_root());
         return cursor;
     }
@@ -1204,7 +1210,7 @@ private:
             // Make sure that each partition will hold at least `min_entries` entries.
             // If one partition size reaches `limit`, all remaining entries will be
             // put into the other one.
-            static constexpr size_t limit = max_entries - min_entries - 1;
+            static constexpr size_t limit = max_entries - min_entries;
             auto add_rest = [&](Part& p) {
                 for (u32 index : remaining) {
                     p.add(index, get_mmb(n, index), get_labels(n, index));
@@ -1309,7 +1315,7 @@ private:
 
 private:
     template<typename Tree>
-    friend class cursor;
+    friend class tree_cursor;
 
     template<typename Tree>
     friend class index_cursor;
