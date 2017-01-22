@@ -47,6 +47,7 @@ void MainWindow::openTree() {
 void MainWindow::closeTree() {
     delete m_tree;
     m_tree = nullptr;
+    setCentralWidget(new QWidget());
 }
 
 void MainWindow::changeEvent(QEvent *e)
