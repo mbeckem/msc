@@ -54,9 +54,21 @@ public:
         update();
     }
 
+    osg::Vec3f eye() const { return m_eye; }
+
+    osg::Vec3f center() const { return m_center; }
+
+    osg::Vec3f up() const { return m_up; }
+
 private:
     virtual void paintGL() {
         m_viewer->frame();
+
+        osg::Vec3f eye, center, up;
+        m_viewer->getCamera()->getViewMatrixAsLookAt(eye, center, up);
+        setEye(eye);
+        setCenter(center);
+        setUp(up);
     }
 
     virtual void resizeGL(int width, int height) {
@@ -100,6 +112,11 @@ private:
         return handled;
     }
 
+signals:
+    void eyeChanged();
+    void centerChanged();
+    void upChanged();
+
 private:
     unsigned int button(const QMouseEvent* e) const {
         switch (e->button()) {
@@ -114,6 +131,27 @@ private:
         }
     }
 
+    void setEye(const osg::Vec3f& eye) {
+        if (eye != m_eye) {
+            m_eye = eye;
+            emit eyeChanged();
+        }
+    }
+
+    void setCenter(const osg::Vec3f center) {
+        if (center != m_center) {
+            m_center = center;
+            emit centerChanged();
+        }
+    }
+
+    void setUp(const osg::Vec3f& up) {
+        if (up != m_up) {
+            m_up = up;
+            emit upChanged();
+        }
+    }
+
     osgGA::EventQueue* getEventQueue() const {
         osgGA::EventQueue* eventQueue = m_graphics_window->getEventQueue();
         return eventQueue;
@@ -122,6 +160,7 @@ private:
 private:
     osg::ref_ptr<osgViewer::GraphicsWindowEmbedded> m_graphics_window;
     osg::ref_ptr<osgViewer::Viewer> m_viewer;
+    osg::Vec3f m_eye, m_center, m_up;
 };
 
 #endif // SCENE_RENDERER_HPP

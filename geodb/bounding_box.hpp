@@ -31,9 +31,9 @@ public:
     /// Returns the center point of the bounding box.
     point center() const {
         point result;
-        result.x() = (m_max.x() - m_min.x()) / 2;
-        result.y() = (m_max.y() - m_min.y()) / 2;
-        result.t() = (m_max.t() - m_min.t()) / 2;
+        result.x() = (m_max.x() + m_min.x()) / 2;
+        result.y() = (m_max.y() + m_min.y()) / 2;
+        result.t() = (m_max.t() + m_min.t()) / 2;
         return result;
     }
 

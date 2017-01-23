@@ -36,6 +36,9 @@ private:
     void refreshIndex();
     void refreshScene();
 
+    void refreshDirection();
+    void refreshUp();
+
     osg::Node* createScene(const tree_cursor& node, bool recurse);
 
 private:

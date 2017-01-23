@@ -9,6 +9,7 @@
 #include <osg/PolygonMode>
 #include <osg/Shape>
 #include <osg/ShapeDrawable>
+#include <osg/io_utils>
 
 #include <sstream>
 
@@ -62,6 +63,12 @@ TreeDisplay::TreeDisplay(const QString& path, tree_type tree, QWidget *parent)
         m_current = m_tree.root();
     }
     refreshNode();
+
+    connect(ui->sceneRenderer, &SceneRenderer::eyeChanged, this, &TreeDisplay::refreshDirection);
+    connect(ui->sceneRenderer, &SceneRenderer::centerChanged, this, &TreeDisplay::refreshDirection);
+    connect(ui->sceneRenderer, &SceneRenderer::upChanged, this, &TreeDisplay::refreshUp);
+    refreshDirection();
+    refreshUp();
 }
 
 TreeDisplay::~TreeDisplay()
@@ -203,6 +210,15 @@ void TreeDisplay::refreshScene() {
     set->setAttributeAndModes(material, osg::StateAttribute::ON);
 
     ui->sceneRenderer->setSceneData(scene);
+}
+
+void TreeDisplay::refreshDirection() {
+    auto dir = ui->sceneRenderer->center() - ui->sceneRenderer->eye();
+    ui->directionText->setText(to_string(dir));
+}
+
+void TreeDisplay::refreshUp() {
+    ui->upText->setText(to_string(ui->sceneRenderer->up()));
 }
 
 osg::Node* TreeDisplay::createScene(const tree_type::cursor& node, bool recurse) {

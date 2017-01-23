@@ -1,4 +1,5 @@
 #include <iostream>
+#include <random>
 #include <vector>
 
 #include <gsl/span>
@@ -20,36 +21,39 @@ int main(int argc, char** argv) {
     {
         using external = tree_external<4096>;
 
-        trajectory tr;
-        tr.id = 1;
-        tr.units.push_back(trajectory_unit{
-            point(3, 4, 0), point(5, 3, 5), label_type(1)
-        });
-        tr.units.push_back(trajectory_unit{
-            point(1, 5, 6), point(0, -5, 9), label_type(0)
-        });
-        tr.units.push_back(trajectory_unit{
-            point(3, -5, 23), point(5, 3, 29), label_type(1)
-        });
-        tr.units.push_back(trajectory_unit{
-            point(7, 3, 29), point(4, 11, 35), label_type(3)
-        });
+        tree<external, 40> e(external("asd3"), 1);
 
-        tree<external, 40> e(external("asd"));
+        std::mt19937 mt(std::random_device{}());
+        std::uniform_real_distribution<float> xdist(0, 400);
+        std::uniform_real_distribution<float> ydist(0, 400);
+        std::uniform_real_distribution<float> xstep(-2, 2);
+        std::uniform_real_distribution<float> ystep(-2, 2);
+        std::uniform_int_distribution<time_type> tdist(100, 500);
+        std::uniform_int_distribution<time_type> tstep(1, 5);
+        std::uniform_int_distribution<label_type> labeldist(1, 5);
 
-        for (int i = 0; i < 10; ++i) {
-            trajectory t = tr;
-            t.id += i;
-            e.insert(t);
+        auto get_point = [&](const point& last) {
+            return point(last.x() + xstep(mt), last.y() + ystep(mt), last.t() + tstep(mt));
+        };
 
-            std::cout << i << "\n";
+        for (int i = 1; i <= 2500; ++i) {
+            trajectory tr;
+            tr.id = i;
+
+            point start(xdist(mt), ydist(mt), tdist(mt));
+            for (int u = 0; u < 10; ++u) {
+                auto stop = get_point(start);
+                tr.units.push_back(trajectory_unit{start, stop, labeldist(mt)});
+                start = stop;
+            }
+
+            e.insert(tr);
+
+            std::cout << i << std::endl;
         }
 
-        dump(std::cout, e.root());
 
-        sequenced_query q;
-        q.queries.push_back({{}, {0}});
-        e.find(q);
+        dump(std::cout, e.root());
     }
 
 
