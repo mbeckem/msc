@@ -470,9 +470,9 @@ private:
         // Combined cost function using weight parameter beta.
         const float norm = inverse(max_enlargement(n, b));
         const auto cost = [&](u32 index) {
-            const auto spatial = spatial_cost(get_mmb(n, index), b, norm);
-            const auto textual = textual_cost(unit_count[index], total_count[index]);
-            return m_weight * spatial + (1 - m_weight) * textual;
+            const float spatial = spatial_cost(get_mmb(n, index), b, norm);
+            const float textual = textual_cost(unit_count[index], total_count[index]);
+            return m_weight * spatial + (1.f - m_weight) * textual;
         };
 
         // Find the entry with the smallest cost.
@@ -481,7 +481,7 @@ private:
         float min_cost = cost(0);
         float min_size = storage().get_mmb(n, 0).size();
         for (u32 i = 1; i < count; ++i) {
-            const double c = cost(i);
+            const float c = cost(i);
             const float size = get_mmb(n, i).size();
             if (c < min_cost || (c == min_cost && size < min_size)) {
                 min_cost = c;
@@ -740,7 +740,8 @@ private:
             }
         }
 
-        // Update the entries for labels that still exist.
+        // Update the entries for labels in 'c'.
+        // A label might be new if it was new with the unit that caused the node to split.
         // TODO: 1 map
         for (auto pair : sum.label_units) {
             label_type label = pair.first;
@@ -790,21 +791,22 @@ private:
         }
     }
 
-    /// Replaces an existing postings list entry for the given label in the given index with `e`.
-    /// An entry for `e.node()` must already exist in index->label.
+    /// Updates the posting list entry for the given label. Creates the index entry if necessary.
     void update_entry(const index_handle& index, label_type label, const posting_type& e) {
-        const auto iter = index->find(label);
-        geodb_assert(iter != index->end(), "there must be a postings list for this label");
+        const auto iter = index->find_or_create(label);
         const auto list = iter->postings_list();
         update_entry(list, e);
     }
 
     /// Updates the entry in `list` for the node `e.node()`.
-    /// The entry must exist.
+    /// Inserts the entry at the end if no entry for this node existed.
     void update_entry(const list_handle& list, const posting_type& e) {
         const auto pos = list->find(e.node());
-        geodb_assert(pos != list->end(), "an entry must exist for this node");
-        list->set(pos, e);
+        if (pos != list->end()) {
+            list->set(pos, e);
+        } else {
+            list->append(e);
+        }
     }
 
 private:
@@ -1223,7 +1225,7 @@ private:
                     const float spatial = spatial_cost(p.get_mmb(), mmb, norm);
                     const float textual = textual_cost(get_labels(n, index), get_total_units(n, index),
                                                        p.get_labels(), p.get_total_units());
-                    return m_weight * spatial + (1 - m_weight) * textual;
+                    return m_weight * spatial + (1.0f - m_weight) * textual;
                 };
 
                 const float lc = cost(left);
@@ -1271,7 +1273,7 @@ private:
             const float spatial = waste(get_mmb(n, i), get_mmb(n, j)) * norm;
             const float textual = textual_cost(get_labels(n, i), get_total_units(n, i),
                                                get_labels(n, j), get_total_units(n, j));
-            return m_weight * spatial + (1 - m_weight) * textual;
+            return m_weight * spatial + (1.0f - m_weight) * textual;
         };
 
         // Compute the pair that would produce the maximal cost
@@ -1289,6 +1291,7 @@ private:
                 }
             }
         }
+
         geodb_assert(left < N && right < N && left != right, "invalid seed incides");
         return std::make_tuple(left, right);
     }
@@ -1408,7 +1411,7 @@ private:
         const u32 count = get_count(n);
         geodb_assert(count >= 2, "must have at least 2 entries");
 
-        float max = 0;
+        float max = std::numeric_limits<float>::lowest();
         for (u32 i = 0; i < count; ++i) {
             for (u32 j = i + 1; j < count; ++j) {
                 max = std::max(max, waste(get_mmb(n, i), get_mmb(n, j)));
