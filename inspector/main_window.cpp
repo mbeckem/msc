@@ -28,12 +28,11 @@ void MainWindow::openTree() {
         return;
     }
 
+    closeTree();
+
     try {
         // TODO: Read only support ?
         tree_type tree(tree_storage(dir.toStdString()));
-        if (m_tree) {
-            delete m_tree;
-        }
         m_tree = new TreeDisplay(dir, std::move(tree), this);
         setCentralWidget(m_tree);
     } catch (const std::exception& e) {
