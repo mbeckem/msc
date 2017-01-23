@@ -12,10 +12,6 @@
 #include "geodb/utility/range_utils.hpp"
 
 #include <boost/container/static_vector.hpp>
-#include <boost/geometry/geometries/box.hpp>
-#include <boost/geometry/geometries/point.hpp>
-#include <boost/geometry/geometries/segment.hpp>
-#include <boost/geometry/algorithms/intersects.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/range/adaptor/filtered.hpp>
 #include <boost/range/adaptor/map.hpp>
@@ -388,30 +384,14 @@ private:
     /// \param[out] result  Will contain the matching entries.
     template<typename LeafPtrRange>
     void get_matching_units(const simple_query& q, const LeafPtrRange& leaves,
-                        std::vector<entry>& result) const
+                            std::vector<entry>& result) const
     {
-        namespace bg = boost::geometry;
-
-        // Using double for all coordinates.
-        using point_t = bg::model::point<double, 3, bg::cs::cartesian>;
-        using line_t = bg::model::segment<point_t>;
-        using box_t = bg::model::box<point_t>;
-
-        // Convert point to boost geometry type.
-        auto convert_point = [](const point& p) {
-            return point_t(p.x(), p.y(), p.t());
-        };
-
-        const box_t box(convert_point(q.rect.min()), convert_point(q.rect.max()));
-
         result.clear();
         for (leaf_ptr leaf : leaves) {
             const u32 count = storage().get_count(leaf);
             for (u32 i = 0; i < count; ++i) {
                 const entry data = storage().get_data(leaf, i);
-                const line_t line(convert_point(data.unit.start), convert_point(data.unit.end));
-
-                if (bg::intersects(box, line) && contains(q.labels, get_label(data))) {
+                if (data.unit.intersects(q.rect) && contains(q.labels, get_label(data))) {
                     result.push_back(data);
                 }
             }

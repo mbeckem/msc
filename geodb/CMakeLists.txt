@@ -1,6 +1,7 @@
 set(SOURCES
     common.cpp
     parser.cpp
+    trajectory.cpp
 )
 
 set(HEADERS

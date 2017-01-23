@@ -22,6 +22,8 @@ struct trajectory_unit {
     point end;
     label_type label;
 
+    bool intersects(const bounding_box& b) const;
+
     bounding_box get_bounding_box() const {
         return { point::min(start, end), point::max(start, end) };
     }
