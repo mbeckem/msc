@@ -27,3 +27,5 @@ target_link_libraries(inspector PRIVATE geodb)
 target_include_directories(inspector PRIVATE "${OPENSCENEGRAPH_INCLUDE_DIRS}")
 target_link_libraries(inspector PRIVATE "${OPENSCENEGRAPH_LIBRARIES}")
 target_link_libraries(inspector PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets Qt5::OpenGL)
+
+install(TARGETS inspector RUNTIME DESTINATION bin)
