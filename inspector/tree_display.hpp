@@ -11,6 +11,8 @@
 #include <osg/ref_ptr>
 #include <osg/Node>
 
+class QTreeWidgetItem;
+
 namespace Ui {
 class TreeDisplay;
 }
@@ -39,10 +41,16 @@ private:
     void refreshDirection();
     void refreshUp();
 
-    osg::Node* createScene(const tree_cursor& node, bool recurse);
+    void internalChildActivated(const QTreeWidgetItem* item, int column);
+    void parentActivated();
+    void recurseClicked(bool checked);
+
+    osg::Node* createScene(const tree_cursor& node);
+    osg::Node* createRecursiveScene(const tree_cursor& node);
 
 private:
     Ui::TreeDisplay *ui;
+    bool m_recurse = false;
     QString m_path;
     tree_type m_tree;
     boost::optional<tree_cursor> m_current;

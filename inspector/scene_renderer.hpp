@@ -54,6 +54,10 @@ public:
         update();
     }
 
+    void reset() {
+        m_viewer->getCameraManipulator()->home(0.0);
+    }
+
     osg::Vec3f eye() const { return m_eye; }
 
     osg::Vec3f center() const { return m_center; }

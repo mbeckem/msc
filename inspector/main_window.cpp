@@ -3,6 +3,7 @@
 
 #include "tree_display.hpp"
 
+#include <QtCore/QDir>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
 
@@ -13,8 +14,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     connect(ui->actionOpen, &QAction::triggered, this, &MainWindow::openTree);
-    connect(ui->actionClose, &QAction::triggered, this, &MainWindow::closeTree);
     connect(ui->actionExit, &QAction::triggered, [&]{ qApp->exit(); });
+
+    connect(ui->tabWidget, &QTabWidget::tabCloseRequested, this, &MainWindow::closeTree);
 }
 
 MainWindow::~MainWindow()
@@ -28,13 +30,18 @@ void MainWindow::openTree() {
         return;
     }
 
-    closeTree();
+    QString basename = QDir(dir).dirName();
+    if (basename.isEmpty()) {
+        basename = "Unnamed";
+    }
 
     try {
         // TODO: Read only support ?
         tree_type tree(tree_storage(dir.toStdString()));
-        m_tree = new TreeDisplay(dir, std::move(tree), this);
-        setCentralWidget(m_tree);
+
+        int index = ui->tabWidget->addTab(new TreeDisplay(dir, std::move(tree)), basename);
+        ui->tabWidget->setTabToolTip(index, dir);
+        ui->tabWidget->setCurrentIndex(index);
     } catch (const std::exception& e) {
         QString error;
         error += "Failed to open the tree directory: ";
@@ -43,10 +50,10 @@ void MainWindow::openTree() {
     }
 }
 
-void MainWindow::closeTree() {
-    delete m_tree;
-    m_tree = nullptr;
-    setCentralWidget(new QWidget());
+void MainWindow::closeTree(int index) {
+    TreeDisplay* display = qobject_cast<TreeDisplay*>(ui->tabWidget->widget(index));
+    ui->tabWidget->removeTab(index);
+    delete display;
 }
 
 void MainWindow::changeEvent(QEvent *e)

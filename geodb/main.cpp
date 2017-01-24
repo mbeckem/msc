@@ -21,7 +21,7 @@ int main(int argc, char** argv) {
     {
         using external = tree_external<4096>;
 
-        tree<external, 40> e(external("asd3"), 1);
+        tree<external, 40> e(external("xxx"), 1);
 
         std::mt19937 mt(std::random_device{}());
         std::uniform_real_distribution<float> xdist(0, 400);
@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
         std::uniform_real_distribution<float> ystep(-2, 2);
         std::uniform_int_distribution<time_type> tdist(100, 500);
         std::uniform_int_distribution<time_type> tstep(1, 5);
-        std::uniform_int_distribution<label_type> labeldist(1, 5);
+        std::uniform_int_distribution<label_type> labeldist(1, 50);
 
         auto get_point = [&](const point& last) {
             return point(last.x() + xstep(mt), last.y() + ystep(mt), last.t() + tstep(mt));

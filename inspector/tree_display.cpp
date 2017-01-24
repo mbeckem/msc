@@ -51,6 +51,9 @@ TreeDisplay::TreeDisplay(const QString& path, tree_type tree, QWidget *parent)
     , m_tree(std::move(tree))
 {
     ui->setupUi(this);
+    ui->leafChildrenTree->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->internalChildrenTree->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->indexTree->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
 
     ui->pathText->setText(m_path);
     ui->sizeText->setText(QString::number(m_tree.size()));
@@ -58,17 +61,22 @@ TreeDisplay::TreeDisplay(const QString& path, tree_type tree, QWidget *parent)
     ui->fanoutText->setText(QString("%1 / %2")
                             .arg(m_tree.max_internal_entries())
                             .arg(m_tree.max_leaf_entries()));
-
-    if (!m_tree.empty()) {
-        m_current = m_tree.root();
-    }
-    refreshNode();
+    connect(ui->internalChildrenTree, &QTreeWidget::itemActivated, this, &TreeDisplay::internalChildActivated);
+    connect(ui->parentButton, &QPushButton::clicked, this, &TreeDisplay::parentActivated);
 
     connect(ui->sceneRenderer, &SceneRenderer::eyeChanged, this, &TreeDisplay::refreshDirection);
     connect(ui->sceneRenderer, &SceneRenderer::centerChanged, this, &TreeDisplay::refreshDirection);
     connect(ui->sceneRenderer, &SceneRenderer::upChanged, this, &TreeDisplay::refreshUp);
+    connect(ui->resetButton, &QPushButton::clicked, ui->sceneRenderer, &SceneRenderer::reset);
+    connect(ui->recurseBox, &QCheckBox::clicked, this, &TreeDisplay::recurseClicked);
     refreshDirection();
     refreshUp();
+
+    // Initialize to root (if possible).
+    if (!m_tree.empty()) {
+        m_current = m_tree.root();
+    }
+    refreshNode();
 }
 
 TreeDisplay::~TreeDisplay()
@@ -117,8 +125,10 @@ void TreeDisplay::refreshNode() {
             label += " (root)";
         }
         ui->nodeText->setText(label);
+        ui->parentButton->setEnabled(m_current->has_parent());
     } else {
         ui->nodeText->setText("None");
+        ui->parentButton->setEnabled(false);
     }
 
     refreshChildren();
@@ -144,7 +154,8 @@ void TreeDisplay::refreshChildren() {
             QString box = to_string(m_current->mmb(i));
             QString ptr = QString::number(m_current->child_id(i));
 
-            new QTreeWidgetItem(internal->invisibleRootItem(), QStringList{index, box, ptr});
+            QTreeWidgetItem* item = new QTreeWidgetItem(internal->invisibleRootItem(), QStringList{index, box, ptr});
+            item->setData(0, Qt::UserRole, qint64(i));
         }
         ui->stackedWidget->setCurrentWidget(ui->internalPage);
     } else {
@@ -199,7 +210,8 @@ void TreeDisplay::refreshScene() {
         return;
     }
 
-    osg::ref_ptr<osg::Node> scene = createScene(*m_current, false);
+    osg::ref_ptr<osg::Node> scene = m_recurse ? createRecursiveScene(*m_current)
+                                              : createScene(*m_current);
     osg::StateSet* set = scene->getOrCreateStateSet();
 
     set->setAttribute(new osg::PolygonMode(osg::PolygonMode::FRONT_AND_BACK, osg::PolygonMode::LINE));
@@ -212,6 +224,40 @@ void TreeDisplay::refreshScene() {
     ui->sceneRenderer->setSceneData(scene);
 }
 
+void TreeDisplay::internalChildActivated(const QTreeWidgetItem* item, int column) {
+    if (!item || column < 0) {
+        return;
+    }
+
+    // Tree item stores child index at [0, UserRole]
+    QVariant data = item->data(0, Qt::UserRole);
+    assert(data.isValid());
+    assert(data.canConvert<qint64>());
+
+    size_t child = data.value<qint64>();
+    assert(m_current);
+    assert(child < m_current->size());
+    m_current->move_child(child);
+    refreshNode();
+}
+
+void TreeDisplay::parentActivated() {
+    if (!m_current || !m_current->has_parent()) {
+        return;
+    }
+    m_current->move_parent();
+    refreshNode();
+}
+
+void TreeDisplay::recurseClicked(bool checked) {
+    if (checked == m_recurse) {
+        return;
+    }
+
+    m_recurse = checked;
+    refreshScene();
+}
+
 void TreeDisplay::refreshDirection() {
     auto dir = ui->sceneRenderer->center() - ui->sceneRenderer->eye();
     ui->directionText->setText(to_string(dir));
@@ -221,23 +267,68 @@ void TreeDisplay::refreshUp() {
     ui->upText->setText(to_string(ui->sceneRenderer->up()));
 }
 
-osg::Node* TreeDisplay::createScene(const tree_type::cursor& node, bool recurse) {
-    (void) recurse; // TODO
+static osg::Node* make_box(const geodb::bounding_box& mmb, const QColor& c) {
+    geodb::point center = mmb.center();
+    geodb::point widths = mmb.max() - mmb.min();
 
+    osg::Matrix m1 = osg::Matrix::scale(widths.x(), widths.y(), widths.t());
+    osg::Matrix m2 = osg::Matrix::translate(center.x(), center.y(), center.t());
+    osg::MatrixTransform* tx = new osg::MatrixTransform(m1 * m2);
+    tx->addChild(make_box(c));
+    return tx;
+}
+
+osg::Node* TreeDisplay::createScene(const tree_type::cursor& node) {
     osg::ref_ptr<osg::Group> group = new osg::Group;
     std::vector<QColor> colors = get_colors(node.id(), node.size());
 
     for (size_t i = 0; i < node.size(); ++i) {
-        geodb::bounding_box mmb = node.mmb(i);
-        geodb::point center = mmb.center();
-        geodb::point widths = mmb.max() - mmb.min();
-
-        osg::Matrix m1 = osg::Matrix::scale(widths.x(), widths.y(), widths.t());
-        osg::Matrix m2 = osg::Matrix::translate(center.x(), center.y(), center.t());
-        osg::MatrixTransform* tx = new osg::MatrixTransform(m1 * m2);
-        tx->addChild(make_box(colors[i]));
-
-        group->addChild(tx);
+        group->addChild(make_box(node.mmb(i), colors[i]));
     }
     return group.release();
+}
+
+static void count_nodes(tree_type::cursor& node, size_t& count) {
+    count += 1;
+    if (node.is_internal()) {
+        for (size_t i = 0; i < node.size(); ++i) {
+            node.move_child(i);
+            count_nodes(node, count);
+            node.move_parent();
+        }
+    }
+}
+
+static size_t count_nodes(const tree_cursor& node) {
+    size_t count = 0;
+    tree_cursor copy = node;
+    count_nodes(copy, count);
+    return count;
+}
+
+static osg::Node* make_tree(tree_cursor& node, const std::vector<QColor> colors, size_t& index) {
+    QColor color = colors[index++];
+    osg::ref_ptr<osg::Group> group = new osg::Group;
+
+    if (node.is_internal()) {
+        for (size_t i = 0; i < node.size(); ++i) {
+            group->addChild(make_box(node.mmb(i), color));
+
+            node.move_child(i);
+            group->addChild(make_tree(node, colors, index));
+            node.move_parent();
+        }
+    } else {
+        for (size_t i = 0; i < node.size(); ++i) {
+            group->addChild(make_box(node.mmb(i), color));
+        }
+    }
+    return group.release();
+}
+
+osg::Node* TreeDisplay::createRecursiveScene(const tree_cursor& node) {
+    std::vector<QColor> colors = get_colors(0, count_nodes(node));
+    tree_cursor copy = node;
+    size_t index = 0;
+    return make_tree(copy, colors, index);
 }

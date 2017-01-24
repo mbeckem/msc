@@ -23,10 +23,9 @@ protected:
 
 private:
     void openTree();
-    void closeTree();
+    void closeTree(int index);
 private:
     Ui::MainWindow *ui = nullptr;
-    TreeDisplay *m_tree = nullptr;
 };
 
 #endif // MAIN_WINDOW_HPP
