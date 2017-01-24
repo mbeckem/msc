@@ -42,7 +42,7 @@ endif()
 
 include_directories("${PROJECT_SOURCE_DIR}")
 
-add_subdirectory(deps)
+include(deps/Dependencies.cmake)
 add_subdirectory(geodb)
 add_subdirectory(inspector)
 add_subdirectory(test)
