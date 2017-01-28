@@ -102,6 +102,15 @@ public:
         return storage().const_index(p);
     }
 
+    /// Returns the mmb of the current node (which includes all children).
+    bounding_box mmb() const {
+        if (is_leaf()) {
+            return tree().get_mmb(storage().to_leaf(current()));
+        } else {
+            return tree().get_mmb(storage().to_internal(current()));
+        }
+    }
+
     /// Returns the bounding box for the given child index.
     /// \pre `index < size()`.
     bounding_box mmb(size_t index) const {

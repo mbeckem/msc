@@ -3,6 +3,7 @@
 
 #include <boost/numeric/conversion/cast.hpp>
 
+#include <osg/ComputeBoundsVisitor>
 #include <osg/Geode>
 #include <osg/Material>
 #include <osg/MatrixTransform>
@@ -147,7 +148,6 @@ void TreeDisplay::refreshChildren() {
         return;
     }
 
-
     if (m_current->is_internal()) {
         for (size_t i = 0; i < m_current->size(); ++i) {
             QString index = QString::number(i);
@@ -267,23 +267,32 @@ void TreeDisplay::refreshUp() {
     ui->upText->setText(to_string(ui->sceneRenderer->up()));
 }
 
-static osg::Node* make_box(const geodb::bounding_box& mmb, const QColor& c) {
+static osg::Node* make_box(const geodb::bounding_box& mmb, const osg::Matrix& global, const QColor& c) {
     geodb::point center = mmb.center();
     geodb::point widths = mmb.max() - mmb.min();
 
     osg::Matrix m1 = osg::Matrix::scale(widths.x(), widths.y(), widths.t());
     osg::Matrix m2 = osg::Matrix::translate(center.x(), center.y(), center.t());
-    osg::MatrixTransform* tx = new osg::MatrixTransform(m1 * m2);
+    osg::MatrixTransform* tx = new osg::MatrixTransform(m1 * m2 * global);
     tx->addChild(make_box(c));
     return tx;
+}
+
+static osg::Matrix global_transform(const geodb::bounding_box& root) {
+    // Rescale everything to [0, 1000].
+    geodb::point width = root.max() - root.min();
+    return osg::Matrix::scale(1000.0 / double(width.x()),
+                              1000.0 / double(width.y()),
+                              1000.0 / double(width.t()));
 }
 
 osg::Node* TreeDisplay::createScene(const tree_type::cursor& node) {
     osg::ref_ptr<osg::Group> group = new osg::Group;
     std::vector<QColor> colors = get_colors(node.id(), node.size());
 
+    osg::Matrix global = global_transform(node.mmb());
     for (size_t i = 0; i < node.size(); ++i) {
-        group->addChild(make_box(node.mmb(i), colors[i]));
+        group->addChild(make_box(node.mmb(i), global, colors[i]));
     }
     return group.release();
 }
@@ -306,21 +315,21 @@ static size_t count_nodes(const tree_cursor& node) {
     return count;
 }
 
-static osg::Node* make_tree(tree_cursor& node, const std::vector<QColor> colors, size_t& index) {
+static osg::Node* make_tree(tree_cursor& node, const osg::Matrix& global, const std::vector<QColor> colors, size_t& index) {
     QColor color = colors[index++];
     osg::ref_ptr<osg::Group> group = new osg::Group;
 
     if (node.is_internal()) {
         for (size_t i = 0; i < node.size(); ++i) {
-            group->addChild(make_box(node.mmb(i), color));
+            group->addChild(make_box(node.mmb(i), global, color));
 
             node.move_child(i);
-            group->addChild(make_tree(node, colors, index));
+            group->addChild(make_tree(node, global, colors, index));
             node.move_parent();
         }
     } else {
         for (size_t i = 0; i < node.size(); ++i) {
-            group->addChild(make_box(node.mmb(i), color));
+            group->addChild(make_box(node.mmb(i), global, color));
         }
     }
     return group.release();
@@ -330,5 +339,5 @@ osg::Node* TreeDisplay::createRecursiveScene(const tree_cursor& node) {
     std::vector<QColor> colors = get_colors(0, count_nodes(node));
     tree_cursor copy = node;
     size_t index = 0;
-    return make_tree(copy, colors, index);
+    return make_tree(copy, global_transform(node.mmb()), colors, index);
 }
