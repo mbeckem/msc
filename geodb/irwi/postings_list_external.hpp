@@ -30,7 +30,10 @@ public:
 template<typename Posting>
 class postings_list_external_impl : boost::noncopyable {
 public:
-    postings_list_external_impl(postings_list_external storage) {
+    postings_list_external_impl(postings_list_external storage)
+        : m_accessor()
+        , m_entries(1.0, &m_accessor)
+    {
          m_entries.open(storage.path.string());
     }
 
@@ -84,6 +87,8 @@ private:
     }
 
 private:
+    // Using our own instance avoids a memory leak in tpie::file_base_crtp.
+    tpie::default_file_accessor m_accessor;
     mutable tpie::uncompressed_stream<posting_type> m_entries;
 };
 

@@ -3,6 +3,8 @@
 
 #include "geodb/common.hpp"
 
+#include <tpie/serialization2.h>
+
 #include <array>
 #include <algorithm>
 #include <ostream>
@@ -61,6 +63,22 @@ public:
     /// one common integer.
     bool overlaps(const interval& other) const {
         return other.m_end >= m_begin && other.m_begin <= m_end;
+    }
+
+private:
+    template<typename Dst>
+    friend void serialize(Dst& dst, const interval& a) {
+        using tpie::serialize;
+        serialize(dst, a.m_begin);
+        serialize(dst, a.m_end);
+    }
+
+    template<typename Src>
+    friend void unserialize(Src& src, interval& a) {
+        using tpie::unserialize;
+        unserialize(src, a.m_begin);
+        unserialize(src, a.m_end);
+        geodb_assert(a.m_begin <= a.m_end, "invalid interval");
     }
 
 private:

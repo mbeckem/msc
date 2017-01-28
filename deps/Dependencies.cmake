@@ -20,7 +20,7 @@ target_include_directories(catch INTERFACE "${DEPS_SOURCE_DIR}/catch")
 ExternalProject_Add(project_fmt
     SOURCE_DIR "${DEPS_SOURCE_DIR}/fmt-3.0.0"
     PREFIX     "${DEPS_BINARY_DIR}/fmt-3.0.0"
-    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR> -DFMT_DOC=0
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR> -DFMT_DOC=0 -DFMT_TEST=0
 )
 
 ExternalProject_Get_Property(project_fmt INSTALL_DIR)
@@ -33,7 +33,7 @@ target_link_libraries(fmt INTERFACE "${INSTALL_DIR}/lib/libfmt.a")
 ExternalProject_add(project_tpie
     SOURCE_DIR "${DEPS_SOURCE_DIR}/tpie"
     PREFIX     "${DEPS_BINARY_DIR}/tpie"
-    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR> -DCOMPILE_TEST=0
 )
 
 ExternalProject_Get_Property(project_tpie INSTALL_DIR)
@@ -46,7 +46,7 @@ target_link_libraries(tpie INTERFACE "${INSTALL_DIR}/lib/libtpie.a")
 set(Boost_USE_STATIC_LIBS       ON)
 set(Boost_USE_MULTITHREADED     ON)
 set(Boost_USE_STATIC_RUNTIME    OFF)
-find_package(Boost 1.60 COMPONENTS filesystem system REQUIRED)
+find_package(Boost 1.60 COMPONENTS filesystem system program_options REQUIRED)
 
 add_library(boost INTERFACE)
 target_include_directories(boost SYSTEM INTERFACE "${Boost_INCLUDE_DIRS}")

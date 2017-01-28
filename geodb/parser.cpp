@@ -13,11 +13,11 @@
 #include <string>
 
 BOOST_FUSION_ADAPT_STRUCT(
-    geodb::plt_point, latitude, longitude, time
+    geodb::geolife_point, latitude, longitude, time
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
-    geodb::activity, begin, end, name
+    geodb::geolife_activity, begin, end, name
 )
 
 namespace geodb {
@@ -45,7 +45,7 @@ namespace parser {
     const auto line = *(char_ - eol);
 
     const auto line_list = [](auto&& list_elem) {
-        return list_elem > *(eol > list_elem);
+        return list_elem > *(eol >> list_elem);
     };
 
     // Iterates over an input stream and supports backtracking when required.
@@ -60,9 +60,9 @@ namespace parser {
 
         rule<class date_time_tag, time::ptime> date_time = "plt date time";
 
-        rule<class row_tag, plt_point> row = "plt row";
+        rule<class row_tag, geolife_point> row = "plt row";
 
-        rule<class file_tag, std::vector<plt_point>> file = "plt file";
+        rule<class file_tag, std::vector<geolife_point>> file = "plt file";
 
         auto set_time = [](auto& ctx) {
             using boost::fusion::at_c;
@@ -87,7 +87,7 @@ namespace parser {
         const auto file_def =
             omit[repeat(6)[line > eol]]     // First 6 lines contain no useful information.
             > line_list(row)                // Each line contains a single point definition.
-            > eoi;
+            > -eol > eoi;
 
         BOOST_SPIRIT_DEFINE(date_time, row, file)
     }
@@ -100,9 +100,9 @@ namespace parser {
 
         rule<class date_time_tag, time::ptime> date_time = "date time";
 
-        rule<class row_tag, activity> row = "label row";
+        rule<class row_tag, geolife_activity> row = "label row";
 
-        rule<class file_tag, std::vector<activity>> file = "labels file";
+        rule<class file_tag, std::vector<geolife_activity>> file = "labels file";
 
         auto set_time = [](auto& ctx) {
             using boost::fusion::at_c;
@@ -121,7 +121,7 @@ namespace parser {
 
         // The first line is ignored (colum headers) and the rest must specify
         // the current transportation mode.
-        const auto file_def = omit[line > eol] > line_list(row) > eoi;
+        const auto file_def = omit[line > eol] > line_list(row) > -eol > eoi;
 
         BOOST_SPIRIT_DEFINE(date_time, row, file)
     }
@@ -147,14 +147,14 @@ void parse_helper(std::istream& in, Parser&& p, Output&& out, const char* type) 
     }
 }
 
-void parse_plt(std::istream& in, std::vector<plt_point>& out) {
+void parse_geolife_points(std::istream& in, std::vector<geolife_point>& out) {
     using namespace parser;
 
     out.clear();
     parse_helper(in, expect[plt::file], out, "plt file");
 }
 
-void parse_labels(std::istream& in, std::vector<activity>& out) {
+void parse_geolife_labels(std::istream& in, std::vector<geolife_activity>& out) {
     using namespace parser;
 
     out.clear();

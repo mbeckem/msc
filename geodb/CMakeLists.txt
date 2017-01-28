@@ -14,6 +14,7 @@ set(HEADERS
     point.hpp
     interval.hpp
     interval_set.hpp
+    tpie_main.hpp
     trajectory.hpp
     type_traits.hpp
 
@@ -46,7 +47,7 @@ set(HEADERS
 )
 
 add_library(geodb ${SOURCES} ${HEADERS})
-target_link_libraries(geodb PUBLIC tpie gsl boost "pthread")
+target_link_libraries(geodb PUBLIC tpie fmt gsl boost "pthread")
 
 add_executable(main main.cpp)
 target_link_libraries(main geodb)

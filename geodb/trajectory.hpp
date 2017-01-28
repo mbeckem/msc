@@ -5,7 +5,11 @@
 #include "geodb/common.hpp"
 #include "geodb/point.hpp"
 
+#include <tpie/serialization2.h>
+
 #include <ostream>
+#include <string>
+#include <vector>
 
 namespace geodb {
 
@@ -41,18 +45,69 @@ inline std::ostream& operator<<(std::ostream& o, const trajectory_unit& u) {
     return o << "{start: " << u.start << ", end: " << u.end << ", label: " << u.label << "}";
 }
 
-struct annotated_trajectory_unit {
-    trajectory_id_type tid; ///< id of the parent trajectory.
-    u32 uid;                ///< index of this unit in its parent.
-    trajectory_unit unit;   ///< the trajectory unit.
-};
-
 /// A spatio-textual trajectory is a list of
 /// spatio-textual trajectory units, together with
 /// a unique identifier.
 struct trajectory {
     trajectory_id_type id;
     std::vector<trajectory_unit> units;
+};
+
+struct trajectory_element {
+public:
+    point spatial;
+    label_type textual = 0;
+
+    trajectory_element() {}
+
+    trajectory_element(point spatial, label_type textual)
+        : spatial(spatial), textual(textual) {}
+
+private:
+    template<typename Dst>
+    friend void serialize(Dst& dst, const trajectory_element& e) {
+        using tpie::serialize;
+        serialize(dst, e.spatial);
+        serialize(dst, e.textual);
+    }
+
+    template<typename Dst>
+    friend void unserialize(Dst& dst, trajectory_element& e) {
+        using tpie::unserialize;
+        unserialize(dst, e.spatial);
+        unserialize(dst, e.textual);
+    }
+};
+
+struct point_trajectory {
+public:
+    trajectory_id_type id = 0;
+    std::string description;
+    std::vector<trajectory_element> entries;
+
+    point_trajectory() {}
+
+    point_trajectory(trajectory_id_type id, std::string description,
+                     std::vector<trajectory_element> entries)
+        : id(id), description(std::move(description)), entries(std::move(entries))
+    {}
+
+private:
+    template<typename Dst>
+    friend void serialize(Dst& dst, const point_trajectory& p) {
+        using tpie::serialize;
+        serialize(dst, p.id);
+        serialize(dst, p.description);
+        serialize(dst, p.entries);
+    }
+
+    template<typename Src>
+    friend void unserialize(Src& src, point_trajectory& p) {
+        using tpie::unserialize;
+        unserialize(src, p.id);
+        unserialize(src, p.description);
+        unserialize(src, p.entries);
+    }
 };
 
 } // namespace geodb

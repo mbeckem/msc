@@ -44,6 +44,7 @@ include_directories("${PROJECT_SOURCE_DIR}")
 
 include(deps/Dependencies.cmake)
 add_subdirectory(geodb)
+add_subdirectory(cmd)
 add_subdirectory(inspector)
 add_subdirectory(test)
 

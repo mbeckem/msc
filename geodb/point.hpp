@@ -4,6 +4,8 @@
 #include "geodb/common.hpp"
 #include "geodb/utility/tuple_utils.hpp"
 
+#include <tpie/serialization2.h>
+
 #include <algorithm>
 #include <ostream>
 #include <tuple>
@@ -145,6 +147,23 @@ public:
     x_type& x() { return get<0>(); }
     y_type& y() { return get<1>(); }
     t_type& t() { return get<2>(); }
+
+private:
+    template<typename Dst>
+    friend void serialize(Dst& dst, const point& p) {
+        using tpie::serialize;
+        serialize(dst, p.x());
+        serialize(dst, p.y());
+        serialize(dst, p.t());
+    }
+
+    template<typename Src>
+    friend void unserialize(Src& src, point& p) {
+        using tpie::unserialize;
+        unserialize(src, p.x());
+        unserialize(src, p.y());
+        unserialize(src, p.t());
+    }
 };
 
 } // namespace geodb

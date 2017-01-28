@@ -173,6 +173,22 @@ public:
         }
     }
 
+    /// FIXME
+    void insert(const point_trajectory& t) {
+        auto pos = t.entries.begin();
+        auto end = t.entries.end();
+        u32 index = 0;
+
+        if (pos != end) {
+            auto last = pos++;
+            for (; pos != end; ++pos) {
+                entry e{t.id, index++, trajectory_unit{last->spatial, pos->spatial, last->textual}};
+                insert(e);
+                last = pos;
+            }
+        }
+    }
+
     /// Finds all trajectories that satisfy the given query.
     std::vector<match> find(const sequenced_query& seq_query) const {
         if (empty()) {

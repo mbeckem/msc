@@ -45,18 +45,18 @@ namespace detail {
 template<typename Func>
 class func_wrapper {
 public:
-    func_wrapper() = default;
+    func_wrapper(): func() {}
 
-    func_wrapper(const func_wrapper& other) = default;
+    func_wrapper(const func_wrapper& other): func(other.func) {}
 
-    func_wrapper(func_wrapper&& other) = default;
+    func_wrapper(func_wrapper&& other): func(std::move(other.func)) {}
 
-    func_wrapper(const Func& f): func(f) {}
+    explicit func_wrapper(const Func& f): func(f) {}
 
-    func_wrapper(Func&& f): func(std::move(f)) {}
+    explicit func_wrapper(Func&& f): func(std::move(f)) {}
 
     func_wrapper& operator=(const func_wrapper& other) {
-        // Emplace would invalide *other.func
+        // Emplace would invalidate *other.func
         if (this != &other) {
             if (other.func) {
                 func.emplace(*other.func);
@@ -68,7 +68,7 @@ public:
     }
 
     func_wrapper& operator=(func_wrapper&& other) {
-        // Emplace would invalide *other.func
+        // Emplace would invalidate *other.func
         if (this != &other) {
             if (other.func) {
                 func.emplace(std::move(*other.func));

@@ -67,8 +67,8 @@ TEST_CASE("parse plt format", "[parser]") {
         "39.984655,116.318263,0,492,39744.1204282407,2008-10-23,02:53:25\n"
         "39.984611,116.318026,0,493,39744.1204861111,2008-10-23,02:53:30";
     std::stringstream in(input);
-    std::vector<plt_point> points;
-    parse_plt(in, points);
+    std::vector<geolife_point> points;
+    parse_geolife_points(in, points);
     std::cout << std::setprecision(16);
     for (const auto& p : points) {
         //std::cout << p << std::endl;
@@ -91,8 +91,8 @@ TEST_CASE("parse labels format", "[parser]") {
         "2008/05/02 07:03:24	2008/05/02 07:09:48	walk\n"
         "2008/05/02 07:09:42	2008/05/02 09:34:20	car";
     std::stringstream in(input);
-    std::vector<activity> labels;
-    parse_labels(in, labels);
+    std::vector<geolife_activity> labels;
+    parse_geolife_labels(in, labels);
     std::cout << std::setprecision(16);
     for (const auto& p : labels) {
         //std::cout << p << std::endl;
