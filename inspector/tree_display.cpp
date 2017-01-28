@@ -200,7 +200,10 @@ void TreeDisplay::refreshIndex() {
     auto index = m_current->inverted_index();
     append("Total", index->total());
     for (auto item : *index) {
-        append(QString("Label %1").arg(item.label()), item.postings_list());
+        auto list = item.postings_list();
+        if (!list->empty()) {
+            append(QString("Label %1").arg(item.label()), list);
+        }
     }
 }
 
