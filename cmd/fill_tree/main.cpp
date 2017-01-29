@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
         std::vector<point_trajectory> data;
         reader.unserialize(data);
 
-        tree_t tree(tree_storage_t{tree_path});
+        tree_t tree(tree_storage_t{tree_path}, beta);
 
         fmt::print(cout, "Adding {} trajectories\n", data.size());
         fmt::print(cout, "Beta={}\n", beta);
