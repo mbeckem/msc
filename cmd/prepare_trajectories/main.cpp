@@ -55,7 +55,7 @@ void parse_options(int argc, char** argv) {
         po::notify(vm);
     } catch (const po::error& e) {
         fmt::print(cerr, "Failed to parse arguments: {}.\n", e.what());
-        exit(1);
+        throw exit_main(1);
     }
 }
 

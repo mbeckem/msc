@@ -19,6 +19,7 @@ namespace po = boost::program_options;
 
 string trajectories_path;
 string tree_path;
+double beta;
 
 using namespace geodb;
 
@@ -45,6 +46,7 @@ int main(int argc, char** argv) {
         tree_t tree(tree_storage_t{tree_path});
 
         fmt::print(cout, "Adding {} trajectories\n", data.size());
+        fmt::print(cout, "Beta={}\n", beta);
 
         size_t size = data.size();
         for (size_t index = 0; index < size; ++index) {
@@ -59,21 +61,41 @@ int main(int argc, char** argv) {
 }
 
 void parse_options(int argc, char** argv) {
-    po::options_description options;
+    po::options_description options("Options");
     options.add_options()
+            ("help,h", "Show this message.")
             ("trajectories", po::value(&trajectories_path)->value_name("PATH")->required(),
              "Path to prepared trajectory file.")
             ("tree", po::value(&tree_path)->value_name("PATH")->required(),
-             "Path to irwi tree directory. Will be created if it doesn't exist.");
+             "Path to irwi tree directory. Will be created if it doesn't exist.")
+            ("beta", po::value(&beta)->value_name("BETA")->default_value(0.5),
+             "Weight factor between 0 and 1 for spatial and textual cost (1.0 is a normal rtree).");
 
     po::variables_map vm;
     try {
         po::command_line_parser p(argc, argv);
         p.options(options);
         po::store(p.run(), vm);
+
+        if (vm.count("help")) {
+            fmt::print(cerr, "Usage: {0} OPTION...\n"
+                             "\n"
+                             "Fill an IRWI-Tree with trajectory data. The output file\n"
+                             "will be created if it doesn't exist.\n"
+                             "\n"
+                             "{1}",
+                       argv[0], options);
+            throw exit_main(0);
+        }
+
         po::notify(vm);
     } catch (const po::error& e) {
         fmt::print(cerr, "Failed to parse arguments: {}.\n", e.what());
-        exit(1);
+        throw exit_main(1);
+    }
+
+    if (beta < 0 || beta > 1) {
+        fmt::print(cerr, "Beta must be between 0 and 1: {}.\n", beta);
+        throw exit_main(1);
     }
 }

@@ -2,6 +2,7 @@
 
 #include "geodb/filesystem.hpp"
 #include "geodb/parser.hpp"
+#include "geodb/tpie_main.hpp"
 
 #include <boost/optional.hpp>
 #include <fmt/ostream.h>
@@ -42,11 +43,11 @@ struct geolife_parser {
 
         if (!fs::exists(path)) {
             fmt::print(cerr, "Input directory does not exist: {}.\n", path);
-            exit(1);
+            throw exit_main(1);
         }
         if (!fs::is_directory(path)) {
             fmt::print(cerr, "Input file is no directory: {}.\n", path);
-            exit(1);
+            throw exit_main(1);
         }
 
         for (const fs::directory_entry& e : fs::directory_iterator(path))  {
@@ -77,7 +78,7 @@ struct geolife_parser {
             parse_geolife_labels(in, list);
         } catch (const parse_error& e) {
             fmt::print(cerr, "Failed to parse {}: {}\n", path, e.what());
-            exit(1);
+            throw exit_main(1);
         }
 
         std::vector<activity> result;
@@ -88,7 +89,7 @@ struct geolife_parser {
 
         if (!std::is_sorted(result.begin(), result.end(), [&](const activity& a, const activity& b) { return a.begin < b.begin; })) {
             fmt::print(cerr, "Labels are not sorted by time: {}\n", path);
-            exit(1);
+            throw exit_main(1);
         }
         return result;
     }
@@ -111,7 +112,7 @@ struct geolife_parser {
             parse_geolife_points(in, list);
         } catch (const parse_error& e) {
             fmt::print(cerr, "Failed to parse {}: {}\n", path, e.what());
-            exit(1);
+            throw exit_main(1);
         }
 
         auto a_pos = activities.begin();
