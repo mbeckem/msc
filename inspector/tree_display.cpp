@@ -339,7 +339,7 @@ static osg::Node* make_tree(tree_cursor& node, const osg::Matrix& global, const 
 }
 
 osg::Node* TreeDisplay::createRecursiveScene(const tree_cursor& node) {
-    std::vector<QColor> colors = get_colors(0, count_nodes(node));
+    std::vector<QColor> colors = get_colors(node.id(), count_nodes(node));
     tree_cursor copy = node;
     size_t index = 0;
     return make_tree(copy, global_transform(node.mmb()), colors, index);
