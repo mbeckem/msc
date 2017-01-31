@@ -45,7 +45,7 @@ block_collection_cache::~block_collection_cache() {
 block_handle block_collection_cache::get_free_block() {
 	block_handle h = m_collection.get_free_block();
 	block * cache_b = tpie_new<block>(m_blockSize);
-    prepare_cache();
+	prepare_cache();
 	add_to_cache(h, cache_b, true);
 	return h;
 }
@@ -66,7 +66,7 @@ void block_collection_cache::free_block(block_handle handle) {
 	m_collection.free_block(handle);
 }
 
-void block_collection_cache::prepare_cache() {    
+void block_collection_cache::prepare_cache() {
 	if(m_curSize < m_maxSize)
 		return;
 
@@ -83,9 +83,9 @@ void block_collection_cache::prepare_cache() {
 }
 
 void block_collection_cache::add_to_cache(block_handle handle, block * b, bool dirty) {
-    tp_assert(m_curSize < m_maxSize, "must not be full");
+	tp_assert(m_curSize < m_maxSize, "must not be full");
 
-    m_blockList.push_back(handle);
+	m_blockList.push_back(handle);
 	block_list_t::iterator list_pos = m_blockList.end();
 	--list_pos;
 
@@ -94,15 +94,15 @@ void block_collection_cache::add_to_cache(block_handle handle, block * b, bool d
 }
 
 void block_collection_cache::used(block_information_t& item) {
-    // Make sure that the node at item.iterator is now the last one.
-    m_blockList.splice(m_blockList.end(), m_blockList, item.iterator);
+	// Move the item's list node to the end.
+	m_blockList.splice(m_blockList.end(), m_blockList, item.iterator);
 }
 
 block * block_collection_cache::read_block(block_handle handle) {
 	block_map_t::iterator i = m_blockMap.find(handle);
 
 	if(i != m_blockMap.end()) { // the block is already in the cache
-        used(i->second);
+		used(i->second);
 		return i->second.pointer;
 	}
 
@@ -121,7 +121,7 @@ void block_collection_cache::write_block(block_handle handle) {
 
 	tp_assert(i != m_blockMap.end(), "the given handle does not exist in the cache.");
 
-    used(i->second);
+	used(i->second);
 	i->second.dirty = true;
 }
 

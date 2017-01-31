@@ -220,13 +220,13 @@ private:
 template <typename S>
 class btree_iterator: public boost::iterator_facade<
 	btree_iterator<S>,
-    typename S::value_type const,
+	typename S::value_type const,
 	boost::bidirectional_traversal_tag> {
 
 public:
-    // Do not declare value type as private!
-    // It is a required iterator typedef.
-    typedef typename S::value_type value_type;
+	// Do not declare value type as private!
+	// It is a required iterator typedef.
+	typedef typename S::value_type value_type;
 
 private:
 	typedef S state_type;
@@ -238,7 +238,7 @@ private:
 	const state_type * m_state;
 	std::vector<internal_type> m_path;
 	size_t m_index;
-    leaf_type m_leaf;
+	leaf_type m_leaf;
 
 	template <typename, typename>
 	friend class bbits::tree;

@@ -54,23 +54,23 @@ external_store_base::external_store_base(external_store_base&& other) noexcept
 , m_size(other.m_size)
 , m_moved(other.m_moved)
 {
-    other.m_moved = true;
+	other.m_moved = true;
 }
 
 external_store_base::~external_store_base() {
-    if (!m_moved) {
-    	tpie::file_accessor::raw_file_accessor m_accessor;
-    	m_accessor.try_open_rw(m_path);
-    	stream_size_type size = sizeof(size_t) * 2 + sizeof(blocks::block_handle);
-    	stream_size_type pos = m_accessor.file_size_i();
-    	m_accessor.truncate_i(pos + size);
-    	m_accessor.seek_i(pos);
-    	m_accessor.write_i((void*) &m_height, sizeof(size_t));
-    	m_accessor.seek_i(pos + sizeof(size_t));
-    	m_accessor.write_i((void*) &m_size, sizeof(size_t));
-    	m_accessor.seek_i(pos + 2 * sizeof(size_t));
-    	m_accessor.write_i((void*) &m_root, sizeof(blocks::block_handle));
-    }
+	if (!m_moved) {
+		tpie::file_accessor::raw_file_accessor m_accessor;
+		m_accessor.try_open_rw(m_path);
+		stream_size_type size = sizeof(size_t) * 2 + sizeof(blocks::block_handle);
+		stream_size_type pos = m_accessor.file_size_i();
+		m_accessor.truncate_i(pos + size);
+		m_accessor.seek_i(pos);
+		m_accessor.write_i((void*) &m_height, sizeof(size_t));
+		m_accessor.seek_i(pos + sizeof(size_t));
+		m_accessor.write_i((void*) &m_size, sizeof(size_t));
+		m_accessor.seek_i(pos + 2 * sizeof(size_t));
+		m_accessor.write_i((void*) &m_root, sizeof(blocks::block_handle));
+	}
 }
 
 } // namespace bits
