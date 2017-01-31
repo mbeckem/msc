@@ -118,7 +118,7 @@ public:
 			path, blockSize(), cacheSize(), true);
 	}
 
-    external_store(external_store&& other) noexcept = default;
+	external_store(external_store&& other) noexcept = default;
 
 	~external_store() {
 		m_collection.reset();
@@ -408,8 +408,8 @@ public:
 	template <typename, typename>
 	friend class bbits::tree;
 
-    template <typename, typename>
-    friend class bbits::builder;
+	template <typename, typename>
+	friend class bbits::builder;
 };
 
 } //namespace bbits
