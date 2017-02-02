@@ -24,6 +24,7 @@
 #include <tpie/btree/base.h>
 #include <tpie/btree/node.h>
 #include <tpie/memory.h>
+#include <tpie/tpie_assert.h>
 #include <cstddef>
 #include <vector>
 
@@ -536,6 +537,25 @@ public:
 				return;
 			}
 		}
+	}
+
+	/**
+	 * \brief Replace the value at the given position with a new entry.
+	 *
+	 * The new entries key must be identical to the current one, i.e.
+	 * it must not be lesser or greater than the current key when compared
+	 * using comp().
+	 *
+	 * \pre \p *it and \p v have equivalent keys.
+	 */
+	void replace(iterator pos, value_type v) {
+		leaf_type l = pos.m_leaf;
+		size_t i = pos.m_index;
+
+		tp_assert(!m_comp(m_state.min_key(l, i), m_state.min_key(v)) &&
+				  !m_comp(m_state.min_key(v), m_state.min_key(l, i)),
+				  "The new value's key must be equivalent");
+		m_state.store().set(l, i, v);
 	}
 		
 	/**

@@ -25,6 +25,8 @@
 #include <set>
 #include <map>
 #include <numeric>
+#include <random>
+
 using namespace tpie;
 using namespace std;
 
@@ -327,6 +329,38 @@ bool augment_test(TA<TT...>, A && ... a) {
 	return true;
 }
 
+template<typename...  TT, typename... A>
+bool replace_test(TA<TT...>, A&&... a) {
+	struct mapping {
+		int key;
+		int value;
+	};
+
+	struct key_extract {
+		int operator()(const mapping& m) const { return m.key; }
+	};
+
+
+	btree<mapping, btree_key<key_extract>, TT...> tree(std::forward<A>(a)...);
+	for (int i = 1; i <= 1024; ++i) {
+		tree.insert(mapping{i, i * 2});
+	}
+
+	for (auto it = tree.begin(), end = tree.end(); it != end; ++it) {
+		mapping m{it->key, it->value * 2};
+		tree.replace(it, m);
+	}
+
+	int sum = 0;
+	int expected = 2 * 1024 * 1025;
+	for (mapping m : tree) {
+		sum += m.value;
+	}
+	TEST_ENSURE_EQUALITY(sum, expected, "Unexpected sum of values");
+
+	return true;
+}
+
 template<typename ... TT, typename ... A>
 bool build_test(TA<TT...>, A && ... a) {
     default_comp c;
@@ -431,6 +465,10 @@ bool internal_augment_test() {
 	return augment_test(TA<btree_internal>());
 }
 
+bool internal_replace_test() {
+	return replace_test(TA<btree_internal>());
+}
+
 bool internal_build_test() {
 	return build_test(TA<btree_internal>());
 }
@@ -467,6 +505,11 @@ bool external_augment_test() {
 	return augment_test(TA<btree_external>(), tmp.path());
 }
 
+bool external_replace_test() {
+	temp_file tmp;
+	return replace_test(TA<btree_external>(), tmp.path());
+}
+
 bool external_build_test() {
     temp_file tmp;
     return build_test(TA<btree_external>(), tmp.path());
@@ -488,6 +531,7 @@ int main(int argc, char **argv) {
 		.test(internal_iterator_test, "internal_iterator")
 		.test(internal_key_and_comparator_test, "internal_key_and_compare")
 		.test(internal_augment_test, "internal_augment")
+		.test(internal_replace_test, "internal_replace")
         .test(internal_build_test, "internal_build")
 		.test(internal_static_test, "internal_static")
 		.test(internal_unordered_test, "internal_unordered")
@@ -496,6 +540,7 @@ int main(int argc, char **argv) {
 		.test(external_iterator_test, "external_iterator")
 		.test(external_key_and_comparator_test, "external_key_and_compare")
 		.test(external_augment_test, "external_augment")
+		.test(external_replace_test, "external_replace")
         .test(external_build_test, "external_build")
 		.test(external_bound_test, "external_bound")
 		.test(serialized_build_test, "serialized_build");
