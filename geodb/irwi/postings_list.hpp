@@ -77,6 +77,19 @@ private:
     size_t m_index = 0;
 };
 
+/// A summary of the entries of a single postings_list.
+struct postings_list_summary {
+    u64 count = 0;
+    dynamic_interval_set<trajectory_id_type> trajectories;
+
+    postings_list_summary() {}
+
+    postings_list_summary(u64 count, dynamic_interval_set<trajectory_id_type> trajectories)
+        : count(count)
+        , trajectories(std::move(trajectories))
+    {}
+};
+
 /// A postings list contains index information about the children of an
 /// internal node for a single label.
 ///
@@ -165,6 +178,23 @@ public:
             geodb_assert(e.node() < total, "total not large enough");
             result[e.node()] = e.count();
         }
+        return result;
+    }
+
+    /// Creates a summary of this list.
+    /// The summary contains the total number of units and a set
+    /// storing (an approximation of) the trajectory ids of those units.
+    postings_list_summary summarize() const {
+        using id_set_t = typename posting_type::id_set_type;
+
+        postings_list_summary result;
+        std::vector<id_set_t> sets;
+        sets.reserve(size());
+        for (const posting_type& p : *this) {
+            result.count += p.count();
+            sets.push_back(p.id_set());
+        }
+        result.trajectories = dynamic_interval_set<trajectory_id_type>::set_union(sets);
         return result;
     }
 
