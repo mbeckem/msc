@@ -651,36 +651,25 @@ private:
     /// all postings lists in its inverted index.
     /// This summary will become part of the new parent's inverted index.
     index_summary summarize(internal_ptr n) const {
-        // Sums a postings list by summing the count of units in the entries
-        // and creating the union of all trajectory id sets.
-        std::vector<id_set_type> buffer;
         auto sum_list = [&](const auto& list, id_set_type& ids, u64& count) {
-            buffer.clear();
-            buffer.reserve(list.size());
-
-            count = 0;
-            for (const auto& p : list) {
-                count += p.count();
-                buffer.push_back(p.id_set());
-            }
-            ids = id_set_type::set_union(buffer);
+            auto sum = list->summarize();
+            ids = std::move(sum.trajectories);
+            count = sum.count;
         };
 
         auto index = storage().const_index(n);
 
         index_summary s;
-        sum_list(*index->total(), s.total_tids, s.total_units);
+        sum_list(index->total(), s.total_tids, s.total_units);
         for (const auto& entry : *index) {
             const label_type label = entry.label();
 
-            auto list = entry.postings_list();
-
             id_set_type tids;
             u64 count;
-            sum_list(*list, tids, count);
+            sum_list(entry.postings_list(), tids, count);
             if (count > 0) {
                 s.label_units[label] = count;
-                s.label_tids[label] = tids;
+                s.label_tids[label] = std::move(tids);
             }
         }
         return s;

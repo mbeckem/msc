@@ -190,7 +190,7 @@ public:
     /// The summary contains the total number of units and a set
     /// storing (an approximation of) the trajectory ids of those units.
     summary_type summarize() const {
-        using id_set_t = typename posting_type::id_set_type;
+        using id_set_t = typename posting_type::trajectory_id_set_type;
 
         summary_type result;
         std::vector<id_set_t> sets;
