@@ -27,7 +27,7 @@ template<typename StorageSpec>
 class string_map;
 
 /// IRWI leaf entries represent trajectory units.
-struct entry {
+struct tree_entry {
     trajectory_id_type trajectory_id;   ///< Index of the trajectory this unit belongs to.
     u32 unit_index;                     ///< Index of this unit within the trajectory.
     trajectory_unit unit;

@@ -38,7 +38,7 @@ namespace geodb {
 template<typename StorageSpec, u32 Lambda>
 class tree {
 private:
-    using storage_type = typename StorageSpec::template implementation<entry, Lambda>;
+    using storage_type = typename StorageSpec::template implementation<tree_entry, Lambda>;
 
 public:
     using index_type = typename storage_type::index_type;
@@ -91,7 +91,7 @@ private:
     };
 
 public:
-    using value_type = entry;
+    using value_type = tree_entry;
 
     using cursor = tree_cursor<tree>;
 
@@ -167,7 +167,7 @@ public:
         // A trajectory is inserted by inserting all its units.
         u32 index = 0;
         for (const trajectory_unit& unit : t.units) {
-            entry d{t.id, index, unit};
+            tree_entry d{t.id, index, unit};
             insert(d);
             ++index;
         }
@@ -182,7 +182,7 @@ public:
         if (pos != end) {
             auto last = pos++;
             for (; pos != end; ++pos) {
-                entry e{t.id, index++, trajectory_unit{last->spatial, pos->spatial, last->textual}};
+                tree_entry e{t.id, index++, trajectory_unit{last->spatial, pos->spatial, last->textual}};
                 insert(e);
                 last = pos;
             }
@@ -204,12 +204,12 @@ public:
         geodb_assert(nodes.size() == n, "not enough node lists");
 
         // Iterate over all leaf nodes and gather the matching entries.
-        std::vector<std::map<trajectory_id_type, std::vector<entry>>> candidates(n);
-        std::vector<entry> units;
+        std::vector<std::map<trajectory_id_type, std::vector<tree_entry>>> candidates(n);
+        std::vector<tree_entry> units;
         for (size_t i = 0; i < n; ++i) {
             geodb_assert(!nodes[i].empty(), "node list must be non-empty");
             get_matching_units(seq_query.queries[i], nodes[i], units);
-            candidates[i] = group_by_key(units, [](const entry& e) { return e.trajectory_id; });
+            candidates[i] = group_by_key(units, [](const tree_entry& e) { return e.trajectory_id; });
         }
 
         // Trajectories must satisfy every simple query and must do so in the correct order.
@@ -400,13 +400,13 @@ private:
     /// \param[out] result  Will contain the matching entries.
     template<typename LeafPtrRange>
     void get_matching_units(const simple_query& q, const LeafPtrRange& leaves,
-                            std::vector<entry>& result) const
+                            std::vector<tree_entry>& result) const
     {
         result.clear();
         for (leaf_ptr leaf : leaves) {
             const u32 count = storage().get_count(leaf);
             for (u32 i = 0; i < count; ++i) {
-                const entry data = storage().get_data(leaf, i);
+                const tree_entry data = storage().get_data(leaf, i);
                 if (data.unit.intersects(q.rect) && contains(q.labels, get_label(data))) {
                     result.push_back(data);
                 }
@@ -432,10 +432,10 @@ private:
                     goto skip;
                 }
 
-                const std::vector<entry>& entries = iter->second;
+                const std::vector<tree_entry>& entries = iter->second;
                 geodb_assert(entries.size() > 0, "no matching entries");
 
-                auto unit_indices = entries | transformed_member(&entry::unit_index);
+                auto unit_indices = entries | transformed_member(&tree_entry::unit_index);
                 u32 min_unit = *boost::min_element(unit_indices);
                 u32 max_unit = *boost::max_element(unit_indices);
                 append(indices, unit_indices);
@@ -510,7 +510,7 @@ private:
 
     /// Finds the appropriate leaf node for the insertion of \p d.
     /// Stores the path of internal node parents into \p path.
-    leaf_ptr find_insertion_leaf(std::vector<internal_ptr>& path, const entry& d) {
+    leaf_ptr find_insertion_leaf(std::vector<internal_ptr>& path, const tree_entry& d) {
         geodb_assert(storage().get_height() > 0, "empty tree has no leaves");
 
         path.clear();
@@ -541,7 +541,7 @@ private:
     }
 
     /// Inserts a single trajectory unit into the tree.
-    void insert(const entry& d) {
+    void insert(const tree_entry& d) {
         storage().set_size(storage().get_size() + 1);
 
         if (storage().get_height() == 0) {
@@ -676,7 +676,7 @@ private:
     }
 
     /// Insert a data entry into a leaf. The leaf must not be full.
-    void insert_entry(leaf_ptr leaf, const entry& d) {
+    void insert_entry(leaf_ptr leaf, const tree_entry& d) {
         const u32 count = storage().get_count(leaf);
         geodb_assert(count < max_leaf_entries(), "leaf node is full");
 
@@ -826,7 +826,7 @@ private:
         static constexpr size_t N = max_entries + 1;
 
         /// Exactly N entries since this node is overflowing.
-        boost::container::static_vector<entry, N> entries;
+        boost::container::static_vector<tree_entry, N> entries;
 
         /// All labels in this node.
         std::unordered_set<label_type> labels;
@@ -834,11 +834,11 @@ private:
 
     /// Construct a virtual node that holds all existing entries
     /// and the new one.
-    void create(overflowing_leaf_node& o, leaf_ptr n, const entry& extra) {
+    void create(overflowing_leaf_node& o, leaf_ptr n, const tree_entry& extra) {
         geodb_assert(o.entries.size() == 0, "o must be fresh");
         geodb_assert(storage().get_count(n) == max_leaf_entries(), "n must be full");
         for (u32 i = 0; i < u32(max_leaf_entries()); ++i) {
-            entry d = storage().get_data(n, i);
+            tree_entry d = storage().get_data(n, i);
             o.entries.push_back(d);
             o.labels.insert(get_label(d));
         }
@@ -1016,7 +1016,7 @@ private:
 
     /// Splits the leaf into two leaves and inserts the extra entry.
     /// Returns the new leaf.
-    leaf_ptr split_and_insert(leaf_ptr old_leaf, const entry& extra) {
+    leaf_ptr split_and_insert(leaf_ptr old_leaf, const tree_entry& extra) {
         overflowing_leaf_node o;
         create(o, old_leaf, extra);
 
@@ -1035,7 +1035,7 @@ private:
 
             // Clear the remaining records.
             for (u32 i = count; i < max_leaf_entries(); ++i) {
-                storage().set_data(ptr, i, entry());
+                storage().set_data(ptr, i, tree_entry());
             }
         };
 
@@ -1321,17 +1321,17 @@ private:
         return *m_storage;
     }
 
-    trajectory_id_type get_id(const entry& d) const {
+    trajectory_id_type get_id(const tree_entry& d) const {
         return d.trajectory_id;
     }
 
     /// TODO: More generic?
-    bounding_box get_mmb(const entry& d) const {
+    bounding_box get_mmb(const tree_entry& d) const {
         return d.unit.get_bounding_box();
     }
 
     /// TODO: More generic?
-    label_type get_label(const entry& d) const {
+    label_type get_label(const tree_entry& d) const {
         return d.unit.label;
     }
 
@@ -1556,7 +1556,7 @@ void dump(std::ostream& o, Cursor c, int indent_length = 0) {
         indent() << "Type: Leaf\n";
         const size_t size = c.size();
         for (size_t i = 0; i < size; ++i) {
-            entry e = c.value(i);
+            tree_entry e = c.value(i);
             indent() << "Child " << i << ": " << e.trajectory_id << "[" << e.unit_index << "] " << e.unit << "\n";
         }
     }

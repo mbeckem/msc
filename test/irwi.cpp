@@ -20,7 +20,7 @@ void visit(const Cursor& c,
         std::set<trajectory_id_type> leaf_ids;
         std::map<label_type, std::set<trajectory_id_type>> leaf_label_ids;
         for (u32 i = 0; i < c.size(); ++i) {
-            entry e = c.value(i);
+            tree_entry e = c.value(i);
             bool inserted;
             std::tie(std::ignore, inserted) = seen.insert({e.trajectory_id, e.unit_index});
 
