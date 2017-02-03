@@ -186,7 +186,7 @@ public:
     ///     value is the union of trajectory identifiers stored within
     ///     the entry's subtree.
     void matching_children(const std::unordered_set<label_type>& labels,
-                           std::unordered_map<entry_id_type, dynamic_interval_set<trajectory_id_type>>& entries) const
+                           std::unordered_map<entry_id_type, interval_set<trajectory_id_type>>& entries) const
     {
         entries.clear();
 

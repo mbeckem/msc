@@ -78,13 +78,16 @@ private:
 };
 
 /// A summary of the entries of a single postings_list.
+template<u32 Lambda>
 struct postings_list_summary {
+    using trajectory_id_set_type = trajectory_id_set<Lambda>;
+
     u64 count = 0;
-    dynamic_interval_set<trajectory_id_type> trajectories;
+    trajectory_id_set_type trajectories;
 
     postings_list_summary() {}
 
-    postings_list_summary(u64 count, dynamic_interval_set<trajectory_id_type> trajectories)
+    postings_list_summary(u64 count, trajectory_id_set_type trajectories)
         : count(count)
         , trajectories(std::move(trajectories))
     {}
@@ -107,6 +110,8 @@ public:
     using const_iterator = iterator;
 
     using posting_type = posting<Lambda>;
+
+    using summary_type = postings_list_summary<Lambda>;
 
 private:
     template<typename PostingList>
@@ -184,17 +189,17 @@ public:
     /// Creates a summary of this list.
     /// The summary contains the total number of units and a set
     /// storing (an approximation of) the trajectory ids of those units.
-    postings_list_summary summarize() const {
+    summary_type summarize() const {
         using id_set_t = typename posting_type::id_set_type;
 
-        postings_list_summary result;
+        summary_type result;
         std::vector<id_set_t> sets;
         sets.reserve(size());
         for (const posting_type& p : *this) {
             result.count += p.count();
             sets.push_back(p.id_set());
         }
-        result.trajectories = dynamic_interval_set<trajectory_id_type>::set_union(sets);
+        result.trajectories = id_set_t::set_union(sets);
         return result;
     }
 

@@ -56,9 +56,9 @@ public:
     using posting_type = typename index_type::posting_type;
 
 private:
-    using id_set_type = typename posting_type::id_set_type;
+    using id_set_type = typename posting_type::trajectory_id_set_type;
 
-    using dynamic_id_set_type = dynamic_interval_set<trajectory_id_type>;
+    using dynamic_id_set_type = interval_set<trajectory_id_type>;
 
     using node_id_type = typename storage_type::node_id_type;
 

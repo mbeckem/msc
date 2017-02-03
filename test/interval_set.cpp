@@ -7,7 +7,7 @@
 
 using namespace geodb;
 
-using small_set = interval_set<int, 3>;
+using small_set = static_interval_set<int, 3>;
 
 TEST_CASE("interval set normal insertion", "[interval-set]") {
 
@@ -152,7 +152,7 @@ TEST_CASE("interval merging for large intervals", "[interval-set]") {
 //}
 
 TEST_CASE("interval events for multiple ranges", "[interval-set]") {
-    std::vector<interval_set<int, 5>> sets;
+    std::vector<static_interval_set<int, 5>> sets;
     sets.push_back({1, 3, {5, 11}, {12, 15}});
     sets.push_back({{2, 7}, {11, 13}, 15});
     sets.push_back({3, 4, {14, 16}});

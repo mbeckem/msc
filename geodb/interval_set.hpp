@@ -258,12 +258,15 @@ namespace detail {
 /// Using \ref trim(), one can reduce the size of the set
 /// by merging neighboring intervals, zhus introducing some error.
 ///
+/// Efficient algorithms for computing the union / intersection of an
+/// arbitrary number of interval_sets are provided.
+///
 /// Note: This class is backed by a sorted vector. Insert performance could
 /// bed improved by using a balanced search tree instead.
 /// Intervals are sorted and do not overlap, thus a "normal" 1-D tree
 /// is sufficient.
 template<typename T>
-class interval_set_base {
+class interval_set {
     using storage_type = std::vector<interval<T>>;
 
 public:
@@ -279,7 +282,7 @@ public:
     /// Runtime complexity: O(N log M) where N is the total number of intervals across all ranges
     /// and M is the number of ranges.
     template<typename Range>
-    static interval_set_base set_union(Range&& rng)
+    static interval_set set_union(Range&& rng)
     {
         using detail::interval_events;
 
@@ -299,16 +302,15 @@ public:
                 }
             }
         });
-        return interval_set_base(std::move(result));
+        return interval_set(std::move(result));
     }
-
 
     /// Takes a range of interval_sets and return their intersection.
     ///
     /// Runtime complexity: O(N log M) where N is the total number of intervals across all ranges
     /// and M is the number of ranges.
     template<typename Range>
-    static interval_set_base set_intersection(Range&& rng) {
+    static interval_set set_intersection(Range&& rng) {
         using detail::interval_events;
 
         // Sweep over the plane and keep track of open intervals.
@@ -334,17 +336,23 @@ public:
                 }
             }
         });
-        return interval_set_base(std::move(result));
+        return interval_set(std::move(result));
     }
 
 public:
-    interval_set_base() {}
+    /// Creates an empty interval set.
+    /// \post `size() == 0`.
+    interval_set() {}
 
-    interval_set_base(std::initializer_list<interval_type> list):
-        interval_set_base(list.begin(), list.end()) {}
+    /// Creates a new interval set from the given list of intervals.
+    /// The list must be sorted (by start coordinate, ascending) and
+    /// adjacent intervals must not overlap.
+    interval_set(std::initializer_list<interval_type> list):
+        interval_set(list.begin(), list.end()) {}
 
+    /// \copydoc interval_set(std::initializer_list<interval_type>)
     template<typename FwdIterator>
-    interval_set_base(FwdIterator first, FwdIterator last)
+    interval_set(FwdIterator first, FwdIterator last)
         : m_intervals(std::distance(first, last))
     {
         auto out = m_intervals.begin();
@@ -359,7 +367,7 @@ public:
     }
 
 private:
-    interval_set_base(storage_type&& vec): m_intervals(std::move(vec)) {}
+    interval_set(storage_type&& vec): m_intervals(std::move(vec)) {}
 
 public:
     /// Returns the iterator to the first element.
@@ -382,11 +390,10 @@ public:
     /// Returns the size (the number of intervals) of this set.
     size_t size() const { return m_intervals.size(); }
 
-protected:
     /// Adds a point to this set.
     ///
     ///     - If some interval already contains this point, nothing needs to be done.
-    ///     - Otherwise, insert a new point-like interval.
+    ///     - Otherwise, insert a new point-like interval at the appropriate position.
     ///
     /// Runtime complexity: O(size()).
     ///
@@ -412,7 +419,6 @@ protected:
         return true;
     }
 
-public:
     /// Returns true if this set contains the given point.
     /// Runtime complexity: O(log(size)).
     bool contains(point_type point) const {
@@ -426,7 +432,7 @@ public:
     }
 
     /// Trims this set to fit the new size.
-    /// Intervals will be merged.
+    /// Excess intervals will be merged.
     /// \pre `size > 0`.
     /// \post `this->size() <= size`.
     void trim(size_t size) {
@@ -440,15 +446,15 @@ public:
     }
 
     /// Returns the union of \p *this and \p other.
-    interval_set_base union_with(const interval_set_base& other) const {
-        std::array<const interval_set_base*, 2> args{this, &other};
-        return interval_set_base::set_union(args | boost::adaptors::indirected);
+    interval_set union_with(const interval_set& other) const {
+        std::array<const interval_set*, 2> args{this, &other};
+        return interval_set::set_union(args | boost::adaptors::indirected);
     }
 
     /// Returns the intersection of \p *this and \p other.
-    interval_set_base intersection_with(const interval_set_base& other) const {
-        std::array<const interval_set_base*, 2> args{this, &other};
-        return interval_set_base::set_intersection(args | boost::adaptors::indirected);
+    interval_set intersection_with(const interval_set& other) const {
+        std::array<const interval_set*, 2> args{this, &other};
+        return interval_set::set_intersection(args | boost::adaptors::indirected);
     }
 
 private:
@@ -478,7 +484,7 @@ private:
     /// \copydoc interval_before()
     iterator interval_before(point_type point) const {
         return static_cast<iterator>(
-                    const_cast<interval_set_base*>(this)->interval_before(point));
+                    const_cast<interval_set*>(this)->interval_before(point));
     }
 
     /// Iterate over the intervals, but merge adjacent intervals
@@ -494,7 +500,7 @@ private:
         }
     }
 
-    friend std::ostream& operator<<(std::ostream& o, const interval_set_base& set) {
+    friend std::ostream& operator<<(std::ostream& o, const interval_set& set) {
         o << "{";
         set.adjacent_merged([&](const interval_type& i) {
             o << i;
@@ -507,115 +513,111 @@ private:
     storage_type m_intervals;
 };
 
-template<typename T>
-class dynamic_interval_set : public interval_set_base<T> {
-public:
-    using dynamic_interval_set::interval_set_base::interval_set_base;
-
-    dynamic_interval_set() {}
-
-    dynamic_interval_set(interval_set_base<T>&& base)
-        : interval_set_base<T>(std::move(base)) {}
-
-    /// \copydoc interval_set_base::add
-    bool add(T point) {
-        return dynamic_interval_set::interval_set_base::add(point);
-    }
-};
-
-/// This class represents a set of integers by storing no more than
-/// `Capacity` intervals. Intervals are kept in sorted order and do
-/// not overlap. Because the overall count of intervals is limited,
-/// some error will eventually be introduced when an element is inserted.
-///
-/// Inserting into an interval_set will grow some existing interval
-/// to fit the new element if the set is at full, thereby 
-/// erroneously returning `contains(x) == true` for elements not previously
-/// inserted into the set.
-///
-/// This class is used to represent the set of trajectory ids
-/// stored within a subtree of an internal node.
+/// A variant of \ref interval_set that automatically enforces a capacity.
+/// The number of elements within a `static_interval_set` will always be
+/// lesser than or equal to `Capacity`.
+/// Intervals are merged as neccessary in order to keep this invariant.
 template<typename T, size_t Capacity>
-class interval_set : public interval_set_base<T> {
-    static_assert(Capacity > 1, "capacity too low");
-
-    using base = interval_set_base<T>;
+class static_interval_set {
+    using inner_t = interval_set<T>;
 
 public:
-    using interval_type = typename base::interval_type;
-    using point_type = typename base::point_type;
+    using iterator = typename inner_t::iterator;
+    using const_iterator = typename inner_t::const_iterator;
+
+    using point_type = typename inner_t::point_type;
+    using interval_type = typename inner_t::interval_type;
 
 public:
-    /// Construct an empty interval set.
-    interval_set() = default;
+    template<typename Range>
+    static static_interval_set set_union(Range&& r) {
+        inner_t set = inner_t::set_union(std::forward<Range>(r));
+        return static_interval_set(std::move(set));
+    }
 
-    /// Load an interval set from a sorted initializer list.
-    ///
-    /// \pre At most `capacity()` items in `init`.
-    /// \pre The intervals must be sorted and must not overlap.
-    /// \see interval_set(Iterator, Iterator).
-    interval_set(std::initializer_list<interval_type> init)
-        : interval_set(init.begin(), init.end()) {}
+    template<typename Range>
+    static static_interval_set set_intersection(Range&& r) {
+        inner_t set = inner_t::set_intersection(std::forward<Range>(r));
+        return static_interval_set(std::move(set));
+    }
 
-    /// Load an interval set from a sorted range of intervals.
-    ///
-    /// \pre At most `capacity()` items in `[begin, end)`.
-    /// \pre The intervals must be sorted and must not overlap.
-    template<typename FwdIterator>
-    interval_set(FwdIterator begin, FwdIterator end)
-        : base(begin, end)
+    static constexpr size_t capacity() { return Capacity; }
+
+public:
+    static_interval_set() {}
+
+    static_interval_set(std::initializer_list<interval_type> list)
+        : inner(list)
     {
-        geodb_assert(this->size() <= capacity(), "too many intervals");
+        trim();
+    }
+
+    template<typename FwdIter>
+    static_interval_set(FwdIter begin, FwdIter end)
+        : inner(begin, end)
+    {
+        trim();
+    }
+
+    explicit static_interval_set(interval_set<T> set)
+        : inner(std::move(set))
+    {
+        trim();
+    }
+
+    iterator begin() const { return inner.begin(); }
+    iterator end() const { return inner.end(); }
+
+    /// \copydoc interval_set<T>::operator[]
+    const interval_type& operator[](size_t index) const { return inner[index]; }
+
+    /// \copydoc interval_set<T>::empty
+    bool empty() const { return inner.empty(); }
+
+    /// \copydoc interval_set<T>::size
+    size_t size() const { return inner.size(); }
+
+    /// Adds the point to the set, merging intervals if the set becomes full.
+    ///
+    /// \sa interval_set::add
+    bool add(point_type point) {
+        bool changed = inner.add(point);
+        trim();
+        return changed;
+    }
+
+    /// \copydoc interval_set<T>::trim
+    bool contains(point_type point) const { return inner.contains(point); }
+
+    /// \copydoc interval_set<T>::trim
+    void trim(size_t size) { inner.trim(size); }
+
+    /// Equivalent to `trim(capacity())`.
+    void trim() { trim(capacity()); }
+
+    /// \copydoc interval_set<T>::clear
+    void clear() { inner.clear(); }
+
+    /// Returns the union of `*this` and `other`, adjusted for capacity.
+    static_interval_set union_with(const static_interval_set& other) const {
+        return static_interval_set(inner.union_with(other.inner));
+    }
+
+    /// Returns the intersection of `*this` and `other`, adjusted for capacity.
+    static_interval_set intersection_with(const static_interval_set& other) const {
+        return static_interval_set(inner.intersection_with(other.inner));
+    }
+
+    /// Returns a const view to the dynamic interval data.
+    operator const interval_set<T>& () const { return inner; }
+
+private:
+    friend std::ostream& operator<<(std::ostream& o, const static_interval_set& set) {
+        return o << set.inner;
     }
 
 private:
-    interval_set(base&& b): base(std::move(b)) {
-        geodb_assert(this->size() <= capacity(), "base instance too large");
-    }
-
-public:
-    template<typename Range>
-    static interval_set set_union(Range&& rng) {
-        auto res = base::set_union(std::forward<Range>(rng));
-        res.trim(capacity());
-        return interval_set(std::move(res));
-    }
-
-    template<typename Range>
-    static interval_set set_intersection(Range&& rng) {
-        auto res = base::set_intersection(std::forward<Range>(rng));
-        res.trim(capacity());
-        return interval_set(std::move(res));
-    }
-
-    /// Returns the capacity of this set.
-    static constexpr size_t capacity() { return Capacity; }
-
-    /// Adds a point to this set.
-    ///
-    ///     - If some interval already contains this point, nothing needs to be done.
-    ///     - Otherwise, if the set is not yet at full capacity, create a new
-    ///       interval of size 1 representing `point` and insert it at the appropriate position.
-    ///     - Otherwise, insert the new point and merge two intervals. Choose the interval
-    ///       pair that, when merged, introduces the lowest cost.
-    ///
-    /// Runtime complexity: O(size()).
-    ///
-    /// \post `contains(point)`.
-    /// \post `size() <= capacity()`.
-    /// \return Returns true iff adding the point caused the set to change, i.e. when
-    ///         the point was not already represented by one of the intervals.
-    bool add(point_type point) {
-        if (base::add(point)) {
-            if (this->size() > capacity()) {
-                base::trim(capacity());
-            }
-            return true;
-        }
-        return false;
-    }
-
-    using base::trim;
+    inner_t inner;
 };
 
 } // namespace geodb

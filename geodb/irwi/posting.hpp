@@ -10,6 +10,9 @@ namespace geodb {
 /// Identifies child entries of an internal node (by index).
 using entry_id_type = u32;
 
+template<u32 Lambda>
+using trajectory_id_set = static_interval_set<trajectory_id_type, Lambda>;
+
 /// Every posting `p` belongs to a postings list `pl` which in
 /// turn belongs to some internal node and a label `l`.
 /// The existance of `p` implies that within the subtree of `p.node()`
@@ -17,12 +20,12 @@ using entry_id_type = u32;
 template<u32 Lambda>
 class posting {
 public:
-    using id_set_type = interval_set<trajectory_id_type, Lambda>;
+    using trajectory_id_set_type = trajectory_id_set<Lambda>;
 
-    using interval_type = typename id_set_type::interval_type;
+    using interval_type = typename trajectory_id_set_type::interval_type;
 
 public:
-    explicit posting(entry_id_type node, u64 count, const id_set_type& ids)
+    explicit posting(entry_id_type node, u64 count, const trajectory_id_set_type& ids)
         : m_node(node), m_count(count), m_intervals_count(ids.size())
     {
         geodb_assert(count > 0, "count must be positive");
@@ -45,11 +48,12 @@ public:
     /// counted by this instance.
     /// This set can be used to quickly exclude some node froms being searched,
     /// e.g. if the associated subtree contains none of the required trajectory ids.
-    id_set_type id_set() const {
-        return id_set_type(m_intervals, m_intervals + m_intervals_count);
+    trajectory_id_set_type id_set() const {
+        return trajectory_id_set_type(m_intervals, m_intervals + m_intervals_count);
     }
 
-    void id_set(const id_set_type& set) {
+    void id_set(const trajectory_id_set_type& set) {
+        geodb_assert(set.size() <= Lambda, "size invariant");
         m_intervals_count = set.size();
         std::copy(set.begin(), set.end(), m_intervals);
     }
