@@ -19,9 +19,9 @@ using namespace std;
 using namespace geodb;
 namespace po = boost::program_options;
 
-string input;
-string output;
-string labels;
+static string input;
+static string output;
+static string labels;
 
 void parse_options(int argc, char** argv);
 
@@ -33,7 +33,8 @@ int main(int argc, char** argv) {
 
         tpie::serialization_writer out;
         out.open(output);
-        out.serialize(result);
+        out.serialize(size_t(result.size()));
+        out.serialize(result.begin(), result.end());
         return 0;
     });
 }

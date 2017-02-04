@@ -17,6 +17,7 @@
 #include <boost/range/sub_range.hpp>
 #include <boost/range/metafunctions.hpp>
 #include <boost/range/numeric.hpp>
+#include <tpie/serialization2.h>
 
 #include <algorithm>
 #include <ostream>
@@ -353,17 +354,9 @@ public:
     /// \copydoc interval_set(std::initializer_list<interval_type>)
     template<typename FwdIterator>
     interval_set(FwdIterator first, FwdIterator last)
-        : m_intervals(std::distance(first, last))
+        : m_intervals(first, last)
     {
-        auto out = m_intervals.begin();
-        for (; first != last; ++out, ++first) {
-            *out = *first;
-
-            geodb_assert(out == m_intervals.begin() || !out->overlaps(out[-1]),
-                    "consecutive intervals must not overlap");
-            geodb_assert(out == m_intervals.begin() || out->begin() >= out[-1].end(),
-                    "intervals must be sorted");
-        }
+        assert_invariant();
     }
 
 private:
@@ -389,6 +382,13 @@ public:
 
     /// Returns the size (the number of intervals) of this set.
     size_t size() const { return m_intervals.size(); }
+
+    /// Assign a new set of intervals. Reuses existing capacity.
+    template<typename FwdIterator>
+    void assign(FwdIterator first, FwdIterator last) {
+        m_intervals.assign(first, last);
+        assert_invariant();
+    }
 
     /// Adds a point to this set.
     ///
@@ -509,6 +509,35 @@ private:
         return o;
     }
 
+    void assert_invariant() {
+        geodb_debug {
+            if (empty()) {
+                return;
+            }
+
+            auto last = m_intervals.end();
+            auto iter = m_intervals.begin();
+            auto prev = iter++;
+            for (; iter != last; ++iter, ++prev) {
+                geodb_assert(!iter->overlaps(*prev), "Intervals must not overlap");
+                geodb_assert(iter->begin() >= prev->end(), "intervals must be sorted");
+            }
+        }
+    }
+
+    template<typename Dest>
+    friend void serialize(Dest& dst, const interval_set& set) {
+        using tpie::serialize;
+        serialize(dst, set.m_intervals);
+    }
+
+    template<typename Src>
+    friend void unserialize(Src& src, interval_set& set) {
+        using tpie::unserialize;
+        unserialize(src, set.m_intervals);
+        set.assert_invariant();
+    }
+
 private:
     storage_type m_intervals;
 };
@@ -577,6 +606,13 @@ public:
     /// \copydoc interval_set<T>::size
     size_t size() const { return inner.size(); }
 
+    /// Assign a new set of intervals, merging them if neccessary.
+    template<typename FwdIter>
+    void assign(FwdIter first, FwdIter last) {
+        inner.assign(first, last);
+        trim();
+    }
+
     /// Adds the point to the set, merging intervals if the set becomes full.
     ///
     /// \sa interval_set::add
@@ -614,6 +650,18 @@ public:
 private:
     friend std::ostream& operator<<(std::ostream& o, const static_interval_set& set) {
         return o << set.inner;
+    }
+
+    template<typename Dest>
+    friend void serialize(Dest& dst, const static_interval_set& set) {
+        using tpie::serialize;
+        serialize(dst, set.inner);
+    }
+
+    template<typename Src>
+    friend void unserialize(Src& src, static_interval_set& set) {
+        using tpie::unserialize;
+        unserialize(src, set.inner);
     }
 
 private:

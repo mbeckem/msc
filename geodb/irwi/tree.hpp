@@ -43,6 +43,10 @@ private:
 public:
     using index_type = typename storage_type::index_type;
 
+    using list_type = typename index_type::list_type;
+
+    using posting_type = typename list_type::posting_type;
+
 private:
     using index_handle = typename storage_type::index_handle;
 
@@ -51,9 +55,6 @@ private:
     using list_handle = typename index_type::list_handle;
 
     using const_list_handle = typename index_type::const_list_handle;
-
-public:
-    using posting_type = typename index_type::posting_type;
 
 private:
     using id_set_type = typename posting_type::trajectory_id_set_type;
@@ -71,7 +72,7 @@ private:
     /// Represents a node that might be visited in a future query iteration.
     struct candidate_entry {
         node_ptr ptr;
-        bounding_box mmb;
+        bounding_box mbb;
         dynamic_id_set_type ids;
     };
 
@@ -94,6 +95,9 @@ public:
     using value_type = tree_entry;
 
     using cursor = tree_cursor<tree>;
+
+public:
+    static constexpr u32 lambda() { return Lambda; }
 
     /// Maximum fanout for internal nodes.
     static constexpr size_t max_internal_entries() {
@@ -273,7 +277,7 @@ private:
                 for (const candidate_entry& c : state.candidates) {
                     // Keep an entry when its time interval overlaps and
                     // it contains relevant ids.
-                    if (state.time_window.overlaps({c.mmb.min().t(), c.mmb.max().t()})
+                    if (state.time_window.overlaps({c.mbb.min().t(), c.mbb.max().t()})
                             && !c.ids.intersection_with(shared_ids).empty()) {
                         state.nodes.push_back(c.ptr);
                     }
@@ -315,9 +319,9 @@ private:
                 auto child = pair.first;
                 auto& ids = pair.second;
 
-                auto mmb = storage().get_mmb(ptr, child);
-                if (mmb.intersects(q.rect)) {
-                    result.push_back({ storage().get_child(ptr, child), mmb, std::move(ids) });
+                auto mbb = storage().get_mbb(ptr, child);
+                if (mbb.intersects(q.rect)) {
+                    result.push_back({ storage().get_child(ptr, child), mbb, std::move(ids) });
                 }
             }
         }
@@ -333,8 +337,8 @@ private:
             return {};
         }
 
-        auto begin = min_element(entries | transformed([](const candidate_entry& e) { return e.mmb.min().t(); }));
-        auto end = max_element(entries | transformed([](const candidate_entry& e) { return e.mmb.max().t(); }));
+        auto begin = min_element(entries | transformed([](const candidate_entry& e) { return e.mbb.min().t(); }));
+        auto end = max_element(entries | transformed([](const candidate_entry& e) { return e.mbb.max().t(); }));
         return interval<time_type>(*begin, *end);
     }
 
@@ -460,7 +464,7 @@ private:
     //      Insertion
     // ----------------------------------------
 
-    /// Given an internal node, and the mmb + label of a new entry,
+    /// Given an internal node, and the mbb + label of a new entry,
     /// find the best child entry within the internal node.
     /// This function respects the spatial cost (i.e. growing the bounding box)
     /// and the textual cost (introducing uncommon labels into a subtree).
@@ -486,19 +490,19 @@ private:
         // Combined cost function using weight parameter beta.
         const float norm = inverse(max_enlargement(n, b));
         const auto cost = [&](u32 index) {
-            const float spatial = spatial_cost(get_mmb(n, index), b, norm);
+            const float spatial = spatial_cost(get_mbb(n, index), b, norm);
             const float textual = textual_cost(unit_count[index], total_count[index]);
             return m_weight * spatial + (1.f - m_weight) * textual;
         };
 
         // Find the entry with the smallest cost.
-        // Resolve ties by choosing the entry with the smallest mmb.
+        // Resolve ties by choosing the entry with the smallest mbb.
         u32 min_index = 0;
         float min_cost = cost(0);
-        float min_size = storage().get_mmb(n, 0).size();
+        float min_size = storage().get_mbb(n, 0).size();
         for (u32 i = 1; i < count; ++i) {
             const float c = cost(i);
-            const float size = get_mmb(n, i).size();
+            const float size = get_mbb(n, i).size();
             if (c < min_cost || (c == min_cost && size < min_size)) {
                 min_cost = c;
                 min_index = i;
@@ -519,7 +523,7 @@ private:
             return storage().to_leaf(storage().get_root());
         }
 
-        const bounding_box mmb = get_mmb(d);
+        const bounding_box mbb = get_mbb(d);
         const label_type label = get_label(d);
 
         // Iterate until the leaf level has been reached.
@@ -527,7 +531,7 @@ private:
         for (size_t level = 1;; ++level) {
             path.push_back(current);
 
-            const node_ptr child = find_insertion_entry(current, mmb, label);
+            const node_ptr child = find_insertion_entry(current, mbb, label);
             if (level + 1 == storage().get_height()) {
                 // Next level is the leaf level.
                 return storage().to_leaf(child);
@@ -565,7 +569,7 @@ private:
             if (count < max_leaf_entries()) {
                 // The leaf has room for this entry.
                 insert_entry(leaf, d);
-                update_path(path, leaf, get_id(d), get_mmb(d), get_label(d));
+                update_path(path, leaf, get_id(d), get_mbb(d), get_label(d));
                 return;
             }
         }
@@ -583,7 +587,7 @@ private:
         }
 
         // There was at least one internal node parent.
-        // The content of l has changed, update the parent's mmb and inverted index.
+        // The content of l has changed, update the parent's mbb and inverted index.
         internal_ptr parent = path.back();
         replace_entry(parent, leaf);
         if (storage().get_count(parent) < max_internal_entries()) {
@@ -593,7 +597,7 @@ private:
             // and l has been reinserted already.
             insert_entry(parent, new_leaf);
             path.pop_back();
-            update_path(path, parent, get_id(d), get_mmb(d), get_label(d));
+            update_path(path, parent, get_id(d), get_mbb(d), get_label(d));
             return;
         }
 
@@ -609,7 +613,7 @@ private:
             if (storage().get_count(parent) < max_internal_entries()) {
                 insert_entry(parent, new_internal);
                 path.pop_back();
-                update_path(path, parent, get_id(d), get_mmb(d), get_label(d));
+                update_path(path, parent, get_id(d), get_mbb(d), get_label(d));
                 return;
             }
 
@@ -696,7 +700,7 @@ private:
         geodb_assert(i < max_internal_entries(), "internal node is full");
 
         storage().set_count(p, i + 1);
-        storage().set_mmb(p, i, get_mmb(c));
+        storage().set_mbb(p, i, get_mbb(c));
         storage().set_child(p, i, c);
 
         index_handle index = storage().index(p);
@@ -729,8 +733,8 @@ private:
         const index_summary sum = summarize(c);
         const index_handle index = storage().index(p);
 
-        // Adjust the mmb to fit the node's current entry set.
-        storage().set_mmb(p, id, get_mmb(c));
+        // Adjust the mbb to fit the node's current entry set.
+        storage().set_mbb(p, id, get_mbb(c));
 
         // Erase all posting list entries for labels that do not occur in c anymore.
         for (auto i = index->begin(), e = index->end(); i != e; ++i) {
@@ -757,10 +761,10 @@ private:
     }
 
     /// Update every parent node in the path with the fact that a new
-    /// unit has been inserted into the given child, with the provided mmb
+    /// unit has been inserted into the given child, with the provided mbb
     /// and label id.
     void update_path(const std::vector<internal_ptr>& path, node_ptr child,
-                     trajectory_id_type tid, const bounding_box& unit_mmb, label_type label_id)
+                     trajectory_id_type tid, const bounding_box& unit_mbb, label_type label_id)
     {
         // Increment the unit count for the given node & label.
         auto increment_entry = [&](const list_handle& list, entry_id_type node) {
@@ -781,12 +785,12 @@ private:
             }
         };
 
-        // Update mmbs and inverted indices in all parents.
-        // The mmb of the child's entry within the parent must fit the new box.
+        // Update mbbs and inverted indices in all parents.
+        // The mbb of the child's entry within the parent must fit the new box.
         for (auto parent : path | boost::adaptors::reversed) {
             const u32 i = index_of(parent, child);
-            bounding_box mmb = storage().get_mmb(parent, i).extend(unit_mmb);
-            storage().set_mmb(parent, i, mmb);
+            bounding_box mbb = storage().get_mbb(parent, i).extend(unit_mbb);
+            storage().set_mbb(parent, i, mbb);
 
             index_handle index = storage().index(parent);
             increment_entry(index->total(), i);
@@ -846,8 +850,8 @@ private:
         o.labels.insert(get_label(extra));
     }
 
-    bounding_box get_mmb(const overflowing_leaf_node& n, u32 index) const {
-        return get_mmb(n.entries[index]);
+    bounding_box get_mbb(const overflowing_leaf_node& n, u32 index) const {
+        return get_mbb(n.entries[index]);
     }
 
     u32 get_count(const overflowing_leaf_node& n) const {
@@ -873,7 +877,7 @@ private:
 
         struct child_data {
             node_ptr ptr;
-            bounding_box mmb;
+            bounding_box mbb;
             std::map<label_type, u64> label_units;          // label -> unit count
             std::map<label_type, id_set_type> label_tids;   // label -> trajectory id set
             id_set_type total_tids;
@@ -897,7 +901,7 @@ private:
             o.entries.emplace_back();
             auto& entry = o.entries.back();
             entry.ptr = storage().get_child(n, i);
-            entry.mmb = storage().get_mmb(n, i);
+            entry.mbb = storage().get_mbb(n, i);
         }
 
         {
@@ -934,7 +938,7 @@ private:
         o.entries.emplace_back();
         auto& entry = o.entries.back();
         entry.ptr = child;
-        entry.mmb = get_mmb(child);
+        entry.mbb = get_mbb(child);
         entry.total_tids = child_summary.total_tids;
         entry.total_units = child_summary.total_units;
         entry.label_units.insert(child_summary.label_units.begin(), child_summary.label_units.end());
@@ -946,8 +950,8 @@ private:
         }
     }
 
-    bounding_box get_mmb(const overflowing_internal_node& o, u32 index) const {
-        return o.entries[index].mmb;
+    bounding_box get_mbb(const overflowing_internal_node& o, u32 index) const {
+        return o.entries[index].mbb;
     }
 
     u64 get_total_units(const overflowing_internal_node& o, u32 index) const {
@@ -968,7 +972,7 @@ private:
 
     struct node_part : boost::noncopyable {
         /// Minimal bounding box for all entries.
-        bounding_box mmb;
+        bounding_box mbb;
 
         /// Indices into the overflowing node.
         std::unordered_set<u32> entries;
@@ -976,8 +980,8 @@ private:
         /// Map of label -> count.
         std::map<label_type, u64> labels;
 
-        const bounding_box& get_mmb() const {
-            return mmb;
+        const bounding_box& get_mbb() const {
+            return mbb;
         }
 
         auto get_labels() const {
@@ -994,7 +998,7 @@ private:
         template<typename LabelCounts>
         void init(u32 i, const bounding_box& b, const LabelCounts& label_counts) {
             entries.insert(i);
-            mmb = b;
+            mbb = b;
             for (const label_count& lc : label_counts) {
                 labels[lc.label] += lc.count;
             }
@@ -1003,7 +1007,7 @@ private:
         template<typename LabelCounts>
         void add(u32 i, const bounding_box& b, const LabelCounts& label_counts) {
             entries.insert(i);
-            mmb = mmb.extend(b);
+            mbb = mbb.extend(b);
             for (const label_count& lc : label_counts) {
                 labels[lc.label] += lc.count;
             }
@@ -1070,7 +1074,7 @@ private:
             // Copy the entries from the part into the new node.
             u32 count = 0;
             for (auto index : p.entries) {
-                storage().set_mmb(ptr, count, o.entries[index].mmb);
+                storage().set_mbb(ptr, count, o.entries[index].mbb);
                 storage().set_child(ptr, count, o.entries[index].ptr);
                 index_map[index] = count;
                 ++count;
@@ -1079,7 +1083,7 @@ private:
 
             // Clear the remaining records.
             for (u32 i = count; i < max_internal_entries(); ++i) {
-                storage().set_mmb(ptr, i, bounding_box());
+                storage().set_mbb(ptr, i, bounding_box());
                 storage().set_child(ptr, i, node_ptr());
             }
         };
@@ -1174,8 +1178,8 @@ private:
 
         u32 left_seed, right_seed;
         std::tie(left_seed, right_seed) = pick_seeds(n);
-        left.init(left_seed, get_mmb(n, left_seed), get_labels(n, left_seed));
-        right.init(right_seed, get_mmb(n, right_seed), get_labels(n, right_seed));
+        left.init(left_seed, get_mbb(n, left_seed), get_labels(n, left_seed));
+        right.init(right_seed, get_mbb(n, right_seed), get_labels(n, right_seed));
 
         // Holds the set of unassigned indices.
         boost::container::static_vector<u32, N> remaining;
@@ -1200,7 +1204,7 @@ private:
             static constexpr size_t limit = max_entries - min_entries;
             auto add_rest = [&](Part& p) {
                 for (u32 index : remaining) {
-                    p.add(index, get_mmb(n, index), get_labels(n, index));
+                    p.add(index, get_mbb(n, index), get_labels(n, index));
                 }
                 remaining.clear();
             };
@@ -1220,14 +1224,14 @@ private:
             // The second return value is the (absolute) difference in cost.
             // The higher the difference, the more meaningful the decision.
             auto pick_partition = [&](u32 index) {
-                const auto mmb = get_mmb(n, index);
-                const float norm = inverse(std::max(enlargement(left.get_mmb(), mmb),
-                                                    enlargement(right.get_mmb(), mmb)));
+                const auto mbb = get_mbb(n, index);
+                const float norm = inverse(std::max(enlargement(left.get_mbb(), mbb),
+                                                    enlargement(right.get_mbb(), mbb)));
                 
                 // Normalized and weighted cost of inserting the entry
                 // into the given group.
                 const auto cost = [&](const Part& p) {
-                    const float spatial = spatial_cost(p.get_mmb(), mmb, norm);
+                    const float spatial = spatial_cost(p.get_mbb(), mbb, norm);
                     const float textual = textual_cost(get_labels(n, index), get_total_units(n, index),
                                                        p.get_labels(), p.get_total_units());
                     return m_weight * spatial + (1.0f - m_weight) * textual;
@@ -1257,7 +1261,7 @@ private:
 
             // Insert the item into its selected group and remove it from the vector.
             // Repeat until the vector is empty.
-            best_part->add(*best_item, get_mmb(n, *best_item), get_labels(n, *best_item));
+            best_part->add(*best_item, get_mbb(n, *best_item), get_labels(n, *best_item));
             std::swap(*best_item, remaining.back());
             remaining.pop_back();
         }
@@ -1275,7 +1279,7 @@ private:
         // normalized wasted space and textual cost, combined using weight beta.
         const float norm = inverse(max_waste(n));
         auto cost = [&](u32 i, u32 j) {
-            const float spatial = waste(get_mmb(n, i), get_mmb(n, j)) * norm;
+            const float spatial = waste(get_mbb(n, i), get_mbb(n, j)) * norm;
             const float textual = textual_cost(get_labels(n, i), get_total_units(n, i),
                                                get_labels(n, j), get_total_units(n, j));
             return m_weight * spatial + (1.0f - m_weight) * textual;
@@ -1326,7 +1330,7 @@ private:
     }
 
     /// TODO: More generic?
-    bounding_box get_mmb(const tree_entry& d) const {
+    bounding_box get_mbb(const tree_entry& d) const {
         return d.unit.get_bounding_box();
     }
 
@@ -1336,24 +1340,24 @@ private:
     }
 
     /// Returns the bounding box for an entry of an internal node.
-    bounding_box get_mmb(internal_ptr n, u32 i) const {
-        return storage().get_mmb(n, i);
+    bounding_box get_mbb(internal_ptr n, u32 i) const {
+        return storage().get_mbb(n, i);
     }
 
     /// Returns the bounding box for an entry of a leaf node.
-    bounding_box get_mmb(leaf_ptr n, u32 i) const {
-        return get_mmb(storage().get_data(n, i));
+    bounding_box get_mbb(leaf_ptr n, u32 i) const {
+        return get_mbb(storage().get_data(n, i));
     }
 
     /// Returns the bounding box that contains all entries
     /// of the given node.
     template<typename NodePointer>
-    bounding_box get_mmb(NodePointer n) const {
+    bounding_box get_mbb(NodePointer n) const {
         const u32 count = storage().get_count(n);
 
-        bounding_box b = get_mmb(n, 0);
+        bounding_box b = get_mbb(n, 0);
         for (u32 i = 1; i < count; ++i) {
-            b = b.extend(get_mmb(n, i));
+            b = b.extend(get_mbb(n, i));
         }
         return b;
     }
@@ -1391,9 +1395,9 @@ private:
         const u32 count = storage().get_count(n);
         geodb_assert(count > 0, "empty node");
 
-        float max = enlargement(get_mmb(n, 0), b);
+        float max = enlargement(get_mbb(n, 0), b);
         for (u32 i = 1; i < count; ++i) {
-            max = std::max(max, enlargement(get_mmb(n, i), b));
+            max = std::max(max, enlargement(get_mbb(n, i), b));
         }
 
         geodb_assert(max >= 0, "invalid enlargement value");
@@ -1405,8 +1409,8 @@ private:
     /// This is used by the node splitting algorithm to find the seeds
     /// for the old and the newly created node.
     float waste(const bounding_box& a, const bounding_box& b) const {
-        const auto mmb = a.extend(b);
-        return std::max(mmb.size() - a.size() - b.size(), 0.f);
+        const auto mbb = a.extend(b);
+        return std::max(mbb.size() - a.size() - b.size(), 0.f);
     }
 
     /// Returns the maximal waste value for all bounding box combinations.
@@ -1419,17 +1423,17 @@ private:
         float max = std::numeric_limits<float>::lowest();
         for (u32 i = 0; i < count; ++i) {
             for (u32 j = i + 1; j < count; ++j) {
-                max = std::max(max, waste(get_mmb(n, i), get_mmb(n, j)));
+                max = std::max(max, waste(get_mbb(n, i), get_mbb(n, j)));
             }
         }
         return max;
     }
 
     /// Returns the spatial cost of inserting the new bounding box `b` into an existing
-    /// subtree with bounding box `mmb`.
+    /// subtree with bounding box `mbb`.
     /// Uses `norm` for normalization. 
-    float spatial_cost(const bounding_box& mmb, const bounding_box& b, float norm) {
-        return enlargement(mmb, b) * norm;
+    float spatial_cost(const bounding_box& mbb, const bounding_box& b, float norm) {
+        return enlargement(mbb, b) * norm;
     }
 
     /// Returns the textual cost for inserting a label into an existing subtree.
@@ -1505,6 +1509,8 @@ private:
         return 1.0f / value;
     }
 
+    friend class str_loader<tree>;
+
 private:
     float m_weight = 0.5; ///< Weight for mixing textual and spatial cost functions.
     movable_adapter<storage_type> m_storage;
@@ -1549,7 +1555,7 @@ void dump(std::ostream& o, Cursor c, int indent_length = 0) {
 
         const size_t size = c.size();
         for (size_t i = 0; i < size; ++i) {
-            indent() << "Child " << i << ": " << c.mmb(i) << "\n";
+            indent() << "Child " << i << ": " << c.mbb(i) << "\n";
             dump(o, c.child(i), indent_length+1);
         }
     } else {

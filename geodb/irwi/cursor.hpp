@@ -102,24 +102,24 @@ public:
         return storage().const_index(p);
     }
 
-    /// Returns the mmb of the current node (which includes all children).
-    bounding_box mmb() const {
+    /// Returns the mbb of the current node (which includes all children).
+    bounding_box mbb() const {
         if (is_leaf()) {
-            return tree().get_mmb(storage().to_leaf(current()));
+            return tree().get_mbb(storage().to_leaf(current()));
         } else {
-            return tree().get_mmb(storage().to_internal(current()));
+            return tree().get_mbb(storage().to_internal(current()));
         }
     }
 
     /// Returns the bounding box for the given child index.
     /// \pre `index < size()`.
-    bounding_box mmb(size_t index) const {
+    bounding_box mbb(size_t index) const {
         geodb_assert(index < size(), "index out of bounds");
         if (is_leaf()) {
             leaf_ptr p = storage().to_leaf(current());
-            return tree().get_mmb(storage().get_data(p, index));
+            return tree().get_mbb(storage().get_data(p, index));
         } else {
-            return storage().get_mmb(storage().to_internal(current()), index);
+            return storage().get_mbb(storage().to_internal(current()), index);
         }
     }
 

@@ -318,6 +318,19 @@ TEST_CASE("set intersection", "[interval-set]") {
     }
 }
 
+TEST_CASE("interval set assignment", "[interval-set]") {
+    small_set s{1, 2, 3};
+
+    std::initializer_list<interval<int>> i1{4, 5, 6};
+    s.assign(i1.begin(), i1.end());
+    REQUIRE(boost::equal(s, i1));
+
+    std::initializer_list<interval<int>> i2{{4, 7}, 9, 10, 14};
+    std::initializer_list<interval<int>> expected{{4, 7}, {9, 10}, 14};
+    s.assign(i2.begin(), i2.end());
+    REQUIRE(boost::equal(s, expected));
+}
+
 TEST_CASE("set display", "[interval-set]") {
     auto str = [&](auto&& set) {
         std::stringstream ss;

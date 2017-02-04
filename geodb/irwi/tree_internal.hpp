@@ -42,14 +42,14 @@ private:
     };
 
     struct internal_entry {
-        bounding_box mmb;
+        bounding_box mbb;
         base* ptr;
     };
 
     struct internal : base {
         index_type index;                           ///< The index is stored inline.
         u32 count;                                  ///< Total number of entries.
-        std::array<internal_entry, fanout> entries; ///< Pointers to child nodes and their MMBs.
+        std::array<internal_entry, fanout> entries; ///< Pointers to child nodes and their MBBs.
     };
 
     struct leaf : base {
@@ -125,12 +125,12 @@ public:
 
     void set_count(internal_ptr i, u32 count) { i->count = count; }
 
-    bounding_box get_mmb(internal_ptr i, u32 index) const {
-        return i->entries[index].mmb;
+    bounding_box get_mbb(internal_ptr i, u32 index) const {
+        return i->entries[index].mbb;
     }
 
-    void set_mmb(internal_ptr i, u32 index, const bounding_box& b) {
-        i->entries[index].mmb = b;
+    void set_mbb(internal_ptr i, u32 index, const bounding_box& b) {
+        i->entries[index].mbb = b;
     }
 
     node_ptr get_child(internal_ptr i, u32 index) const {
@@ -191,6 +191,9 @@ private:
         }
         tpie::tpie_delete(n);
     }
+
+    template<typename Tree>
+    friend class str_loader;
 
 private:
     size_t m_height = 0;    ///< 0: Empty, 1: Root is leaf, 2: Everything else

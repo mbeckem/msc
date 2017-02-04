@@ -20,6 +20,7 @@ set(HEADERS
 
     utility/as_const.hpp
     utility/id_allocator.hpp
+    utility/external_sort.hpp
     utility/file_allocator.hpp
     utility/movable_adapter.hpp
     utility/range_utils.hpp
@@ -37,6 +38,7 @@ set(HEADERS
     irwi/postings_list.hpp
     irwi/postings_list_internal.hpp
     irwi/postings_list_external.hpp
+    irwi/str_loader.hpp
     irwi/string_map.hpp
     irwi/string_map_bimap.hpp
     irwi/string_map_internal.hpp

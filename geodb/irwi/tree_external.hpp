@@ -83,7 +83,7 @@ private:
 #pragma pack(push, 1)
     /// An entry of an internal node.
     struct internal_entry {
-        bounding_box mmb;           ///< Minimum bounding box for the subtree of that child.
+        bounding_box mbb;           ///< Minimum bounding box for the subtree of that child.
         block_handle ptr;      ///< Pointer to the child.
     };
 
@@ -236,16 +236,16 @@ public:
         write_block(i);
     }
 
-    bounding_box get_mmb(internal_ptr i, u32 index) const {
+    bounding_box get_mbb(internal_ptr i, u32 index) const {
         geodb_assert(index < max_internal_entries(), "index out of bounds");
         internal* n = get_internal(read_block(i));
-        return n->entries[index].mmb;
+        return n->entries[index].mbb;
     }
 
-    void set_mmb(internal_ptr i, u32 index, const bounding_box& b) {
+    void set_mbb(internal_ptr i, u32 index, const bounding_box& b) {
         geodb_assert(index < max_internal_entries(), "index out of bounds");
         internal* n = get_internal(read_block(i));
-        n->entries[index].mmb = b;
+        n->entries[index].mbb = b;
         write_block(i);
     }
 
@@ -345,6 +345,9 @@ private:
     index_handle open_index(index_id_type id) {
         return m_indexes.convert(as_const(this)->open_index(id));
     }
+
+    template<typename Tree>
+    friend class str_loader;
 
 private:
     /// Directory path of this tree.

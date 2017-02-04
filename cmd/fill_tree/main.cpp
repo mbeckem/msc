@@ -17,9 +17,9 @@ using namespace std;
 using namespace geodb;
 namespace po = boost::program_options;
 
-string trajectories_path;
-string tree_path;
-double beta;
+static string trajectories_path;
+static string tree_path;
+static double beta;
 
 using namespace geodb;
 

@@ -73,6 +73,10 @@ public:
         return m_total.get();
     }
 
+    size_t size() const {
+        return m_lists.size();
+    }
+
 public:
     inverted_index_internal_storage_impl(inverted_index_internal_storage)
         : m_total(tpie::make_unique<list_type>())

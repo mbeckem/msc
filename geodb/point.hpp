@@ -2,6 +2,7 @@
 #define POINT_HPP
 
 #include "geodb/common.hpp"
+#include "geodb/type_traits.hpp"
 #include "geodb/utility/tuple_utils.hpp"
 
 #include <tpie/serialization2.h>
@@ -16,45 +17,49 @@ namespace detail {
 
 /// CRTP base class for point implementations.
 /// Every coordinate can have a different type.
-template<typename Derived, typename... Coordinates>
+///
+/// The derived class must implement the static functions
+/// `Derived::get_member(std::integral_constant<size_t, I>)` for all I in 0,...,Size-1 .
+template<typename Derived, size_t Size>
 class point_base {
 public:
-    static constexpr size_t size() { return sizeof...(Coordinates); }
+    static constexpr size_t size() { return Size; }
 
     static_assert(size() >= 1, "Must at least have a dimension of 1.");
 
 public:
-    point_base(): m_data() {}
-    point_base(Coordinates... coords): m_data(coords...) {}
-
     /// Access element at position `Index`.
     template<size_t Index>
     auto& get() {
         static_assert(Index < size(), "index out of bounds.");
-        return std::get<Index>(m_data);
+        return get(std::integral_constant<size_t, Index>());
     }
 
     /// Access element at position `Index`.
     template<size_t Index>
     const auto& get() const {
         static_assert(Index < size(), "index out of bounds.");
-        return std::get<Index>(m_data);
+        return get(std::integral_constant<size_t, Index>());
     }
 
-    /// Access element at position `Index`.
     template<size_t Index>
-    auto& get(std::integral_constant<size_t, Index>) { return get<Index>(); }
+    auto& get(std::integral_constant<size_t, Index> index) {
+        static_assert(Index < size(), "index out of bounds.");
+        return Derived::get_member(derived(), index);
+    }
 
-    /// Access element at position `Index`.
     template<size_t Index>
-    const auto& get(std::integral_constant<size_t, Index>) const { return get<Index>(); }
+    const auto& get(std::integral_constant<size_t, Index> index) const {
+        static_assert(Index < size(), "index out of bounds.");
+        return Derived::get_member(derived(), index);
+    }
 
     friend bool operator==(const Derived& a, const Derived& b) {
-        return a.m_data == b.m_data;
+        return a.as_tuple() == b.as_tuple();
     }
 
     friend bool operator!=(const Derived& a, const Derived& b) {
-        return a.m_data != b.m_data;
+        return a.as_tuple() != b.as_tuple();
     }
 
     /// Creates a new point by performing element-wise addition of `a` and `b`.
@@ -117,7 +122,17 @@ public:
     }
 
 private:
-    std::tuple<Coordinates...> m_data;
+    const Derived& derived() const { return static_cast<const Derived&>(*this); }
+    Derived& derived() { return static_cast<Derived&>(*this); }
+
+    template<size_t... I>
+    auto as_tuple_impl(std::index_sequence<I...>) const {
+        return std::tie(get<I>()...);
+    }
+
+    auto as_tuple() const {
+        return as_tuple_impl(std::make_index_sequence<size()>());
+    }
 };
 
 } // namespace detail
@@ -132,21 +147,43 @@ using time_type = u32;
 /// and one temporal dimension (t).
 /// Note that the type used for time is distinct from the type of
 /// the spatial coordinates.
-class point : public detail::point_base<point, spatial_type, spatial_type, time_type> {
+class point : public detail::point_base<point, 3> {
 public:
-    using point::point_base::point_base;
-
     using x_type = spatial_type;
     using y_type = spatial_type;
     using t_type = time_type;
 
-    const x_type& x() const { return get<0>(); }
-    const y_type& y() const { return get<1>(); }
-    const t_type& t() const { return get<2>(); }
+public:
+    point() = default;
 
-    x_type& x() { return get<0>(); }
-    y_type& y() { return get<1>(); }
-    t_type& t() { return get<2>(); }
+    point(x_type x, y_type y, t_type t)
+        : m_t(t), m_y(y), m_x(x)
+    {}
+
+    const x_type& x() const { return m_x; }
+    const y_type& y() const { return m_y; }
+    const t_type& t() const { return m_t; }
+
+    x_type& x() { return m_x; }
+    y_type& y() { return m_y; }
+    t_type& t() { return m_t; }
+
+private:
+    friend class point_base<point, 3>;
+
+    template<typename T>
+    static constexpr bool is_point() {
+        return std::is_same<std::decay_t<T>, point>::value;
+    }
+
+    template<typename Point>
+    static decltype(auto) get_member(Point&& p, std::integral_constant<size_t, 0>) { return p.x(); }
+
+    template<typename Point>
+    static decltype(auto) get_member(Point&& p, std::integral_constant<size_t, 1>) { return p.y(); }
+
+    template<typename Point>
+    static decltype(auto) get_member(Point&& p, std::integral_constant<size_t, 2>) { return p.t(); }
 
 private:
     template<typename Dst>
@@ -164,6 +201,13 @@ private:
         unserialize(src, p.y());
         unserialize(src, p.t());
     }
+
+private:
+    // FIXME: Order is reversed to keep binary compat with
+    // the previous std::tuple implementation.
+    t_type m_t = 0;
+    y_type m_y = 0;
+    x_type m_x = 0;
 };
 
 } // namespace geodb

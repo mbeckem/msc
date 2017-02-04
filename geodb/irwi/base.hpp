@@ -14,6 +14,9 @@ class tree;
 template<typename StorageSpec, u32 Lambda>
 class inverted_index;
 
+template<u32 Lambda>
+class postings_list_summary;
+
 template<typename StorageSpec, u32 Lambda>
 class postings_list;
 
@@ -26,12 +29,17 @@ class cursor;
 template<typename StorageSpec>
 class string_map;
 
+template<typename Tree>
+class str_loader;
+
 /// IRWI leaf entries represent trajectory units.
 struct tree_entry {
     trajectory_id_type trajectory_id;   ///< Index of the trajectory this unit belongs to.
     u32 unit_index;                     ///< Index of this unit within the trajectory.
     trajectory_unit unit;
 };
+
+static_assert(std::is_trivially_copyable<tree_entry>::value, "Must be trivially copyable");
 
 } // namespace geodb
 

@@ -26,10 +26,9 @@ public:
 
 public:
     explicit posting(entry_id_type node, u64 count, const trajectory_id_set_type& ids)
-        : m_node(node), m_count(count), m_intervals_count(ids.size())
+        : m_node(node), m_count(count)
     {
-        geodb_assert(count > 0, "count must be positive");
-        std::copy(ids.begin(), ids.end(), m_intervals);
+        id_set(ids);
     }
 
     /// The index of the associated node within the internal node

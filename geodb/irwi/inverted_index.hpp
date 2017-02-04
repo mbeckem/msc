@@ -176,6 +176,12 @@ public:
         return storage().const_total_list();
     }
 
+    /// Returns the size (the number of labels) of this index.
+    /// Does not include the `total` list.
+    size_t size() const {
+        return storage().size();
+    }
+
     /// Queries the inverted file for entries matching any of the given labels.
     /// \param labels
     ///     The query labels. Any entry matching at least one of the labels

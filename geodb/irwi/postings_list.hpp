@@ -7,6 +7,7 @@
 #include "geodb/utility/movable_adapter.hpp"
 
 #include <boost/iterator/iterator_facade.hpp>
+#include <tpie/serialization2.h>
 
 #include <vector>
 
@@ -91,6 +92,20 @@ struct postings_list_summary {
         : count(count)
         , trajectories(std::move(trajectories))
     {}
+
+    template<typename Dst>
+    friend void serialize(Dst& dst, const postings_list_summary& sum) {
+        using tpie::serialize;
+        serialize(dst, sum.count);
+        serialize(dst, sum.trajectories);
+    }
+
+    template<typename Src>
+    friend void unserialize(Src& src, postings_list_summary& sum) {
+        using tpie::unserialize;
+        unserialize(src, sum.count);
+        unserialize(src, sum.trajectories);
+    }
 };
 
 /// A postings list contains index information about the children of an

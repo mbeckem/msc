@@ -40,9 +40,15 @@ void unused(Args&&...) {}
         }                                                       \
     } while (0)
 
+/// The next statement (or block) will be exected only when
+/// debugging is enabled.
+#define geodb_debug if (1)
+
 #else
 
-#define geodb_assert(condition, message) do { } while(0)
+#define geodb_assert(condition, message)
+
+#define geodb_debug if (0)
 
 #endif
 

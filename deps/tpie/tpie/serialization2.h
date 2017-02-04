@@ -94,7 +94,9 @@ private:
 	static long magic(...);
 public:
 	static bool const value=
-		(std::is_pod<T>::value || sizeof(magic<T>((T*)nullptr))==sizeof(char)) && !std::is_pointer<T>::value;
+		(std::is_pod<T>::value
+		 || std::is_trivially_copyable<T>::value
+		 || sizeof(magic<T>((T*)nullptr))==sizeof(char)) && !std::is_pointer<T>::value;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

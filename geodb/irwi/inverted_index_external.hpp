@@ -119,6 +119,10 @@ public:
         return open_list(m_total);
     }
 
+    size_t size() const {
+        return m_btree.size();
+    }
+
 public:
     inverted_index_external_impl(inverted_index_external<block_size> params)
         : m_directory(std::move(params.directory))
