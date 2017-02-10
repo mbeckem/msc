@@ -44,8 +44,11 @@ set(HEADERS
     irwi/string_map_internal.hpp
     irwi/string_map_external.hpp
     irwi/tree.hpp
-    irwi/tree_internal.hpp
     irwi/tree_external.hpp
+    irwi/tree_insertion.hpp
+    irwi/tree_internal.hpp
+    irwi/tree_partition.hpp
+    irwi/tree_state.hpp
 )
 
 add_library(geodb ${SOURCES} ${HEADERS})

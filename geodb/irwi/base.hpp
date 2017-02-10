@@ -11,6 +11,12 @@ namespace geodb {
 template<typename StorageSpec, u32 Lambda>
 class tree;
 
+template<typename StorageSpec, typename Value, u32 Lambda>
+class tree_state;
+
+template<typename State>
+class tree_cursor;
+
 template<typename StorageSpec, u32 Lambda>
 class inverted_index;
 
@@ -22,9 +28,6 @@ class postings_list;
 
 template<u32 Lambda>
 class posting;
-
-template<typename Tree>
-class cursor;
 
 template<typename StorageSpec>
 class string_map;

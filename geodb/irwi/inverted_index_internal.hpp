@@ -30,9 +30,9 @@ public:
 
     using list_type = postings_list<postings_list_internal, Lambda>;
 
-    using list_handle = list_type*;
+    using list_ptr = list_type*;
 
-    using const_list_handle = const list_type*;
+    using const_list_ptr = const list_type*;
 
     /* private */ using map_type = std::map<label_type, list_type>;
 
@@ -55,21 +55,21 @@ public:
         return iter->first;
     }
 
-    list_handle list(iterator_type iter) {
+    list_ptr list(iterator_type iter) {
         geodb_assert(iter != m_lists.end(), "dereferencing end iterator");
-        return const_cast<list_handle>(&(iter->second));
+        return const_cast<list_ptr>(&(iter->second));
     }
 
-    const_list_handle const_list(iterator_type iter) const {
+    const_list_ptr const_list(iterator_type iter) const {
         geodb_assert(iter != m_lists.end(), "dereferencing end iterator");
         return &(iter->second);
     }
 
-    list_handle total_list() {
+    list_ptr total_list() {
         return m_total.get();
     }
 
-    const_list_handle const_total_list() const {
+    const_list_ptr const_total_list() const {
         return m_total.get();
     }
 

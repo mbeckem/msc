@@ -77,9 +77,9 @@ public:
     //  Used by the tree class and the tree cursor.
     // ----------------------------------------
 
-    using index_handle = index_type*;
+    using index_ptr = index_type*;
 
-    using const_index_handle = const index_type*;
+    using const_index_ptr = const index_type*;
 
     using node_ptr = base*;
 
@@ -113,11 +113,11 @@ public:
 
     leaf_ptr create_leaf() { return tpie::tpie_new<leaf>(); }
 
-    index_handle index(internal_ptr i) {
+    index_ptr index(internal_ptr i) {
         return &i->index;
     }
 
-    const_index_handle const_index(internal_ptr i) const {
+    const_index_ptr const_index(internal_ptr i) const {
         return &i->index;
     }
 
@@ -154,7 +154,10 @@ public:
     }
 
 public:
-    tree_internal_impl(tree_internal<fanout> params) {
+    tree_internal_impl(tree_internal<fanout> params)
+        : m_height(1)
+        , m_root(create_leaf())
+    {
         unused(params);
     }
 
@@ -196,7 +199,7 @@ private:
     friend class str_loader;
 
 private:
-    size_t m_height = 0;    ///< 0: Empty, 1: Root is leaf, 2: Everything else
+    size_t m_height = 0;    ///< 1: Root is leaf, 2: Everything else
     size_t m_size = 0;      ///< Number of data items inside the tree.
     base* m_root = nullptr;
 };

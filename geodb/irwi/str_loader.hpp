@@ -26,8 +26,8 @@ class str_loader {
     using internal_ptr = typename Tree::internal_ptr;
     using leaf_ptr = typename Tree::leaf_ptr;
 
-    using index_handle = typename Tree::index_handle;
-    using list_handle = typename Tree::list_handle;
+    using index_ptr = typename Tree::index_ptr;
+    using list_ptr = typename Tree::list_ptr;
 
     using list_summary = typename Tree::list_type::summary_type;
 
@@ -294,7 +294,7 @@ public:
             // Create a new node entry containing index information and mbb
             // and write it to the file.
             node.ptr = leaf;
-            node.mbb = m_tree.get_mbb(leaf);
+            node.mbb = m_tree.state.get_mbb(leaf);
             make_simple_summary(all_ids, count, node.total);
             node.num_labels = label_ids.size();
             refs.serialize(node);
@@ -344,7 +344,7 @@ public:
             // were already created in the last phase.
             storage_type& storage = m_tree.storage();
             internal_ptr internal = storage.create_internal();
-            index_handle index = storage.index(internal);
+            index_ptr index = storage.index(internal);
             for (u32 i = 0; i < count; ++i) {
                 this_level.unserialize(node_ref);
 
@@ -354,7 +354,7 @@ public:
                 insert_index_entry(index->total(), i, node_ref.total);
                 for (size_t l = 0; l < node_ref.num_labels; ++l) {
                     this_level.unserialize(label_sum);
-                    list_handle list = index->find_or_create(label_sum.label)->postings_list();
+                    list_ptr list = index->find_or_create(label_sum.label)->postings_list();
                     insert_index_entry(list, i, label_sum.summary);
                 }
             }
@@ -362,7 +362,7 @@ public:
 
             // The node is complete, now summarize it for the next level.
             node_ref.ptr = internal;
-            node_ref.mbb = m_tree.get_mbb(internal);
+            node_ref.mbb = m_tree.state.get_mbb(internal);
             node_ref.total = index->total()->summarize();
             node_ref.num_labels = index->size();
             next_level.serialize(node_ref);

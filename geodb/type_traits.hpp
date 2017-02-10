@@ -14,6 +14,9 @@ template<class B1, class... Bn>
 struct conjunction<B1, Bn...>
     : std::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
 
+template <typename T, template <typename...> class Template>
+struct is_specialization_of;
+
 /// True iff `T` is a specialization of `Template`, i.e. `T == Template<Args...>`
 /// for some Args.
 template <typename T, template <typename...> class Template>

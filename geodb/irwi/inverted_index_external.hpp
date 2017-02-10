@@ -78,9 +78,9 @@ public:
 
     using iterator_type = typename map_type::iterator;
 
-    using list_handle = typename list_instances_type::pointer;
+    using list_ptr = typename list_instances_type::pointer;
 
-    using const_list_handle = typename list_instances_type::const_pointer;
+    using const_list_ptr = typename list_instances_type::const_pointer;
 
     iterator_type begin() const { return m_btree.begin(); }
 
@@ -102,20 +102,21 @@ public:
         return m_btree.find(label);
     }
 
-    list_handle list(iterator_type iter) {
+    list_ptr list(iterator_type iter) {
         geodb_assert(iter != m_btree.end(), "dereferencing invalid iterator");
         return open_list(iter->file);
     }
 
-    const_list_handle const_list(iterator_type iter) const {
+    const_list_ptr const_list(iterator_type iter) const {
+        geodb_assert(iter != m_btree.end(), "dereferencing invalid iterator");
         return open_list(iter->file);
     }
 
-    list_handle total_list() {
+    list_ptr total_list() {
         return open_list(m_total);
     }
 
-    const_list_handle const_total_list() const {
+    const_list_ptr const_total_list() const {
         return open_list(m_total);
     }
 
@@ -147,23 +148,18 @@ public:
     }
 
 private:
-    static fs::path ensure_directory(fs::path p) {
-        fs::create_directories(p);
-        return p;
-    }
-
     fs::path state_path() const {
         return m_directory / "index.state";
     }
 
-    const_list_handle open_list(list_id_type id) const {
+    const_list_ptr open_list(list_id_type id) const {
         return m_lists.open(id, [&]{
             fs::path p = m_alloc.path(id);
             return list_type(list_storage_type(std::move(p)));
         });
     }
 
-    list_handle open_list(list_id_type id) {
+    list_ptr open_list(list_id_type id) {
         return m_lists.convert(as_const(this)->open_list(id));
     }
 

@@ -47,9 +47,9 @@ class inverted_index {
         using index_type = std::conditional_t<is_const, const inverted_index, inverted_index>;
 
     public:
-        using list_handle = std::conditional_t<is_const,
-            typename inverted_index::const_list_handle,
-            typename inverted_index::list_handle>;
+        using list_ptr = std::conditional_t<is_const,
+            typename inverted_index::const_list_ptr,
+            typename inverted_index::list_ptr>;
 
         // convertible non-const -> const
         reference_impl(const reference_impl<false>& other)
@@ -59,7 +59,7 @@ class inverted_index {
             return index->get_label(base);
         }
 
-        list_handle postings_list() const {
+        list_ptr postings_list() const {
             return index->get_postings_list(base);
         }
 
@@ -122,8 +122,8 @@ public:
     using const_reference = reference_impl<true>;
 
     using list_type = typename storage_type::list_type;
-    using list_handle = typename storage_type::list_handle;
-    using const_list_handle = typename storage_type::const_list_handle;
+    using list_ptr = typename storage_type::list_ptr;
+    using const_list_ptr = typename storage_type::const_list_ptr;
 
     using posting_type = typename list_type::posting_type;
 
@@ -167,12 +167,12 @@ public:
 
     /// Returns a handle to the `total` list.
     /// The total list contains an entry for every child of the node.
-    list_handle total() {
+    list_ptr total() {
         return storage().total_list();
     }
 
     /// \copydoc total()
-    const_list_handle total() const {
+    const_list_ptr total() const {
         return storage().const_total_list();
     }
 
@@ -231,11 +231,11 @@ private:
         return storage().label(i);
     }
 
-    list_handle get_postings_list(const storage_iterator& i) {
+    list_ptr get_postings_list(const storage_iterator& i) {
         return storage().list(i);
     }
 
-    const_list_handle get_postings_list(const storage_iterator& i) const {
+    const_list_ptr get_postings_list(const storage_iterator& i) const {
         return storage().const_list(i);
     }
 

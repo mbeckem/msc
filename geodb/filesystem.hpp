@@ -9,6 +9,14 @@ namespace geodb {
 
 namespace fs = boost::filesystem;
 
+/// Creates the directory `p` and all required parents.
+/// Existing directories are not an error.
+/// \return Returns the path.
+inline fs::path ensure_directory(fs::path p) {
+    fs::create_directories(p);
+    return p;
+}
+
 } // namespace geodb
 
 #endif // FILESYSTEM_HPP

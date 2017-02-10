@@ -139,9 +139,9 @@ public:
 
     using node_id_type = u64;
 
-    using index_handle = typename index_instances_type::pointer;
+    using index_ptr = typename index_instances_type::pointer;
 
-    using const_index_handle = typename index_instances_type::const_pointer;
+    using const_index_ptr = typename index_instances_type::const_pointer;
 
     /// Points to the location of a node of unknown type.
     struct node_ptr {
@@ -214,12 +214,12 @@ public:
         return l;
     }
 
-    index_handle index(internal_ptr i) {
+    index_ptr index(internal_ptr i) {
         internal* n = get_internal(read_block(i));
         return open_index(n->inverted_index);
     }
 
-    const_index_handle const_index(internal_ptr i) const {
+    const_index_ptr const_index(internal_ptr i) const {
         internal* n = get_internal(read_block(i));
         return open_index(n->inverted_index);
     }
@@ -309,6 +309,9 @@ public:
             if (file_blocksize != block_size || file_lambda != Lambda) {
                 throw std::invalid_argument("Format mismatch");
             }
+        } else {
+            set_root(create_leaf());
+            set_height(1);
         }
     }
 
@@ -326,23 +329,18 @@ public:
     }
 
 private:
-    static fs::path ensure_directory(fs::path path) {
-        fs::create_directories(path);
-        return path;
-    }
-
     fs::path state_path() const {
         return m_directory / "tree.state";
     }
 
-    const_index_handle open_index(index_id_type id) const {
+    const_index_ptr open_index(index_id_type id) const {
         return m_indexes.open(id, [&]{
             fs::path p = m_index_alloc.path(id);
             return index_type(index_storage(std::move(p)));
         });
     }
 
-    index_handle open_index(index_id_type id) {
+    index_ptr open_index(index_id_type id) {
         return m_indexes.convert(as_const(this)->open_index(id));
     }
 
@@ -356,10 +354,10 @@ private:
     /// Number of items in the tree.
     size_t m_size = 0;
 
-    /// 0: Empty, 1: Only root (leaf), 2: everything else.
-    size_t m_height = 0;
+    /// 1: Only root (leaf), 2: everything else.
+    size_t m_height = 1;
 
-    /// Handle to root block (if any).
+    /// Always points to either a leaf (height: 1) or an internal node (anything else).
     block_handle m_root;
 
     /// Allocator for inverted-index directories.

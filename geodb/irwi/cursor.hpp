@@ -3,6 +3,7 @@
 
 #include "geodb/common.hpp"
 #include "geodb/bounding_box.hpp"
+#include "geodb/type_traits.hpp"
 #include "geodb/irwi/base.hpp"
 
 #include <vector>
@@ -16,28 +17,27 @@ namespace geodb {
 /// on a non-empty IRWI-Tree.
 ///
 /// Warning: The tree must not be modified while it is being inspected using a cursor.
-template<typename Tree>
+template<typename State>
 class tree_cursor {
-public:
-    using tree_type = Tree;
-
 private:
-    using storage_type = typename tree_type::storage_type;
+    using state_type = State;
 
-    using node_ptr = typename tree_type::node_ptr;
+    using storage_type = typename state_type::storage_type;
 
-    using internal_ptr = typename tree_type::internal_ptr;
+    using node_ptr = typename state_type::node_ptr;
 
-    using leaf_ptr = typename tree_type::leaf_ptr;
+    using internal_ptr = typename state_type::internal_ptr;
+
+    using leaf_ptr = typename state_type::leaf_ptr;
 
 public:
-    using index_type = typename tree_type::index_type;
+    using index_type = typename state_type::index_type;
 
-    using index_handle = typename tree_type::const_index_handle;
+    using index_ptr = typename state_type::const_index_ptr;
 
-    using id_type = typename tree_type::node_id_type;
+    using id_type = typename state_type::node_id_type;
 
-    using value_type = typename tree_type::value_type;
+    using value_type = typename state_type::value_type;
 
 public:
     /// Use the `root()` function of a tree to obtain an instance.
@@ -69,7 +69,7 @@ public:
         // for every call of get_child().
         const node_ptr c = current();
         const internal_ptr p = storage().to_internal(m_path[level() - 2]);
-        return tree().index_of(p, c);
+        return state().index_of(p, c);
     }
 
     /// Returns true if the current node is a leaf.
@@ -96,7 +96,7 @@ public:
     /// Returns a cursor for the current internal node's inverted index.
     /// \pre `is_internal()`.
     /// \warning Every inverted index may only be opened once.
-    index_handle inverted_index() const {
+    index_ptr inverted_index() const {
         geodb_assert(is_internal(), "must be an internal node");
         internal_ptr p = storage().to_internal(current());
         return storage().const_index(p);
@@ -105,9 +105,9 @@ public:
     /// Returns the mbb of the current node (which includes all children).
     bounding_box mbb() const {
         if (is_leaf()) {
-            return tree().get_mbb(storage().to_leaf(current()));
+            return state().get_mbb(storage().to_leaf(current()));
         } else {
-            return tree().get_mbb(storage().to_internal(current()));
+            return state().get_mbb(storage().to_internal(current()));
         }
     }
 
@@ -117,7 +117,7 @@ public:
         geodb_assert(index < size(), "index out of bounds");
         if (is_leaf()) {
             leaf_ptr p = storage().to_leaf(current());
-            return tree().get_mbb(storage().get_data(p, index));
+            return state().get_mbb(storage().get_data(p, index));
         } else {
             return storage().get_mbb(storage().to_internal(current()), index);
         }
@@ -191,13 +191,13 @@ public:
     }
 
 private:
-    const tree_type& tree() const {
-        geodb_assert(m_tree, "invalid tree pointer");
-        return *m_tree;
+    const state_type& state() const {
+        geodb_assert(m_state, "invalid tree state");
+        return *m_state;
     }
 
     const storage_type& storage() const {
-        return tree().storage();
+        return state().storage();
     }
 
     node_ptr current() const {
@@ -205,18 +205,19 @@ private:
         return m_path.back();
     }
 
-private:
-    template<typename StorageSpec, u32 Lambda>
-    friend class tree;
-
-    explicit tree_cursor(const tree_type* tree): m_tree(tree) {}
-
     void add_to_path(node_ptr ptr) {
         m_path.push_back(ptr);
     }
 
+public:
+    explicit tree_cursor(const state_type* state, node_ptr root)
+        : m_state(state)
+    {
+        add_to_path(root);
+    }
+
 private:
-    const tree_type* m_tree = nullptr;
+    const state_type* m_state = nullptr;
     std::vector<node_ptr> m_path;
 };
 
