@@ -20,6 +20,8 @@ template<typename State>
 class tree_partition {
     using storage_type = typename State::storage_type;
 
+    using value_type = typename State::value_type;
+
     using id_set_type = typename State::id_set_type;
 
     using node_ptr = typename State::node_ptr;
@@ -51,16 +53,16 @@ public:
         static constexpr size_t N = max_entries + 1;
 
         /// Exactly N entries since this node is overflowing.
-        boost::container::static_vector<tree_entry, N> entries;
+        boost::container::static_vector<value_type, N> entries;
     };
 
     /// Construct a virtual node that holds all existing entries
     /// and the new one.
-    void create(overflowing_leaf_node& o, leaf_ptr n, const tree_entry& extra) {
+    void create(overflowing_leaf_node& o, leaf_ptr n, const value_type& extra) {
         geodb_assert(o.entries.size() == 0, "o must be fresh");
         geodb_assert(storage.get_count(n) == State::max_leaf_entries(), "n must be full");
         for (u32 i = 0; i < u32(State::max_leaf_entries()); ++i) {
-            tree_entry d = storage.get_data(n, i);
+            value_type d = storage.get_data(n, i);
             o.entries.push_back(d);
         }
         o.entries.push_back(extra);
