@@ -7,6 +7,8 @@
 #include <boost/program_options.hpp>
 #include <fmt/ostream.h>
 #include <tpie/tpie.h>
+#include <tpie/progress_indicator_arrow.h>
+#include <tpie/progress_indicator_base.h>
 #include <tpie/serialization_stream.h>
 
 #include <iostream>
@@ -23,12 +25,13 @@ static double beta;
 
 using namespace geodb;
 
+using tree_storage_t = tree_external<block_size>;
+using tree_t = tree<tree_storage_t, 40>;
+
+void insert_trajectories(tree_t& tree, tpie::serialization_reader& input, tpie::progress_indicator_base& progress);
 void parse_options(int argc, char** argv);
 
 int main(int argc, char** argv) {
-    using tree_storage_t = tree_external<block_size>;
-    using tree_t = tree<tree_storage_t, 40>;
-
     return tpie_main([&]{
         parse_options(argc, argv);
 
@@ -37,27 +40,44 @@ int main(int argc, char** argv) {
             return 1;
         }
 
+        tree_t tree(tree_storage_t{tree_path}, beta);
+        fmt::print(cout, "Using tree \"{}\" of size {} with beta {}\n", tree_path, tree.size(), beta);
+
         tpie::serialization_reader reader;
         reader.open(trajectories_path);
+        fmt::print(cout, "Size of input file {}: {} bytes\n", trajectories_path, reader.file_size());
 
-        std::vector<point_trajectory> data;
-        reader.unserialize(data);
+        tpie::progress_indicator_arrow arrow("Inserting trajectories", 0);
+        arrow.set_indicator_length(60);
 
-        tree_t tree(tree_storage_t{tree_path}, beta);
-
-        fmt::print(cout, "Adding {} trajectories\n", data.size());
-        fmt::print(cout, "Beta={}\n", beta);
-
-        size_t size = data.size();
-        for (size_t index = 0; index < size; ++index) {
-            tree.insert(data[index]);
-            fmt::print(cout, "{} of {} complete.\n", index + 1, size);
-
-        }
-        fmt::print("Done.\n");
-
+        insert_trajectories(tree, reader, arrow);
         return 0;
     });
+}
+
+void insert_trajectories(tree_t& tree, tpie::serialization_reader& input, tpie::progress_indicator_base& progress)
+{
+    int count = 0;
+
+    point_trajectory trajectory;
+
+    progress.init(input.size());
+    while (input.can_read()) {
+        auto begin = input.offset();
+
+        input.unserialize(trajectory);
+        ++count;
+
+        std::string title = fmt::format("Trajectory {}", count);
+        progress.push_breadcrumb(title.c_str(), tpie::IMPORTANCE_MAJOR);
+        progress.refresh();
+
+        tree.insert(trajectory);
+
+        progress.pop_breadcrumb();
+        progress.step(input.offset() - begin);
+    }
+    progress.done();
 }
 
 void parse_options(int argc, char** argv) {

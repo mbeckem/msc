@@ -105,9 +105,6 @@ void create_entries(tpie::serialization_reader& trajectories,
 {
     const tpie::stream_size_type bytes = trajectories.size();
 
-    size_t count;
-    trajectories.unserialize(count);
-
     // Steps are measured in bytes.
     progress.init(bytes);
     point_trajectory trajectory;
