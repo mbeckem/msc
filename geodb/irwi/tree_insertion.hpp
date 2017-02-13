@@ -13,6 +13,7 @@
 
 namespace geodb {
 
+/// Implements the generic insertion algorithm for IRWI Trees.
 template<typename State>
 class tree_insertion {
     using storage_type = typename State::storage_type;
@@ -156,29 +157,6 @@ public:
         insert_entry(root, new_internal);
         storage.set_root(root);
         storage.set_height(storage.get_height() + 1);
-    }
-
-    /// Inserts a single trajectory unit into the tree.
-    void insert(const tree_entry& e) {
-        storage.set_size(storage.get_size() + 1);
-
-        if (storage.get_height() == 0) {
-            // The tree was empty. Construct a new leaf
-            // and register it as the root.
-            const leaf_ptr root = storage.create_leaf();
-            insert_entry(root, e);
-            storage.set_height(1);
-            storage.set_root(root);
-            return;
-        }
-
-        // Track the path of the leaf, in case we have to split
-        // its parents.
-        std::vector<internal_ptr> path;
-
-        // Find the leaf that is best suitable to store d.
-        const leaf_ptr leaf = find_leaf(path, e);
-
     }
 
 private:

@@ -15,6 +15,7 @@
 
 namespace geodb {
 
+/// Implements the generic node splitting algorithm for IRWI trees.
 template<typename State>
 class tree_partition {
     using storage_type = typename State::storage_type;
