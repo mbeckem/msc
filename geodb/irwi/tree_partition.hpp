@@ -150,6 +150,7 @@ public:
         entry.ptr = child;
         entry.mbb = state.get_mbb(child);
         entry.label_units.insert(child_summary.label_units.begin(), child_summary.label_units.end());
+        entry.total_units = child_summary.total_units;
     }
 
     bounding_box get_mbb(const overflowing_internal_node& o, u32 index) const {
@@ -182,6 +183,8 @@ public:
         /// Map of label -> count.
         std::map<label_type, u64> labels;
 
+        u64 total_units = 0;
+
         const bounding_box& get_mbb() const {
             return mbb;
         }
@@ -194,15 +197,17 @@ public:
         }
 
         u64 get_total_units() const {
-            return entries.size();
+            return total_units;
         }
 
         template<typename LabelCounts>
         void init(u32 i, const bounding_box& b, const LabelCounts& label_counts) {
             entries.insert(i);
             mbb = b;
+            total_units = 0;
             for (const label_count& lc : label_counts) {
                 labels[lc.label] += lc.count;
+                total_units += lc.count;
             }
         }
 
@@ -212,6 +217,7 @@ public:
             mbb = mbb.extend(b);
             for (const label_count& lc : label_counts) {
                 labels[lc.label] += lc.count;
+                total_units += lc.count;
             }
         }
 
