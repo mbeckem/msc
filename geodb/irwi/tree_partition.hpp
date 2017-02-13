@@ -52,9 +52,6 @@ public:
 
         /// Exactly N entries since this node is overflowing.
         boost::container::static_vector<tree_entry, N> entries;
-
-        /// All labels in this node.
-        std::unordered_set<label_type> labels;
     };
 
     /// Construct a virtual node that holds all existing entries
@@ -65,10 +62,8 @@ public:
         for (u32 i = 0; i < u32(State::max_leaf_entries()); ++i) {
             tree_entry d = storage.get_data(n, i);
             o.entries.push_back(d);
-            o.labels.insert(state.get_label(d));
         }
         o.entries.push_back(extra);
-        o.labels.insert(state.get_label(extra));
     }
 
     bounding_box get_mbb(const overflowing_leaf_node& n, u32 index) const {
@@ -99,15 +94,12 @@ public:
         struct child_data {
             node_ptr ptr;
             bounding_box mbb;
-            std::map<label_type, u64> label_units;          // label -> unit count
-            // std::map<label_type, id_set_type> label_tids;   // label -> trajectory id set
-            id_set_type total_tids;
+            std::map<label_type, u64> label_units; // label -> unit count
             u64 total_units = 0;
         };
 
         /// Exactly N entries.
         boost::container::static_vector<child_data, N> entries;
-        std::unordered_set<label_type> labels;
     };
 
     /// Create a new virtual node that holds all existing internal entries of `n`
@@ -135,7 +127,6 @@ public:
             for (const posting_type& p : *total) {
                 auto& entry = o.entries[p.node()];
                 entry.total_units = p.count();
-                entry.total_tids = p.id_set();
             }
 
             // Gather the counts for the other labels.
@@ -149,7 +140,6 @@ public:
                         auto& entry = o.entries[p.node()];
                         entry.label_units[label] = p.count();
                     }
-                    o.labels.insert(label);
                 }
             }
         }
@@ -159,14 +149,7 @@ public:
         auto& entry = o.entries.back();
         entry.ptr = child;
         entry.mbb = state.get_mbb(child);
-        entry.total_tids = child_summary.total_tids;
-        entry.total_units = child_summary.total_units;
         entry.label_units.insert(child_summary.label_units.begin(), child_summary.label_units.end());
-        for (auto& pair : entry.label_units) {
-            if (pair.second > 0) {
-                o.labels.insert(pair.first);
-            }
-        }
     }
 
     bounding_box get_mbb(const overflowing_internal_node& o, u32 index) const {
