@@ -7,10 +7,10 @@
 
 namespace geodb {
 
-template<size_t fanout>
+template<u32 fanout>
 struct tree_internal;
 
-template<size_t fanout, typename LeafData, u32 Lambda>
+template<u32 fanout, typename LeafData, u32 Lambda>
 struct tree_internal_impl;
 
 /// Storage backend for an IRWI-Tree that stores its data
@@ -18,15 +18,15 @@ struct tree_internal_impl;
 /// Every node (internal and external) has the specified fanout.
 ///
 /// As a user: do not use this class directly.
-template<size_t fanout, typename LeafData, u32 Lambda>
+template<u32 fanout, typename LeafData, u32 Lambda>
 class tree_internal_impl {
 
     using index_storage = inverted_index_internal_storage;
 
 public:
-    static constexpr size_t max_internal_entries() { return fanout; }
+    static constexpr u32 max_internal_entries() { return fanout; }
 
-    static constexpr size_t max_leaf_entries() { return fanout; }
+    static constexpr u32 max_leaf_entries() { return fanout; }
 
     using index_type = inverted_index<index_storage, Lambda>;
 
@@ -208,7 +208,7 @@ private:
 ///
 /// \tparam fanout
 ///     The maximum number of children for both internal and leaf nodes.
-template<size_t fanout>
+template<u32 fanout>
 struct tree_internal {
     template<typename LeafData, u32 Lambda>
     using implementation = tree_internal_impl<fanout, LeafData, Lambda>;

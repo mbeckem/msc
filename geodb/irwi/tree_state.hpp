@@ -51,26 +51,26 @@ public:
     static constexpr u32 lambda() { return Lambda; }
 
     /// Maximum fanout for internal nodes.
-    static constexpr size_t max_internal_entries() {
+    static constexpr u32 max_internal_entries() {
         return storage_type::max_internal_entries();
     }
 
     /// Minimum number of entries in a internal node.
     /// Only used by the split algorithm because deletion
     /// is not (yet) supported.
-    static constexpr size_t min_internal_entries() {
+    static constexpr u32 min_internal_entries() {
         return (max_internal_entries() + 2) / 3;
     }
 
     /// Maximum fanout for leaf nodes.
-    static constexpr size_t max_leaf_entries() {
+    static constexpr u32 max_leaf_entries() {
         return storage_type::max_leaf_entries();
     }
 
     /// Minimal number of entries in a leaf node (except for the root).
     /// Currently only used by the split algorithm because the tree
     /// does not support delete opertions.
-    static constexpr size_t min_leaf_entries() {
+    static constexpr u32 min_leaf_entries() {
         return (max_leaf_entries() + 2) / 3;
     }
 

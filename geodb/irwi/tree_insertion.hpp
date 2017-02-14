@@ -18,6 +18,8 @@ template<typename State>
 class tree_insertion {
     using storage_type = typename State::storage_type;
 
+    using value_type = typename State::value_type;
+
     using id_set_type = typename State::id_set_type;
 
     using node_ptr = typename State::node_ptr;
@@ -26,11 +28,14 @@ class tree_insertion {
 
     using index_ptr = typename State::index_ptr;
     using list_ptr = typename State::list_ptr;
+    using const_list_ptr = typename State::const_list_ptr;
 
     using posting_type = typename State::posting_type;
 
     using partition_type = tree_partition<State>;
-    using node_part_type = typename partition_type::node_part;
+    using which_t = typename partition_type::which_t;
+    using split_element = typename partition_type::split_element;
+    using internal_entry = typename partition_type::internal_entry;
 
     /// Summary of the inverted index of some node.
     /// Uses O(num_labels * Lambda) space.
@@ -211,33 +216,31 @@ private:
     /// Splits the leaf into two leaves and inserts the extra entry.
     /// Returns the new leaf.
     leaf_ptr split_and_insert(leaf_ptr old_leaf, const tree_entry& extra) {
-        partition_type part(state);
-
-        typename partition_type::overflowing_leaf_node o;
-        part.create(o, old_leaf, extra);
-
-        // Partition the entries of o.
-        node_part_type left, right;
-        part.partition(o, left, right);
+        std::vector<value_type> entries = get_entries(old_leaf, extra);
+        std::vector<split_element> split;
+        partition_type(state).partition(entries, State::min_leaf_entries(), split);
 
         // Move the entries into place.
-        auto assign_entries = [&](node_part_type& part, leaf_ptr ptr) {
+        auto assign_entries = [&](which_t part, leaf_ptr ptr) {
             // Copy the entries from the partition into the new node.
             u32 count = 0;
-            for (auto index : part.entries) {
-                storage.set_data(ptr, count++, o.entries[index]);
+            for (const split_element& s : split) {
+                if (s.which == part) {
+                    storage.set_data(ptr, s.new_index, entries[s.old_index]);
+                    ++count;
+                }
             }
             storage.set_count(ptr, count);
 
             // Clear the remaining records.
             for (u32 i = count; i < State::max_leaf_entries(); ++i) {
-                storage.set_data(ptr, i, tree_entry());
+                storage.set_data(ptr, i, value_type());
             }
         };
 
         leaf_ptr new_leaf = storage.create_leaf();
-        assign_entries(left, old_leaf);
-        assign_entries(right, new_leaf);
+        assign_entries(partition_type::left, old_leaf);
+        assign_entries(partition_type::right, new_leaf);
         return new_leaf;
     }
 
@@ -245,32 +248,44 @@ private:
     ///
     /// \param old_internal
     ///     The existing internal node (which must be full).
-    /// \param c
+    /// \param extra
     ///     The new leaf or internal node that should be inserted.
     template<typename NodePointer>
-    internal_ptr split_and_insert(internal_ptr old_internal, NodePointer c) {
+    internal_ptr split_and_insert(internal_ptr old_internal, NodePointer extra) {
+        const index_summary summary = summarize(extra);
+
+        std::vector<internal_entry> entries = get_entries(old_internal, extra, summary);
+        std::vector<split_element> split;
+        partition_type(state).partition(entries, State::min_internal_entries(), split);
+        std::sort(split.begin(), split.end(), [&](const auto& a, const auto& b) {
+            return a.old_index < b.old_index;
+        });
+
+
         internal_ptr new_internal = storage.create_internal();
-        const auto sum = summarize(c);
+        apply_entry_split(old_internal, new_internal,
+                          entries, split);
+        apply_index_split(storage.index(old_internal),
+                          storage.index(new_internal),
+                          summary, split);
 
-        partition_type part(state);
-        typename partition_type::overflowing_internal_node o;
-        part.create(o, old_internal, c, sum);
+        return new_internal;
+    }
 
-        node_part_type left, right;
-        part.partition(o, left, right);
-
-        // old index -> new index. does not say in which node entries are now.
-        std::map<u32, u32> index_map;
-
+    void apply_entry_split(internal_ptr old_internal, internal_ptr new_internal,
+                           const std::vector<internal_entry>& entries,
+                           const std::vector<split_element>& split)
+    {
         // move entries indicated by p into the given node.
-        auto assign_entries = [&](node_part_type& part, internal_ptr ptr) {
+        auto assign_entries = [&](which_t which, internal_ptr ptr) {
             // Copy the entries from the part into the new node.
             u32 count = 0;
-            for (auto index : part.entries) {
-                storage.set_mbb(ptr, count, o.entries[index].mbb);
-                storage.set_child(ptr, count, o.entries[index].ptr);
-                index_map[index] = count;
-                ++count;
+            for (const split_element& s : split) {
+                if (s.which == which) {
+                    storage.set_mbb(ptr, s.new_index, entries[s.old_index].mbb);
+                    storage.set_child(ptr, s.new_index, entries[s.old_index].ptr);
+                    ++count;
+                }
             }
             storage.set_count(ptr, count);
 
@@ -281,37 +296,46 @@ private:
             }
         };
 
-        assign_entries(left, old_internal);
-        assign_entries(right, new_internal);
+        assign_entries(partition_type::left, old_internal);
+        assign_entries(partition_type::right, new_internal);
+    }
 
-        // move_list takes the postings list entries from the given list
-        // and stores them in result_left and result_right.
+    /// \pre split is sorted by old index.
+    void apply_index_split(index_ptr old_index, index_ptr new_index,
+                           const index_summary& summary,
+                           const std::vector<split_element>& split)
+    {
         std::vector<posting_type> result_left, result_right;
-        auto split_entries = [&](auto&& list) {
+        auto split_entries = [&](list_ptr list) {
             result_left.clear();
             result_right.clear();
 
-            for (const auto& entry : *list) {
-                posting_type p(index_map[entry.node()], entry.count(), entry.id_set());
-                if (left.entries.count(entry.node())) {
-                    result_left.push_back(p);
-                } else {
-                    geodb_assert(right.entries.count(entry.node()), "Must be in the other partition");
-                    result_right.push_back(p);
+            for (const posting_type& entry : *list) {
+                const u32 old_index = entry.node();
+                const split_element& se = split[old_index];
+                geodb_assert(se.old_index == old_index, "sorted by old index");
+
+                posting_type new_entry(se.new_index, entry.count(), entry.id_set());
+
+                switch (se.which) {
+                case partition_type::left:
+                    result_left.push_back(new_entry);
+                    break;
+                case partition_type::right:
+                    result_right.push_back(new_entry);
+                    break;
+                default:
+                    unreachable("Invalid part");
+                    break;
                 }
             }
         };
 
-        // Iterate over all postings lists and move the entries.
-        auto old_index = storage.index(old_internal);
-        auto new_index = storage.index(new_internal);
-
-        // Move the label entries into position.
+        // Move the postings lists into position.
         for (const auto& entry : *old_index) {
             const label_type label = entry.label();
             const auto old_list = entry.postings_list();
 
-            // TODO: Erase if empty? Consider iterator invalidation.
             split_entries(old_list);
             old_list->assign(result_left.begin(), result_left.end());
             if (!result_right.empty()) {
@@ -333,23 +357,96 @@ private:
         // The required entries can be calcuated by examining the already
         // existing summary.
         auto append_entries = [&](auto& index, entry_id_type id) {
-            index->total()->append(posting_type(id, sum.total_units, sum.total_tids));
+            index->total()->append(posting_type(id, summary.total_units, summary.total_tids));
             // TODO: One map instead of 2.
-            for (auto pair : sum.label_units) {
+            for (auto pair : summary.label_units) {
                 index->find_or_create(pair.first)
                         ->postings_list()
-                        ->append(posting_type(id, pair.second, sum.label_tids.at(pair.first)));
+                        ->append(posting_type(id, pair.second, summary.label_tids.at(pair.first)));
             }
         };
-        if (auto old_position = state.optional_index_of(old_internal, c)) {
-            append_entries(old_index, *old_position);
-        } else if (auto new_position = state.optional_index_of(new_internal, c)) {
-            append_entries(new_index, *new_position);
-        } else {
-            unreachable("Node was not found in either parent");
+
+        const split_element& last = split.back();
+        geodb_assert(last.old_index == State::max_internal_entries(), "last element is the extra one");
+
+        switch (last.which) {
+        case partition_type::left:
+            append_entries(old_index, last.new_index);
+            break;
+        case partition_type::right:
+            append_entries(new_index, last.new_index);
+            break;
+        default:
+            unreachable("Node was not found in either part");
+        }
+    }
+
+    /// Returns a vector that contains all entries of the given leaf plus
+    /// the extra one.
+    std::vector<value_type> get_entries(leaf_ptr leaf, const value_type& extra) {
+        const u32 count = storage.get_count(leaf);
+
+        std::vector<value_type> entries;
+        entries.resize(count + 1);
+
+        for (u32 i = 0; i < count; ++i) {
+            entries[i] = storage.get_data(leaf, i);
+        }
+        entries[count] = extra;
+        return entries;
+    }
+
+    /// Returns a vector that contains all (indexed) child entries of the given internal node
+    /// and the extra node.
+    template<typename NodePointer>
+    std::vector<internal_entry> get_entries(internal_ptr internal, NodePointer extra, const index_summary& summary)
+    {
+        const u32 count = storage.get_count(internal);
+
+        std::vector<internal_entry> entries;
+        entries.resize(count + 1);
+
+        for (u32 i = 0; i < count; ++i) {
+            internal_entry& e = entries[i];
+            e.ptr = storage.get_child(internal, i);
+            e.mbb = storage.get_mbb(internal, i);
         }
 
-        return new_internal;
+        {
+            // Open the inverted index and get the <label, count> pairs
+            // for all already existing entries.
+            auto index = storage.const_index(internal);
+
+            // Gather totals.
+            auto total = index->total();
+            for (const posting_type& p : *total) {
+                internal_entry& e = entries[p.node()];
+                e.total_units = p.count();
+            }
+
+            // Gather the counts for the other labels.
+            for (auto&& entry : *index) {
+                const label_type label = entry.label();
+                const_list_ptr list = entry.postings_list();
+
+                // Do not propagate empty lists.
+                if (list->size() > 0) {
+                    for (const posting_type& p : *list) {
+                        internal_entry& e = entries[p.node()];
+                        e.label_units[label] = p.count();
+                    }
+                }
+            }
+        }
+
+        // Add the new entry as well.
+        internal_entry& last = entries.back();
+        last.ptr = extra;
+        last.mbb = state.get_mbb(extra);
+        last.label_units.insert(summary.label_units.begin(), summary.label_units.end());
+        last.total_units = summary.total_units;
+
+        return entries;
     }
 
     /// Summarizes a leaf node. This summary will become part of

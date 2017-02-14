@@ -22,6 +22,7 @@ namespace po = boost::program_options;
 static string trajectories_path;
 static string tree_path;
 static double beta;
+static u64 limit;
 
 using namespace geodb;
 
@@ -57,12 +58,12 @@ int main(int argc, char** argv) {
 
 void insert_trajectories(tree_t& tree, tpie::serialization_reader& input, tpie::progress_indicator_base& progress)
 {
-    int count = 0;
+    u64 count = 0;
 
     point_trajectory trajectory;
 
     progress.init(input.size());
-    while (input.can_read()) {
+    while (input.can_read() && (limit == u64(-1) || count < limit)) {
         auto begin = input.offset();
 
         input.unserialize(trajectory);
@@ -89,7 +90,9 @@ void parse_options(int argc, char** argv) {
             ("tree", po::value(&tree_path)->value_name("PATH")->required(),
              "Path to irwi tree directory. Will be created if it doesn't exist.")
             ("beta", po::value(&beta)->value_name("BETA")->default_value(0.5),
-             "Weight factor between 0 and 1 for spatial and textual cost (1.0 is a normal rtree).");
+             "Weight factor between 0 and 1 for spatial and textual cost (1.0 is a normal rtree).")
+            ("limit", po::value(&limit)->value_name("LIMIT")->default_value(u64(-1)),
+             "Only insert the first LIMIT trajectories.");
 
     po::variables_map vm;
     try {
