@@ -65,21 +65,6 @@ TEST_CASE("postings list basic usage", "[postings-list]") {
     });
 }
 
-TEST_CASE("gather unit counts for entries", "[postings-list]") {
-    test_internal_external([](auto&& p) {
-        REQUIRE(p.empty());
-        p.append(p0);
-        p.append(p3);
-        p.append(p1);
-
-        auto counts = p.counts(4);
-        REQUIRE(counts[0] == 123);
-        REQUIRE(counts[1] == 33);
-        REQUIRE(counts[2] == 0); // no entry in list -> default value
-        REQUIRE(counts[3] == 9);
-    });
-}
-
 TEST_CASE("iteration", "[postings-list]") {
     test_internal_external([](auto&& p) {
         REQUIRE(p.empty());

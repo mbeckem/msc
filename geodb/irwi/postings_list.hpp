@@ -186,21 +186,6 @@ public:
         return result;
     }
 
-    /// Fetches the counters for every child entry of the parent node.
-    /// Returns a vector where the count for child `i` is at index `i`.
-    /// Because not every child entry may have an entry in this list,
-    /// this function requires the total number of children as a parameter.
-    ///
-    /// \param total    The total number of child entries in the parent node.
-    std::vector<u64> counts(entry_id_type total) const {
-        std::vector<u64> result(total);
-        for (const posting_type& e : *this) {
-            geodb_assert(e.node() < total, "total not large enough");
-            result[e.node()] = e.count();
-        }
-        return result;
-    }
-
     /// Creates a summary of this list.
     /// The summary contains the total number of units and a set
     /// storing (an approximation of) the trajectory ids of those units.

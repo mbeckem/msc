@@ -6,7 +6,9 @@
 #include "geodb/trajectory.hpp"
 #include "geodb/irwi/tree_partition.hpp"
 
+#include <boost/container/static_vector.hpp>
 #include <boost/range/adaptor/reversed.hpp>
+#include <gsl/span>
 
 #include <unordered_map>
 #include <vector>
@@ -26,7 +28,11 @@ class tree_insertion {
     using leaf_ptr = typename State::leaf_ptr;
     using internal_ptr = typename State::internal_ptr;
 
+    using index_type = typename State::index_type;
     using index_ptr = typename State::index_ptr;
+    using const_index_ptr = typename State::const_index_ptr;
+
+    using list_type = typename State::list_type;
     using list_ptr = typename State::list_ptr;
     using const_list_ptr = typename State::const_list_ptr;
 
@@ -39,12 +45,16 @@ class tree_insertion {
 
     /// Summary of the inverted index of some node.
     /// Uses O(num_labels * Lambda) space.
+    // TODO: Use external storage if the number of labels is very large.
     struct index_summary {
         id_set_type total_tids;
         u64 total_units = 0;
         std::unordered_map<label_type, u64> label_units;
         std::unordered_map<label_type, id_set_type> label_tids;
     };
+
+    using internal_count_vec = boost::container::static_vector<u64, State::max_internal_entries()>;
+    using internal_cost_vec = boost::container::static_vector<float, State::max_internal_entries()>;
 
 private:
     State& state;
@@ -57,7 +67,7 @@ public:
 
     /// Finds the appropriate leaf node for the insertion of \p d.
     /// Stores the path of internal node parents into \p path.
-    leaf_ptr find_leaf(std::vector<internal_ptr>& path, const tree_entry& e) {
+    leaf_ptr find_leaf(std::vector<internal_ptr>& path, const value_type& e) {
         geodb_assert(storage.get_height() > 0, "empty tree has no leaves");
 
         path.clear();
@@ -94,7 +104,7 @@ public:
     ///     The parents of the leaf.
     /// \param e
     ///     The new entry.
-    void insert(leaf_ptr leaf, std::vector<internal_ptr> path, const tree_entry& e) {
+    void insert(leaf_ptr leaf, std::vector<internal_ptr> path, const value_type& e) {
         storage.set_size(storage.get_size() + 1);
 
         {
@@ -173,27 +183,12 @@ private:
         const u32 count = storage.get_count(n);
         geodb_assert(count > 0, "empty internal node");
 
-        // open the postings lists and retrieve the unit counts for all entries.
-        std::vector<u64> unit_count;    // Units with the current label
-        std::vector<u64> total_count;   // Total units (includes other labels)
-        {
-            auto index = storage.const_index(n);
-            total_count = index->total()->counts(count);
+        internal_cost_vec textual, spatial;
+        textual_insert_costs(n, label, textual);
+        spatial_insert_costs(n, b, spatial);
 
-            auto list_pos = index->find(label);
-            if (list_pos == index->end()) {
-                unit_count.resize(count, 0);
-            } else {
-                unit_count = list_pos->postings_list()->counts(count);
-            }
-        }
-
-        // Combined cost function using weight parameter beta.
-        const float norm = state.inverse(state.max_enlargement(n, b));
-        const auto cost = [&](u32 index) {
-            const float spatial = state.spatial_cost(state.get_mbb(n, index), b, norm);
-            const float textual = state.textual_cost(unit_count[index], total_count[index]);
-            return state.cost(spatial, textual);
+        auto cost = [&](u32 i) {
+            return state.cost(spatial[i], textual[i]);
         };
 
         // Find the entry with the smallest cost.
@@ -215,7 +210,7 @@ private:
 
     /// Splits the leaf into two leaves and inserts the extra entry.
     /// Returns the new leaf.
-    leaf_ptr split_and_insert(leaf_ptr old_leaf, const tree_entry& extra) {
+    leaf_ptr split_and_insert(leaf_ptr old_leaf, const value_type& extra) {
         std::vector<value_type> entries = get_entries(old_leaf, extra);
         std::vector<split_element> split;
         partition_type(state).partition(entries, State::min_leaf_entries(), split);
@@ -498,7 +493,7 @@ private:
     }
 
     /// Insert a data entry into a leaf. The leaf must not be full.
-    void insert_entry(leaf_ptr leaf, const tree_entry& e) {
+    void insert_entry(leaf_ptr leaf, const value_type& e) {
         const u32 count = storage.get_count(leaf);
         geodb_assert(count < State::max_leaf_entries(), "leaf node is full");
 
@@ -581,7 +576,7 @@ private:
     /// Update every parent node in the path with the fact that a new
     /// unit has been inserted into the given child, with the provided mbb
     /// and label id.
-    void update_path(const std::vector<internal_ptr>& path, node_ptr child, const tree_entry& e)
+    void update_path(const std::vector<internal_ptr>& path, node_ptr child, const value_type& e)
     {
         const trajectory_id_type tid = state.get_id(e);
         const bounding_box unit_mbb = state.get_mbb(e);
@@ -636,6 +631,55 @@ private:
             list->set(pos, e);
         } else {
             list->append(e);
+        }
+    }
+
+    /// Calculates the textual insertion costs for every child entry of `internal`.
+    // TODO: label can be a range of labels instead.
+    void textual_insert_costs(internal_ptr internal, label_type label, internal_cost_vec& cost) {
+        const u32 count = storage.get_count(internal);
+        const_index_ptr index = storage.const_index(internal);
+
+        internal_count_vec total_units, label_units;
+        counts(*index->total(), count, total_units);
+        counts(*index, label, count, label_units);
+
+        cost.resize(count);
+        for (u32 i = 0; i < count; ++i) {
+            cost[i] = 1.0f - float(label_units[i]) / float(total_units[i]);
+        }
+    }
+
+    /// Calculates the spatial insertion cost for every child entry of `internal`.
+    void spatial_insert_costs(internal_ptr internal, const bounding_box& b, internal_cost_vec& cost) {
+        const u32 count = storage.get_count(internal);
+        const float norm = state.inverse(state.max_enlargement(internal, b));
+
+        cost.resize(count);
+        for (u32 i = 0; i < count; ++i) {
+            cost[i] = norm * state.enlargement(storage.get_mbb(internal, i), b);
+        }
+    }
+
+    /// Counts trajectory units for every child entry of the current internal node.
+    void counts(const index_type& index, label_type label, u32 count, internal_count_vec& result) {
+        auto pos = index.find(label);
+        if (pos == index.end()) {
+            result.clear();
+            result.resize(count, 0);
+            return;
+        }
+
+        counts(*pos->postings_list(), count, result);
+    }
+
+    /// Counts trajectory units for every child entry of the current internal node.
+    void counts(const list_type& list, u32 count, internal_count_vec& result) {
+        result.clear();
+        result.resize(count, 0);
+        for (const posting_type& p : list) {
+            geodb_assert(p.node() < count, "invalid count");
+            result[p.node()] = p.count();
         }
     }
 };
