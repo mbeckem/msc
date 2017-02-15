@@ -1,7 +1,7 @@
 #include "geodb/filesystem.hpp"
 #include "geodb/tpie_main.hpp"
 #include "geodb/trajectory.hpp"
-#include "geodb/irwi/str_loader.hpp"
+#include "geodb/irwi/bulk_load_str.hpp"
 #include "geodb/irwi/tree.hpp"
 #include "geodb/irwi/tree_external.hpp"
 

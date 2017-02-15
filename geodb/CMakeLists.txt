@@ -29,6 +29,7 @@ set(HEADERS
     utility/tuple_utils.hpp
 
     irwi/base.hpp
+    irwi/bulk_load_str.hpp
     irwi/query.hpp
     irwi/cursor.hpp
     irwi/inverted_index.hpp
@@ -38,7 +39,6 @@ set(HEADERS
     irwi/postings_list.hpp
     irwi/postings_list_internal.hpp
     irwi/postings_list_external.hpp
-    irwi/str_loader.hpp
     irwi/string_map.hpp
     irwi/string_map_bimap.hpp
     irwi/string_map_internal.hpp
