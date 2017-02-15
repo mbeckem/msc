@@ -235,13 +235,13 @@ private:
     }
 
     auto get_labels(const leaf_entries& n, u32 index) const {
-        return std::array<label_count, 1>{{state.get_label(n.entries[index]), 1}};
+        geodb_assert(index < n.entries.size(), "index out of bounds");
+        return state.get_label_counts(n.entries[index]);
     }
 
     u64 get_total_units(const leaf_entries& n, u32 index) const {
         geodb_assert(index < n.entries.size(), "index out of bounds");
-        unused(n, index);
-        return 1;
+        return state.get_total_count(n.entries[index]);
     }
 
     bounding_box get_mbb(const internal_entries& o, u32 index) const {
@@ -288,7 +288,7 @@ private:
             , m_size(1)
             , m_total_units(0)
         {
-            for (const label_count& lc : seed_labels) {
+            for (const auto& lc : seed_labels) {
                 m_labels[lc.label] += lc.count;
                 m_total_units += lc.count;
             }
@@ -321,7 +321,7 @@ private:
         template<typename LabelCounts>
         u32 add(const bounding_box& b, const LabelCounts& label_counts) {
             m_mbb = m_mbb.extend(b);
-            for (const label_count& lc : label_counts) {
+            for (const auto& lc : label_counts) {
                 m_labels[lc.label] += lc.count;
                 m_total_units += lc.count;
             }

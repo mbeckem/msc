@@ -7,6 +7,7 @@
 #include "geodb/irwi/base.hpp"
 #include "geodb/utility/movable_adapter.hpp"
 
+#include <boost/range/functions.hpp>
 #include <boost/optional.hpp>
 
 #include <limits>
@@ -20,10 +21,12 @@ namespace geodb {
 ///     The type of storage used by this tree.
 /// \tparam Value
 ///     The type stored in the tree leaves.
+/// \tparam Accessor
+///     The type used to access a leaf values id, bounding box and its labels.
 /// \tparam Lambda
 ///     The maximum number of intervals in each posting.
 ///     Intervals are used to represent the set of trajectory ids.
-template<typename StorageSpec, typename Value, u32 Lambda>
+template<typename StorageSpec, typename Value, typename Accessor, u32 Lambda>
 class tree_state {
 public:
     using storage_type = typename StorageSpec::template implementation<Value, Lambda>;
@@ -78,13 +81,17 @@ private:
     /// The storage implements the manipulation of tree nodes.
     movable_adapter<storage_type> m_storage;
 
+    /// Implements access to required leaf entry properties.
+    Accessor m_accessor;
+
     /// A factor in [0, 1] for computing the weighted average
     /// between spatial and textual insertion cost.
     float m_weight = 0;
 
 public:
-    tree_state(StorageSpec s, float weight)
+    tree_state(StorageSpec s, Accessor accessor, float weight)
         : m_storage(in_place_t(), std::move(s))
+        , m_accessor(std::move(accessor))
         , m_weight(weight)
     {
         if (m_weight < 0 || m_weight > 1.f)
@@ -104,18 +111,35 @@ public:
     }
 
     /// Returns the trajectory the given entry belongs to.
-    trajectory_id_type get_id(const tree_entry& e) const {
-        return e.trajectory_id;
+    trajectory_id_type get_id(const value_type& v) const {
+        return m_accessor.get_id(v);
     }
 
-    /// FIXME template
-    bounding_box get_mbb(const tree_entry& e) const {
-        return e.unit.get_bounding_box();
+    /// Returns the minimal bounding box of the given leaf value.
+    bounding_box get_mbb(const value_type& v) const {
+        return m_accessor.get_mbb(v);
     }
 
-    /// FIXME template
-    label_type get_label(const tree_entry& e) const {
-        return e.unit.label;
+    /// Returns a range of unspecified type that contains
+    /// objects with the properties <label, count>.
+    /// The sum of the counts must equal `get_total_count(v)`.
+    /// The range must never be empty.
+    auto get_label_counts(const value_type& v) const {
+        auto result = m_accessor.get_label_counts(v);
+        geodb_assert(!boost::empty(result), "label-count range is empty");
+        return m_accessor.get_label_counts(v);
+    }
+
+    /// Returns the number of items in this leaf value.
+    /// This value is always >= 1.
+    /// Normal trees have trajectory units as leaf entries and will
+    /// never have more than 1 item per value.
+    /// However, some trees represent entire subtrees as leaf value
+    /// in another tree and thus can contain more than one unit.
+    u64 get_total_count(const value_type& v) const{
+        u64 result = m_accessor.get_total_count(v);
+        geodb_assert(result > 0, "total count is empty");
+        return m_accessor.get_total_count(v);
     }
 
     /// Returns the bounding box for an entry of an internal node.

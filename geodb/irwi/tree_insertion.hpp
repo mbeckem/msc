@@ -67,7 +67,7 @@ public:
 
     /// Finds the appropriate leaf node for the insertion of \p d.
     /// Stores the path of internal node parents into \p path.
-    leaf_ptr find_leaf(std::vector<internal_ptr>& path, const value_type& e) {
+    leaf_ptr find_leaf(std::vector<internal_ptr>& path, const value_type& v) {
         geodb_assert(storage.get_height() > 0, "empty tree has no leaves");
 
         path.clear();
@@ -76,15 +76,12 @@ public:
             return storage.to_leaf(storage.get_root());
         }
 
-        const bounding_box mbb = state.get_mbb(e);
-        const label_type label = state.get_label(e);
-
         // Iterate until the leaf level has been reached.
         internal_ptr current = storage.to_internal(storage.get_root());
         for (size_t level = 1;; ++level) {
             path.push_back(current);
 
-            const node_ptr child = find_insertion_entry(current, mbb, label);
+            const node_ptr child = find_insertion_entry(current, v);
             if (level + 1 == storage.get_height()) {
                 // Next level is the leaf level.
                 return storage.to_leaf(child);
@@ -179,13 +176,13 @@ private:
     /// find the best child entry within the internal node.
     /// This function respects the spatial cost (i.e. growing the bounding box)
     /// and the textual cost (introducing uncommon labels into a subtree).
-    node_ptr find_insertion_entry(internal_ptr n, const bounding_box& b, label_type label) {
+    node_ptr find_insertion_entry(internal_ptr n, const value_type& v) {
         const u32 count = storage.get_count(n);
         geodb_assert(count > 0, "empty internal node");
 
         internal_cost_vec textual, spatial;
-        textual_insert_costs(n, label, textual);
-        spatial_insert_costs(n, b, spatial);
+        textual_insert_costs(n, v, textual);
+        spatial_insert_costs(n, v, spatial);
 
         auto cost = [&](u32 i) {
             return state.cost(spatial[i], textual[i]);
@@ -451,15 +448,18 @@ private:
 
         index_summary s;
         for (u32 i = 0 ; i < count; ++i) {
-            auto&& data = storage.get_data(n, i);
-            const trajectory_id_type tid = state.get_id(data);
-            const label_type label = state.get_label(data);
+            value_type v = storage.get_data(n, i);
+            const trajectory_id_type tid = state.get_id(v);
+            const auto label_counts = state.get_label_counts(v);
+            const u64 total_count = state.get_total_count(v);
 
             s.total_tids.add(tid);
-            ++s.total_units;
+            s.total_units += total_count;
 
-            s.label_tids[label].add(tid);
-            ++s.label_units[label];
+            for (const auto& lc : label_counts) {
+                s.label_tids[lc.label].add(tid);
+                s.label_units[lc.label] += lc.count;
+            }
         }
         return s;
     }
@@ -576,18 +576,19 @@ private:
     /// Update every parent node in the path with the fact that a new
     /// unit has been inserted into the given child, with the provided mbb
     /// and label id.
-    void update_path(const std::vector<internal_ptr>& path, node_ptr child, const value_type& e)
+    void update_path(const std::vector<internal_ptr>& path, node_ptr child, const value_type& v)
     {
-        const trajectory_id_type tid = state.get_id(e);
-        const bounding_box unit_mbb = state.get_mbb(e);
-        const label_type label = state.get_label(e);
+        const trajectory_id_type tid = state.get_id(v);
+        const bounding_box mbb = state.get_mbb(v);
+        const auto label_counts = state.get_label_counts(v);
+        const u64 total_count = state.get_total_count(v);
 
         // Increment the unit count for the given node & label.
-        auto increment_entry = [&](const list_ptr& list, entry_id_type node) {
+        auto increment_entry = [&](const list_ptr& list, entry_id_type node, u64 count) {
             auto pos = list->find(node);
             if (pos == list->end()) {
                 // First unit with that label. Make a new entry.
-                list->append(posting_type(node, 1, {tid}));
+                list->append(posting_type(node, count, {tid}));
             } else {
                 // Replace the entry with an updated version.
                 posting_type e = *pos;
@@ -595,7 +596,7 @@ private:
                 auto set = e.id_set();
                 set.add(tid);
                 e.id_set(set);
-                e.count(e.count() + 1);
+                e.count(e.count() + count);
 
                 list->set(pos, e);
             }
@@ -605,13 +606,14 @@ private:
         // The mbb of the child's entry within the parent must fit the new box.
         for (auto parent : path | boost::adaptors::reversed) {
             const u32 i = state.index_of(parent, child);
-            bounding_box mbb = storage.get_mbb(parent, i).extend(unit_mbb);
-            storage.set_mbb(parent, i, mbb);
+            bounding_box new_mbb = storage.get_mbb(parent, i).extend(mbb);
+            storage.set_mbb(parent, i, new_mbb);
 
             index_ptr index = storage.index(parent);
-            increment_entry(index->total(), i);
-            increment_entry(index->find_or_create(label)->postings_list(), i);
-
+            increment_entry(index->total(), i, total_count);
+            for (const auto& lc : label_counts) {
+                increment_entry(index->find_or_create(lc.label)->postings_list(), i, lc.count);
+            }
             child = parent;
         }
     }
@@ -635,45 +637,76 @@ private:
     }
 
     /// Calculates the textual insertion costs for every child entry of `internal`.
-    // TODO: label can be a range of labels instead.
-    void textual_insert_costs(internal_ptr internal, label_type label, internal_cost_vec& cost) {
+    /// \param internal
+    ///     The current internal node.
+    /// \param v
+    ///     The new leaf entry.
+    /// \param[out] result
+    ///     Will contain the cost values.
+    void textual_insert_costs(internal_ptr internal, const value_type& v, internal_cost_vec& result) {
         const u32 count = storage.get_count(internal);
         const_index_ptr index = storage.const_index(internal);
 
-        internal_count_vec total_units, label_units;
-        counts(*index->total(), count, total_units);
-        counts(*index, label, count, label_units);
+        const auto value_label_counts = state.get_label_counts(v);
+        const u64 value_total_count = state.get_total_count(v);
 
-        cost.resize(count);
-        for (u32 i = 0; i < count; ++i) {
-            cost[i] = 1.0f - float(label_units[i]) / float(total_units[i]);
+        internal_count_vec entry_total_counts, entry_label_counts;
+        counts(*index->total(), count, entry_total_counts);
+
+        result.resize(count);
+        std::fill(result.begin(), result.end(), 0.f);
+
+        // Iterate over the shared labels of `v` and the node.
+        // This loop is currently O(m * log n) where m is the number of labels in `v`
+        // and n is the number of labels in the current internal node's index.
+        for (const auto& lc : value_label_counts) {
+            auto pos = index->find(lc.label);
+            if (pos == index->end()) {
+                continue;
+            }
+            counts(*pos->postings_list(), count, entry_label_counts);
+
+            for (u32 i = 0; i < count; ++i) {
+                // Generalized cost function for subtrees.
+                // Compute the relative frequency of units with this label
+                // compared with all other units in the subtree if the new value
+                // would be inserted in internal->entries[i].
+                const u64 combined_count = lc.count + entry_label_counts[i];
+                const u64 combined_total = value_total_count + entry_total_counts[i];
+                const float relative = float(combined_count) / float(combined_total);
+                result[i] = std::max(result[i], relative);
+            }
+        }
+
+        // Invert the frequencies to get the cost.
+        for (float& f : result) {
+            f = 1.0f - f;
         }
     }
 
     /// Calculates the spatial insertion cost for every child entry of `internal`.
-    void spatial_insert_costs(internal_ptr internal, const bounding_box& b, internal_cost_vec& cost) {
+    /// \param internal
+    ///     The current internal node.
+    /// \param v
+    ///     The new leaf entry.
+    /// \param[out] cost
+    ///     Will contain the cost values.
+    void spatial_insert_costs(internal_ptr internal, const value_type& v, internal_cost_vec& cost) {
+        const bounding_box mbb = state.get_mbb(v);
         const u32 count = storage.get_count(internal);
-        const float norm = state.inverse(state.max_enlargement(internal, b));
+        const float norm = state.inverse(state.max_enlargement(internal, mbb));
 
         cost.resize(count);
         for (u32 i = 0; i < count; ++i) {
-            cost[i] = norm * state.enlargement(storage.get_mbb(internal, i), b);
+            cost[i] = norm * state.enlargement(storage.get_mbb(internal, i), mbb);
         }
     }
 
     /// Counts trajectory units for every child entry of the current internal node.
-    void counts(const index_type& index, label_type label, u32 count, internal_count_vec& result) {
-        auto pos = index.find(label);
-        if (pos == index.end()) {
-            result.clear();
-            result.resize(count, 0);
-            return;
-        }
-
-        counts(*pos->postings_list(), count, result);
-    }
-
-    /// Counts trajectory units for every child entry of the current internal node.
+    /// \param list
+    ///     The current postings list.
+    /// \param count
+    ///     The current internal node's child count.
     void counts(const list_type& list, u32 count, internal_count_vec& result) {
         result.clear();
         result.resize(count, 0);

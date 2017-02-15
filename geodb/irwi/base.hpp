@@ -11,7 +11,7 @@ namespace geodb {
 template<typename StorageSpec, u32 Lambda>
 class tree;
 
-template<typename StorageSpec, typename Value, u32 Lambda>
+template<typename StorageSpec, typename Value, typename Accessor, u32 Lambda>
 class tree_state;
 
 template<typename State>

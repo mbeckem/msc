@@ -26,6 +26,35 @@
 
 namespace geodb {
 
+namespace detail {
+
+struct tree_entry_accessor {
+    struct label_count {
+        static constexpr u64 count = 1;
+
+        label_type label;
+    };
+
+    trajectory_id_type get_id(const tree_entry& e) const {
+        return e.trajectory_id;
+    }
+
+    bounding_box get_mbb(const tree_entry& e) const {
+        return e.unit.get_bounding_box();
+    }
+
+    u64 get_total_count(const tree_entry& e) const {
+        unused(e);
+        return 1;
+    }
+
+    std::array<label_count, 1> get_label_counts(const tree_entry& e) const {
+        return {{ e.unit.label }};
+    }
+};
+
+} // namespace detail
+
 /// An IRWI Tree stores spatio-textual trajectories.
 /// Trajectory units are indexed by both their spatial
 /// and textual attributes.
@@ -38,7 +67,7 @@ namespace geodb {
 template<typename StorageSpec, u32 Lambda>
 class tree {
 private:
-    using state_type = tree_state<StorageSpec, tree_entry, Lambda>;
+    using state_type = tree_state<StorageSpec, tree_entry, detail::tree_entry_accessor, Lambda>;
 
     using storage_type = typename state_type::storage_type;
 
@@ -103,7 +132,7 @@ public:
     ///     spatial and textual cost. A value of 1 yields a classic
     ///     rtree. Must be in [0, 1].
     tree(StorageSpec s = StorageSpec(), float weight = 0.5f)
-        : state(std::move(s), weight)
+        : state(std::move(s), detail::tree_entry_accessor(), weight)
     {}
 
     /// Returns the weighting factor for cost calculation.
@@ -381,7 +410,7 @@ private:
             const u32 count = storage().get_count(leaf);
             for (u32 i = 0; i < count; ++i) {
                 const tree_entry data = storage().get_data(leaf, i);
-                if (data.unit.intersects(q.rect) && contains(q.labels, state.get_label(data))) {
+                if (data.unit.intersects(q.rect) && contains(q.labels, data.unit.label)) {
                     result.push_back(data);
                 }
             }
