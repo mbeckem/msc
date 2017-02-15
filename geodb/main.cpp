@@ -2,8 +2,6 @@
 #include <random>
 #include <vector>
 
-#include <gsl/span>
-
 #include "geodb/common.hpp"
 #include "geodb/irwi/tree.hpp"
 #include "geodb/irwi/tree_external.hpp"

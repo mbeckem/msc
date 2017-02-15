@@ -4,8 +4,6 @@
 #include <climits>
 #include <cstdint>
 
-#include <gsl/gsl_assert>
-
 namespace geodb {
 
 static_assert(CHAR_BIT == 8, "Byte width sanity check.");
