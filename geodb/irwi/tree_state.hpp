@@ -127,7 +127,7 @@ public:
     auto get_label_counts(const value_type& v) const {
         auto result = m_accessor.get_label_counts(v);
         geodb_assert(!boost::empty(result), "label-count range is empty");
-        return m_accessor.get_label_counts(v);
+        return result;
     }
 
     /// Returns the number of items in this leaf value.
@@ -139,7 +139,7 @@ public:
     u64 get_total_count(const value_type& v) const{
         u64 result = m_accessor.get_total_count(v);
         geodb_assert(result > 0, "total count is empty");
-        return m_accessor.get_total_count(v);
+        return result;
     }
 
     /// Returns the bounding box for an entry of an internal node.
