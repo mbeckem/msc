@@ -9,8 +9,8 @@
 #include "geodb/utility/shared_values.hpp"
 
 #include <boost/noncopyable.hpp>
+#include <fmt/format.h>
 #include <tpie/blocks/block_collection_cache.h>
-#include <tpie/serialization2.h>
 
 namespace geodb {
 
@@ -198,6 +198,7 @@ public:
         }
         write_block(i);
 
+        ++m_internal_count;
         return i;
     }
 
@@ -211,6 +212,7 @@ public:
         }
         write_block(l);
 
+        ++m_leaf_count;
         return l;
     }
 
@@ -287,11 +289,20 @@ public:
         write_block(l);
     }
 
+    size_t get_leaf_count() const {
+        return m_leaf_count;
+    }
+
+    size_t get_internal_count() const {
+        return m_internal_count;
+    }
+
 public:
+    static constexpr int version() { return 1; }
+
     // ----------------------------------------
     //      Construction/Destruction
     // ----------------------------------------
-
     tree_external_impl(tree_external<block_size> params)
         : m_directory(std::move(params.directory))
         , m_index_alloc(ensure_directory(m_directory / "inverted_index"))
@@ -299,16 +310,33 @@ public:
     {
         tpie::default_raw_file_accessor rf;
         if (rf.try_open_rw(state_path().string())) {
-            size_t file_blocksize, file_lambda;
-            rf.read_i(&file_blocksize, sizeof(file_blocksize));
-            rf.read_i(&file_lambda, sizeof(file_lambda));
-            rf.read_i(&m_size, sizeof(m_size));
-            rf.read_i(&m_height, sizeof(m_height));
-            rf.read_i(&m_root, sizeof(m_root));
-
-            if (file_blocksize != block_size || file_lambda != Lambda) {
-                throw std::invalid_argument("Format mismatch");
+            int file_version;
+            read(rf, file_version);
+            if (file_version != version()) {
+                throw std::invalid_argument(fmt::format("Invalid file format version. Expected {} but got {}.",
+                                                        version(), file_version));
             }
+
+            size_t file_block_size;
+            read(rf, file_block_size);
+            if (file_block_size != block_size) {
+                throw std::invalid_argument(fmt::format("Invalid block size. Expected {} but got {}.",
+                                                        block_size, file_block_size));
+            }
+
+
+            size_t file_lambda;
+            read(rf, file_lambda);
+            if (file_lambda != Lambda) {
+                throw std::invalid_argument(fmt::format("Invalid lambda value. Expected {} but got {}.",
+                                                        Lambda, file_lambda));
+            }
+
+            read(rf, m_size);
+            read(rf, m_height);
+            read(rf, m_leaf_count);
+            read(rf, m_internal_count);
+            read(rf, m_root);
         } else {
             set_root(create_leaf());
             set_height(1);
@@ -319,16 +347,34 @@ public:
         tpie::default_raw_file_accessor rf;
         rf.open_rw_new(state_path().string());
 
-        size_t file_blocksize = block_size;
+        int file_version = version();
+        write(rf, file_version);
+
+        size_t file_block_size = block_size;
         size_t file_lambda = Lambda;
-        rf.write_i(&file_blocksize, sizeof(file_blocksize));
-        rf.write_i(&file_lambda, sizeof(file_lambda));
-        rf.write_i(&m_size, sizeof(m_size));
-        rf.write_i(&m_height, sizeof(m_height));
-        rf.write_i(&m_root, sizeof(m_root));
+        write(rf, file_block_size);
+        write(rf, file_lambda);
+
+        write(rf, m_size);
+        write(rf, m_height);
+        write(rf, m_leaf_count);
+        write(rf, m_internal_count);
+        write(rf, m_root);
     }
 
 private:
+    template<typename T>
+    void write(tpie::default_raw_file_accessor& rf, const T& t) {
+        static_assert(std::is_trivially_copyable<T>::value, "");
+        rf.write_i(std::addressof(t), sizeof(T));
+    }
+
+    template<typename T>
+    void read(tpie::default_raw_file_accessor& rf, T& t) {
+        static_assert(std::is_trivially_copyable<T>::value, "");
+        rf.read_i(std::addressof(t), sizeof(T));
+    }
+
     fs::path state_path() const {
         return m_directory / "tree.state";
     }
@@ -344,9 +390,6 @@ private:
         return m_indexes.convert(as_const(this)->open_index(id));
     }
 
-    template<typename Tree>
-    friend class str_loader;
-
 private:
     /// Directory path of this tree.
     fs::path m_directory;
@@ -356,6 +399,12 @@ private:
 
     /// 1: Only root (leaf), 2: everything else.
     size_t m_height = 1;
+
+    /// Number of leaf nodes.
+    size_t m_leaf_count = 0;
+
+    /// Number of internal nodes.
+    size_t m_internal_count = 0;
 
     /// Always points to either a leaf (height: 1) or an internal node (anything else).
     block_handle m_root;

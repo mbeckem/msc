@@ -108,10 +108,14 @@ public:
     void set_root(node_ptr n) { m_root = n; }
 
     internal_ptr create_internal() {
+        ++m_internals;
         return tpie::tpie_new<internal>();
     }
 
-    leaf_ptr create_leaf() { return tpie::tpie_new<leaf>(); }
+    leaf_ptr create_leaf() {
+        ++m_leaves;
+        return tpie::tpie_new<leaf>();
+    }
 
     index_ptr index(internal_ptr i) {
         return &i->index;
@@ -151,6 +155,14 @@ public:
 
     void set_data(leaf_ptr l, u32 index, const LeafData& d) {
         l->entries[index] = d;
+    }
+
+    size_t get_internal_count() const {
+        return m_internals;
+    }
+
+    size_t get_leaf_count() const {
+        return m_leaves;
     }
 
 public:
@@ -201,6 +213,8 @@ private:
 private:
     size_t m_height = 0;    ///< 1: Root is leaf, 2: Everything else
     size_t m_size = 0;      ///< Number of data items inside the tree.
+    size_t m_leaves = 0;    ///< Number of leaf nodes.
+    size_t m_internals = 0; ///< Number of internal nodes.
     base* m_root = nullptr;
 };
 

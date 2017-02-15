@@ -72,6 +72,20 @@ void visit(const Cursor& c,
     }
 }
 
+template<typename Cursor>
+void count_nodes(Cursor& c, size_t& internal, size_t& leaves) {
+    if (c.is_leaf()) {
+        ++leaves;
+    } else {
+        ++internal;
+        for (u32 i = 0; i < c.size(); ++i) {
+            c.move_child(i);
+            count_nodes(c, internal, leaves);
+            c.move_parent();
+        }
+    }
+}
+
 bool contains_all(const std::vector<trajectory>& trajectories,
                   const std::set<std::pair<trajectory_id_type, u32>>& seen) {
     size_t count = 0;
@@ -131,6 +145,14 @@ TEST_CASE("irwi tree insertion", "[irwi]") {
         std::set<std::pair<trajectory_id_type, u32>> seen;
         visit(tree.root(), trajectories, seen);
         REQUIRE(contains_all(trajectories, seen));
+
+        size_t internal_nodes = 0;
+        size_t leaf_nodes = 0;
+        auto cursor = tree.root();
+        count_nodes(cursor, internal_nodes, leaf_nodes);
+
+        REQUIRE(internal_nodes == tree.internal_node_count());
+        REQUIRE(leaf_nodes == tree.leaf_node_count());
     });
 }
 

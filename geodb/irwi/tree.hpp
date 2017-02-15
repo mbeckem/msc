@@ -148,6 +148,15 @@ public:
     /// True iff the tree is empty.
     bool empty() const { return size() == 0; }
 
+    /// Returns the total number of internal nodes.
+    size_t internal_node_count() const { return storage().get_internal_count(); }
+
+    /// Returns the total number of leaf nodes.
+    size_t leaf_node_count() const { return storage().get_leaf_count(); }
+
+    /// Returns the total number of nodes.
+    size_t node_count() const { return internal_node_count() + leaf_node_count(); }
+
     /// Returns a cursor pointing to the root of the tree.
     cursor root() const {
         return cursor(&state, storage().get_root());
