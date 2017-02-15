@@ -30,6 +30,7 @@ set(HEADERS
 
     irwi/base.hpp
     irwi/bulk_load_str.hpp
+    irwi/bulk_load_quickload.hpp
     irwi/query.hpp
     irwi/cursor.hpp
     irwi/inverted_index.hpp

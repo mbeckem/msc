@@ -26,35 +26,6 @@
 
 namespace geodb {
 
-namespace detail {
-
-struct tree_entry_accessor {
-    struct label_count {
-        static constexpr u64 count = 1;
-
-        label_type label;
-    };
-
-    trajectory_id_type get_id(const tree_entry& e) const {
-        return e.trajectory_id;
-    }
-
-    bounding_box get_mbb(const tree_entry& e) const {
-        return e.unit.get_bounding_box();
-    }
-
-    u64 get_total_count(const tree_entry& e) const {
-        unused(e);
-        return 1;
-    }
-
-    std::array<label_count, 1> get_label_counts(const tree_entry& e) const {
-        return {{ e.unit.label }};
-    }
-};
-
-} // namespace detail
-
 /// An IRWI Tree stores spatio-textual trajectories.
 /// Trajectory units are indexed by both their spatial
 /// and textual attributes.
@@ -224,9 +195,9 @@ private:
     void insert(const tree_entry& e) {
         insertion_type ins(state);
 
-        std::vector<internal_ptr> path;
-        leaf_ptr leaf = ins.find_leaf(path, e);
-        ins.insert(leaf, std::move(path), e);
+        std::vector<internal_ptr>& path = path_buf;
+        leaf_ptr leaf = ins.find_leaf(e, path);
+        ins.insert(leaf, path, e);
     }
 
 private:
@@ -481,6 +452,7 @@ private:
 
 private:
     state_type state;
+    std::vector<internal_ptr> path_buf;
 };
 
 template<typename Cursor>

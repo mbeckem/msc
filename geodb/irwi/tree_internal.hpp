@@ -7,10 +7,10 @@
 
 namespace geodb {
 
-template<u32 fanout>
+template<u32 fanout_leaf, u32 fanout_internal = fanout_leaf>
 struct tree_internal;
 
-template<u32 fanout, typename LeafData, u32 Lambda>
+template<u32 fanout_leaf, u32 fanout_internal, typename LeafData, u32 Lambda>
 struct tree_internal_impl;
 
 /// Storage backend for an IRWI-Tree that stores its data
@@ -18,15 +18,15 @@ struct tree_internal_impl;
 /// Every node (internal and external) has the specified fanout.
 ///
 /// As a user: do not use this class directly.
-template<u32 fanout, typename LeafData, u32 Lambda>
+template<u32 fanout_leaf, u32 fanout_internal, typename LeafData, u32 Lambda>
 class tree_internal_impl {
 
     using index_storage = inverted_index_internal_storage;
 
 public:
-    static constexpr u32 max_internal_entries() { return fanout; }
+    static constexpr u32 max_internal_entries() { return fanout_internal; }
 
-    static constexpr u32 max_leaf_entries() { return fanout; }
+    static constexpr u32 max_leaf_entries() { return fanout_leaf; }
 
     using index_type = inverted_index<index_storage, Lambda>;
 
@@ -47,14 +47,22 @@ private:
     };
 
     struct internal : base {
-        index_type index;                           ///< The index is stored inline.
-        u32 count;                                  ///< Total number of entries.
-        std::array<internal_entry, fanout> entries; ///< Pointers to child nodes and their MBBs.
+        /// The index is stored inline.
+        index_type index;
+
+        /// Total number of entries.
+        u32 count;
+
+        /// Pointers to child nodes and their MBBs.
+        std::array<internal_entry, fanout_internal> entries;
     };
 
     struct leaf : base {
-        u32 count;                              ///< Total number of entries.
-        std::array<LeafData, fanout> entries;   ///< Leaf data entries.
+        /// Total number of entries.
+        u32 count;
+
+        /// Leaf data entries.
+        std::array<LeafData, fanout_leaf> entries;
     };
 
     /// Cast a child node to its appropriate type.
@@ -166,7 +174,7 @@ public:
     }
 
 public:
-    tree_internal_impl(tree_internal<fanout> params)
+    tree_internal_impl(tree_internal<fanout_leaf, fanout_internal> params)
         : m_height(1)
         , m_root(create_leaf())
     {
@@ -207,9 +215,6 @@ private:
         tpie::tpie_delete(n);
     }
 
-    template<typename Tree>
-    friend class str_loader;
-
 private:
     size_t m_height = 0;    ///< 1: Root is leaf, 2: Everything else
     size_t m_size = 0;      ///< Number of data items inside the tree.
@@ -220,12 +225,15 @@ private:
 
 /// Instructs the irwi tree to use internal memory for storage.
 ///
-/// \tparam fanout
-///     The maximum number of children for both internal and leaf nodes.
-template<u32 fanout>
+/// \tparam fanout_leaf
+///     The maximum number of children in leaf nodes.
+/// \tparam fanout_internal
+///     The maximum number of children in internal nodes.
+///     Defaults to fanout_leaf.
+template<u32 fanout_leaf, u32 fanout_internal>
 struct tree_internal {
     template<typename LeafData, u32 Lambda>
-    using implementation = tree_internal_impl<fanout, LeafData, Lambda>;
+    using implementation = tree_internal_impl<fanout_leaf, fanout_internal, LeafData, Lambda>;
 };
 
 } // namespace geodb

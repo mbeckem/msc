@@ -66,8 +66,8 @@ public:
     {}
 
     /// Finds the appropriate leaf node for the insertion of \p d.
-    /// Stores the path of internal node parents into \p path.
-    leaf_ptr find_leaf(std::vector<internal_ptr>& path, const value_type& v) {
+    /// Stores the path of internal node parents in \p path.
+    leaf_ptr find_leaf(const value_type& v, std::vector<internal_ptr>& path) {
         geodb_assert(storage.get_height() > 0, "empty tree has no leaves");
 
         path.clear();
@@ -101,7 +101,7 @@ public:
     ///     The parents of the leaf.
     /// \param e
     ///     The new entry.
-    void insert(leaf_ptr leaf, std::vector<internal_ptr> path, const value_type& e) {
+    void insert(leaf_ptr leaf, gsl::span<const internal_ptr> path, const value_type& e) {
         storage.set_size(storage.get_size() + 1);
 
         {
@@ -128,7 +128,7 @@ public:
 
         // There was at least one internal node parent.
         // The content of l has changed, update the parent's mbb and inverted index.
-        internal_ptr parent = path.back();
+        internal_ptr parent = back(path);
         replace_entry(parent, leaf);
         if (storage.get_count(parent) < State::max_internal_entries()) {
             // The direct parent has enough space to store the new leaf.
@@ -136,7 +136,7 @@ public:
             // of `d`. p will be up-to-date because ll is going to be inserted
             // and l has been reinserted already.
             insert_entry(parent, new_leaf);
-            path.pop_back();
+            pop_back(path);
             update_path(path, parent, e);
             return;
         }
@@ -146,18 +146,18 @@ public:
         // internal node that becomes our new root.
         internal_ptr new_internal = split_and_insert(parent, new_leaf);
         internal_ptr old_internal = parent;
-        path.pop_back();
+        pop_back(path);
         while (!path.empty()) {
-            parent = path.back();
+            parent = back(path);
             replace_entry(parent, old_internal);
             if (storage.get_count(parent) < State::max_internal_entries()) {
                 insert_entry(parent, new_internal);
-                path.pop_back();
+                pop_back(path);
                 update_path(path, parent, e);
                 return;
             }
 
-            path.pop_back();
+            pop_back(path);
             new_internal = split_and_insert(parent, new_internal);
             old_internal = parent;
         }
@@ -576,7 +576,7 @@ private:
     /// Update every parent node in the path with the fact that a new
     /// unit has been inserted into the given child, with the provided mbb
     /// and label id.
-    void update_path(const std::vector<internal_ptr>& path, node_ptr child, const value_type& v)
+    void update_path(gsl::span<const internal_ptr> path, node_ptr child, const value_type& v)
     {
         const trajectory_id_type tid = state.get_id(v);
         const bounding_box mbb = state.get_mbb(v);
@@ -714,6 +714,17 @@ private:
             geodb_assert(p.node() < count, "invalid count");
             result[p.node()] = p.count();
         }
+    }
+
+    template<typename T>
+    T& back(const gsl::span<T>& span) {
+        return span[span.size() - 1];
+    }
+
+    template<typename T>
+    void pop_back(gsl::span<T>& span) {
+        geodb_assert(!span.empty(), "span must not be empty");
+        span = span.first(span.size() - 1);
     }
 };
 

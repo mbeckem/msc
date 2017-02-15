@@ -550,6 +550,8 @@ template<typename T, size_t Capacity>
 class static_interval_set {
     using inner_t = interval_set<T>;
 
+    static_assert(Capacity > 0, "Capacity must not be zero");
+
 public:
     using iterator = typename inner_t::iterator;
     using const_iterator = typename inner_t::const_iterator;
