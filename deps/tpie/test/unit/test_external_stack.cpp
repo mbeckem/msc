@@ -70,6 +70,7 @@ bool named_stack_test() {
 			if (x != i) return false;
 		}
 	}
+
 	boost::filesystem::remove("temp_stack");
 	return true;
 }
@@ -138,6 +139,27 @@ bool stack_test(size_t size) {
 	return true;
 }
 
+bool stack_test_clear(size_t size) {
+	stack<size_t> s;
+
+	for (size_t i = 0; i < size; ++i) {
+		s.push(i);
+	}
+	s.clear();
+
+	ASSERT(s.empty(), "Clear must erase all elements");
+
+	for (size_t i = 0; i < size; ++i) {
+		s.push(i);
+	}
+	for (size_t i = size; i-- > 0; ) {
+		size_t item = s.pop();
+		ASSERT(item == i, "Wrong item: Expected " << i << ", got " << item);
+	}
+	ASSERT(s.empty(), "Too many items");
+	return true;
+}
+
 
 bool io_test() {
 	typedef uint64_t test_t;
@@ -184,5 +206,6 @@ int main(int argc, char **argv) {
 		.test(ami_named_stack_test, "named-ami")
 		.test(stack_test, "new", "size", 1024*1024*3)
 		.test(named_stack_test, "named-new")
+		.test(stack_test_clear, "stack clear", "size", 1024*1024*3)
 		.test(io_test, "io");
 }
