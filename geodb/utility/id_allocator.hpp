@@ -65,6 +65,19 @@ public:
         m_free.push(id);
     }
 
+    /// Returns the number of used IDs.
+    /// The ids [1, count] are currently in use.
+    value_type count() const {
+        return m_count;
+    }
+
+    /// Resets the state of this allocator.
+    /// All existing allocated ids are freed.
+    void reset() {
+        m_count = 0;
+        m_free.clear();
+    }
+
 private:
     /// Number of allocated ids. The next id is always m_count + 1,
     /// unless there is a freed id which can be reused instead.

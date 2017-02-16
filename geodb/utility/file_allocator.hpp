@@ -59,6 +59,23 @@ public:
         return m_directory / filename;
     }
 
+    /// Returns the number of allocated files.
+    /// The file ids [1, count] are valid and can be used in calls to \ref path().
+    size_t count() const {
+        return m_ids.count();
+    }
+
+    /// Reset the state of this allocator.
+    /// All allocated file ids will be invalidated and their
+    /// associated files will be removed.
+    void clear() {
+        const size_t count = m_ids.count();
+        for (size_t id = 1; id <= count; ++id) {
+            static_cast<Derived*>(this)->remove(path(id));
+        }
+        m_ids.clear();
+    }
+
 private:
     fs::path m_directory;
     std::string m_suffix;
