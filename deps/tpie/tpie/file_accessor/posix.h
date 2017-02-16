@@ -41,6 +41,12 @@ public:
 	inline posix();
 	inline ~posix() {close_i();}
 
+	inline posix(posix&& other) noexcept;
+	inline posix& operator=(posix&& other) noexcept;
+
+	posix(const posix&) = delete;
+	posix& operator=(const posix&) = delete;
+
 	inline void open_ro(const std::string & path);
 	inline void open_wo(const std::string & path);
 	inline bool try_open_rw(const std::string & path);

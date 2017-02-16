@@ -172,6 +172,19 @@ serialization_writer_base::serialization_writer_base()
 {
 }
 
+serialization_writer_base::serialization_writer_base(serialization_writer_base&& other) noexcept
+	: m_fileAccessor(std::move(other.m_fileAccessor))
+	, m_blocksWritten(other.m_blocksWritten)
+	, m_size(other.m_size)
+	, m_open(other.m_open)
+	, m_tempFile(other.m_tempFile)
+{
+	other.m_blocksWritten = 0;
+	other.m_size = 0;
+	other.m_open = false;
+	other.m_tempFile = nullptr;
+}
+
 void serialization_writer_base::open_inner(std::string path, bool reverse) {
 	close(reverse);
 	m_fileAccessor.set_cache_hint(access_sequential);
@@ -229,6 +242,14 @@ serialization_writer::serialization_writer()
 {
 }
 
+serialization_writer::serialization_writer(serialization_writer&& other) noexcept
+	: serialization_writer_base(std::move(other))
+	, m_block(std::move(other.m_block))
+	, m_index(other.m_index)
+{
+	other.m_index = 0;
+}
+
 serialization_writer::~serialization_writer() {
 	close();
 }
@@ -260,6 +281,15 @@ void serialization_writer::close() {
 serialization_reverse_writer::serialization_reverse_writer()
 	: m_index(0)
 {
+}
+
+serialization_reverse_writer::serialization_reverse_writer(serialization_reverse_writer&& other) noexcept
+	: serialization_writer_base(std::move(other))
+	, m_block(std::move(other.m_block))
+	, m_index(other.m_index)
+	, m_serializationBuffer(std::move(other.m_serializationBuffer))
+{
+	other.m_index = 0;
 }
 
 serialization_reverse_writer::~serialization_reverse_writer() {
@@ -300,6 +330,19 @@ serialization_reader_base::serialization_reader_base()
 	, m_index(0)
 	, m_blockSize(0)
 {
+}
+
+serialization_reader_base::serialization_reader_base(serialization_reader_base&& other) noexcept
+	: m_fileAccessor(std::move(other.m_fileAccessor))
+	, m_open(other.m_open)
+	, m_block(std::move(other.m_block))
+	, m_size(other.m_size)
+	, m_blockSize(other.m_blockSize)
+{
+	other.m_open = false;
+	other.m_size = 0;
+	other.m_index = 0;
+	other.m_blockSize = 0;
 }
 
 void serialization_reader_base::open(std::string path, bool reverse) {

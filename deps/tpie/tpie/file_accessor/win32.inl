@@ -42,6 +42,23 @@ win32::win32()
 {
 }
 
+inline win32::win32(win32&& other) noexcept
+    : m_fd(other.m_fd)
+    , m_creationFlag(other.m_creationFlag)
+{
+    other.m_fd = INVALID_HANDLE_VALUE;
+}
+
+inline win32& win32::operator=(win32&& other) noexcept {
+    if (this != &other) {
+        close_i();
+        m_fd = other.m_fd;
+        m_creationFlag = other.m_creationFlag;
+        other.m_fd = INVALID_HANDLE_VALUE;
+    }
+    return *this;
+}
+
 inline void win32::read_i(void * data, memory_size_type size) {
 	DWORD bytesRead = 0;
 	if (!ReadFile(m_fd, data, (DWORD)size, &bytesRead, 0)) throw_getlasterror();

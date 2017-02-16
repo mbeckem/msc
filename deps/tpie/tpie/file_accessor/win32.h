@@ -49,6 +49,12 @@ public:
 	inline win32();
 	inline ~win32() {close_i();}
 
+    inline win32(win32&& other) noexcept;
+    inline win32& operator=(win32&& other) noexcept;
+
+    win32(const win32&) = delete;
+    win32& operator=(const win32&) = delete;
+
 	inline void open_wo(const std::string & path);
 	inline void open_ro(const std::string & path);
 	inline bool try_open_rw(const std::string & path);

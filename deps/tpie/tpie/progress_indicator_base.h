@@ -160,14 +160,14 @@ protected:
 	stream_size_type m_current;
 	
 private:
-	stream_size_type m_remainingSteps;
+	stream_size_type m_remainingSteps = 0;
 
-	execution_time_predictor * m_predictor;
+	execution_time_predictor * m_predictor = nullptr;
 
 	/** Structure to support the implementation of call_refresh. */
 	struct refresh_impl;
 	/** Structure to support the implementation of call_refresh. */
-	refresh_impl * m_refreshImpl;
+	refresh_impl * m_refreshImpl = nullptr;
 	///////////////////////////////////////////////////////////////////////////
 	/// \brief  Recompute m_remainingSteps and call the virtual refresh().
 	///////////////////////////////////////////////////////////////////////////

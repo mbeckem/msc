@@ -42,6 +42,8 @@ public:
 		return 2*1024*1024;
 	}
 
+	serialization_writer_base(serialization_writer_base&& other) noexcept;
+
 private:
 	file_accessor::raw_file_accessor m_fileAccessor;
 	stream_size_type m_blocksWritten;
@@ -119,6 +121,9 @@ public:
 	friend class serializer;
 
 	serialization_writer();
+
+	serialization_writer(serialization_writer&& other) noexcept;
+
 	~serialization_writer();
 
 	void open(std::string path);
@@ -213,6 +218,7 @@ public:
 	friend class serializer;
 
 	serialization_reverse_writer();
+	serialization_reverse_writer(serialization_reverse_writer&& other) noexcept;
 	~serialization_reverse_writer();
 
 	void open(std::string path);
@@ -254,6 +260,8 @@ public:
 	static memory_size_type block_size() {
 		return serialization_writer_base::block_size();
 	}
+
+	serialization_reader_base(serialization_reader_base&& other) noexcept;
 
 private:
 	file_accessor::raw_file_accessor m_fileAccessor;
