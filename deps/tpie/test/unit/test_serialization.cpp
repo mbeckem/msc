@@ -254,6 +254,64 @@ bool stream_reopen_test() {
 	return true;
 }
 
+bool stream_seek_test() {
+	bool result = true;
+
+	temp_file file;
+	stream_size_type last_offset;
+	{
+		serialization_writer w;
+		w.open(file.path());
+
+		int count = 0;
+		auto write_checked = [&](int i) {
+			if (w.size() != count * sizeof(int)) {
+				log_error() << "Expected size 0" << std::endl;
+				result = false;
+			}
+			w.serialize(i);
+			++count;
+		};
+
+		write_checked(1);
+		write_checked(2);
+		write_checked(3);
+		write_checked(4);
+
+		// Enough to make sure that we have at least two blocks.
+		for (int i = 0; i < 1024 * 1024; ++i) {
+			w.serialize(123);
+		}
+		last_offset = w.size();
+		w.serialize(5);
+	}
+
+	{
+		serialization_reader r;
+		r.open(file.path());
+
+		auto read_checked = [&](stream_size_type offset, int expected) {
+			r.seek(offset);
+
+			int got;
+			r.unserialize(got);
+			if (expected != got) {
+				log_error() << "Expected " << expected
+							<< " at offset " << offset
+							<< ", got " << got << std::endl;
+				result = false;
+			}
+		};
+
+		read_checked(0 * sizeof(int), 1);
+		read_checked(3 * sizeof(int), 4);
+		read_checked(1 * sizeof(int), 2);
+		read_checked(2 * sizeof(int), 3);
+		read_checked(last_offset, 5);
+	}
+	return result;
+}
+
 bool stream_reverse_test() {
 	bool result = true;
 
@@ -360,6 +418,7 @@ int main(int argc, char ** argv) {
 		.test(stream_test, "stream")
 		.test(stream_dtor_test, "stream_dtor")
 		.test(stream_reopen_test, "stream_reopen")
+		.test(stream_seek_test, "stream_seek")
 		.test(stream_reverse_test, "stream_reverse")
 		.test(stream_temp_test, "stream_temp")
 		;

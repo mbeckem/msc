@@ -44,7 +44,7 @@ public:
 
 	serialization_writer_base(serialization_writer_base&& other) noexcept;
 
-private:
+protected:
 	file_accessor::raw_file_accessor m_fileAccessor;
 	stream_size_type m_blocksWritten;
 	stream_size_type m_size;
@@ -156,6 +156,11 @@ public:
 		serializer s(*this);
 		serialize(s, a, b);
 	}
+
+	///////////////////////////////////////////////////////////////////////////
+	/// \brief Returns the number of written bytes, not including the header.
+	///////////////////////////////////////////////////////////////////////////
+	stream_size_type size() const { return m_size + m_index; }
 };
 
 class serialization_reverse_writer : public bits::serialization_writer_base {
@@ -386,6 +391,13 @@ public:
 	/// For progress reporting.
 	///////////////////////////////////////////////////////////////////////////
 	stream_size_type offset();
+
+	///////////////////////////////////////////////////////////////////////////
+	/// \brief Seek to a valid byte offset in the file.
+	///
+	/// Offsets do not include the file header.
+	///////////////////////////////////////////////////////////////////////////
+	void seek(stream_size_type offset);
 };
 
 class serialization_reverse_reader : public bits::serialization_reader_base {

@@ -423,6 +423,18 @@ stream_size_type serialization_reader::offset() {
 	return m_blockNumber * block_size() + m_index;
 }
 
+void serialization_reader::seek(stream_size_type offset) {
+	if (offset > size())
+		throw end_of_stream_exception();
+
+	stream_size_type new_blockNumber = offset / block_size();
+	if (new_blockNumber != m_blockNumber) {
+		read_block(new_blockNumber);
+		m_blockNumber = new_blockNumber;
+	}
+	m_index = offset % block_size();
+}
+
 void serialization_reverse_reader::next_block() /*override*/ {
 	if (m_blockNumber == 0)
 		throw end_of_stream_exception();
