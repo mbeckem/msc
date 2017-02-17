@@ -1,3 +1,0 @@
-add_subdirectory(fill_tree)
-add_subdirectory(prepare_trajectories)
-add_subdirectory(bulk_loader)
