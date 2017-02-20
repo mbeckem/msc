@@ -7,6 +7,7 @@
 
 #include <map>
 #include <set>
+#include <type_traits>
 
 using namespace geodb;
 
@@ -100,21 +101,25 @@ bool contains_all(const std::vector<trajectory>& trajectories,
     return count == seen.size();
 }
 
+using internal = tree_internal<8>;
+using external = tree_external<512>;
+constexpr u32 Lambda = 8;
+
+using internal_tree = tree<internal, Lambda>;
+using external_tree = tree<external, Lambda>;
+
 template<typename Func>
 void tree_test(Func&& f) {
-    using internal = tree_internal<8>;
-    using external = tree_external<512>;
-    constexpr u32 Lambda = 8;
 
     {
         INFO("internal");
-        tree<internal, Lambda> t;
+        internal_tree t;
         f(t);
     }
     {
         INFO("external");
         temp_dir dir;
-        tree<external, Lambda> t(external(dir.path()));
+        external_tree t(external(dir.path()));
         f(t);
     }
 }
@@ -204,5 +209,27 @@ TEST_CASE("irwi tree query (simple)", "[irwi]") {
             REQUIRE(result[0].id == 123);
             REQUIRE(result[0].units == std::vector<u32>{0});
         }
+    });
+}
+
+TEST_CASE("opening resource more than once returns same handle", "[irwi]") {
+    tree_test([](auto&& tree) {
+        using tree_t = std::decay_t<decltype(tree)>;
+
+        point_trajectory pt;
+        pt.id = 123;
+        pt.description = "test";
+        for (size_t i = 0; i < tree_t::max_leaf_entries() + 2; ++i) {
+            pt.entries.push_back(trajectory_element{point(1, 2, 3), 123});
+        }
+        tree.insert(pt);
+
+        REQUIRE(tree.height() == 2);
+
+        auto c = tree.root();
+        auto i1 = c.inverted_index();
+        auto i2 = c.inverted_index();
+
+        REQUIRE(&*i1 == &*i2);
     });
 }
