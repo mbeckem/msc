@@ -11,10 +11,9 @@
 namespace geodb {
 
 /// A class used for navigation through the structure of a tree.
-/// A cursor always points to a current node.
+/// A cursor always points to a valid node of its tree.
 ///
-/// Instances of this class can be obtained by calling \ref tree::root()
-/// on a non-empty IRWI-Tree.
+/// Instances of this class can be obtained by calling \ref tree::root().
 ///
 /// Warning: The tree must not be modified while it is being inspected using a cursor.
 template<typename State>
@@ -35,7 +34,7 @@ public:
 
     using index_ptr = typename state_type::const_index_ptr;
 
-    using id_type = typename state_type::node_id_type;
+    using node_id = typename state_type::node_id;
 
     using value_type = typename state_type::value_type;
 
@@ -46,7 +45,7 @@ public:
     // Access functions
 
     /// Returns the numeric id of the current node.
-    id_type id() const {
+    node_id id() const {
         return storage().get_id(current());
     }
 
@@ -125,7 +124,7 @@ public:
 
     /// Returns the numeric id of the given child node.
     /// \pre `is_internal() && index < size()`.
-    id_type child_id(size_t index) const {
+    node_id child_id(size_t index) const {
         geodb_assert(is_internal(), "not an internal node");
         geodb_assert(index < size(), "index out of bounds");
         internal_ptr n = storage().to_internal(current());

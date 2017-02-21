@@ -35,6 +35,9 @@ class string_map;
 template<typename Tree>
 class str_loader;
 
+template<typename Tree>
+class quick_loader;
+
 /// IRWI leaf entries represent trajectory units.
 struct tree_entry {
     trajectory_id_type trajectory_id;   ///< Index of the trajectory this unit belongs to.

@@ -46,7 +46,7 @@ public:
     using id_set_type = typename posting_type::trajectory_id_set_type;
     using dynamic_id_set_type = interval_set<trajectory_id_type>;
 
-    using node_id_type = typename storage_type::node_id_type;
+    using node_id = typename storage_type::node_id;
     using node_ptr = typename storage_type::node_ptr;
     using leaf_ptr = typename storage_type::leaf_ptr;
     using internal_ptr = typename storage_type::internal_ptr;

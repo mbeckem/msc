@@ -58,7 +58,7 @@ private:
 
     using dynamic_id_set_type = interval_set<trajectory_id_type>;
 
-    using node_id_type = typename state_type::node_id_type;
+    using node_id_type = typename state_type::node_id;
     using node_ptr = typename state_type::node_ptr;
     using leaf_ptr = typename state_type::leaf_ptr;
     using internal_ptr = typename state_type::internal_ptr;
@@ -129,7 +129,12 @@ public:
     size_t node_count() const { return internal_node_count() + leaf_node_count(); }
 
     /// Returns a cursor pointing to the root of the tree.
+    /// \pre `!empty()`.
     cursor root() const {
+        if (empty()) {
+            throw std::logic_error("calling root() on an empty tree.");
+        }
+        geodb_assert(storage().get_height() > 0, "invalid height");
         return cursor(&state, storage().get_root());
     }
 
@@ -192,12 +197,8 @@ public:
 private:
     using insertion_type = tree_insertion<state_type>;
 
-    void insert(const tree_entry& e) {
-        insertion_type ins(state);
-
-        std::vector<internal_ptr>& path = path_buf;
-        leaf_ptr leaf = ins.find_leaf(e, path);
-        ins.insert(leaf, path, e);
+    void insert(const tree_entry& v) {
+        insertion_type(state).insert(v, path_buf);
     }
 
 private:
@@ -449,6 +450,7 @@ private:
     const storage_type& storage() const { return state.storage(); }
 
     friend class str_loader<tree>;
+    friend class quick_loader<tree>;
 
 private:
     state_type state;

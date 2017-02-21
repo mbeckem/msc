@@ -137,7 +137,7 @@ public:
     //  Used by the tree class and the tree cursor.
     // ----------------------------------------
 
-    using node_id_type = u64;
+    using node_id = u64;
 
     using index_ptr = typename index_instances_type::pointer;
 
@@ -173,7 +173,7 @@ public:
         return leaf_ptr(n.handle);
     }
 
-    node_id_type get_id(const node_ptr& n) const { return n.handle.index; }
+    node_id get_id(const node_ptr& n) const { return n.handle.index; }
 
     size_t get_height() const { return m_height; }
 
@@ -337,9 +337,6 @@ public:
             read(rf, m_leaf_count);
             read(rf, m_internal_count);
             read(rf, m_root);
-        } else {
-            set_root(create_leaf());
-            set_height(1);
         }
     }
 
@@ -397,8 +394,8 @@ private:
     /// Number of items in the tree.
     size_t m_size = 0;
 
-    /// 1: Only root (leaf), 2: everything else.
-    size_t m_height = 1;
+    /// 0: Empty, 1: Only root (leaf), 2: everything else.
+    size_t m_height = 0;
 
     /// Number of leaf nodes.
     size_t m_leaf_count = 0;

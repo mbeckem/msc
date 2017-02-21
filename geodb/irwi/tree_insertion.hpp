@@ -67,6 +67,8 @@ public:
 
     /// Finds the appropriate leaf node for the insertion of \p d.
     /// Stores the path of internal node parents in \p path.
+    ///
+    /// \pre Thre tree is not empty.
     leaf_ptr find_leaf(const value_type& v, std::vector<internal_ptr>& path) {
         geodb_assert(storage.get_height() > 0, "empty tree has no leaves");
 
@@ -94,28 +96,41 @@ public:
         unreachable("must have reached the leaf level");
     }
 
-    /// Insert the entry at the given leaf with the given path.
-    /// \param leaf
-    ///     The target leaf.
-    /// \param path
-    ///     The parents of the leaf.
-    /// \param e
-    ///     The new entry.
-    void insert(leaf_ptr leaf, gsl::span<const internal_ptr> path, const value_type& e) {
-        storage.set_size(storage.get_size() + 1);
+    /// Default insertion algorithm.
+    /// Inserts the value `v` into the tree. `path` is used as a buffer
+    /// to store the parents of the node where the insertion takes place.
+    /// The parent nodes (and their inverted indices) are updated to reflect
+    /// the insertion.
+    void insert(const value_type& v, std::vector<internal_ptr>& path) {
+        if (storage.get_height() == 0) {
+            // The tree is empty, create the root node.
+            leaf_ptr root = storage.create_leaf();
+            insert_entry(root, v);
+            storage.set_root(root);
+            storage.set_height(1);
+            storage.set_size(1);
+            return;
+        }
 
+        leaf_ptr leaf = find_leaf(v, path);
+        insert_at_leaf(leaf, v, path);
+    }
+
+private:
+    void insert_at_leaf(leaf_ptr leaf, const value_type& v, gsl::span<const internal_ptr> path) {
+        storage.set_size(storage.get_size() + 1);
         {
             const u32 count = storage.get_count(leaf);
             if (count < State::max_leaf_entries()) {
                 // The leaf has room for this entry.
-                insert_entry(leaf, e);
-                update_path(path, leaf, e);
+                insert_entry(leaf, v);
+                update_path(path, leaf, v);
                 return;
             }
         }
 
         // The leaf is full. Split it and insert the new entry.
-        const leaf_ptr new_leaf = split_and_insert(leaf, e);
+        const leaf_ptr new_leaf = split_and_insert(leaf, v);
         if (path.empty()) {
             // The root was a leaf and has been split.
             internal_ptr root = storage.create_internal();
@@ -137,7 +152,7 @@ public:
             // and l has been reinserted already.
             insert_entry(parent, new_leaf);
             pop_back(path);
-            update_path(path, parent, e);
+            update_path(path, parent, v);
             return;
         }
 
@@ -153,7 +168,7 @@ public:
             if (storage.get_count(parent) < State::max_internal_entries()) {
                 insert_entry(parent, new_internal);
                 pop_back(path);
-                update_path(path, parent, e);
+                update_path(path, parent, v);
                 return;
             }
 
@@ -169,6 +184,52 @@ public:
         insert_entry(root, new_internal);
         storage.set_root(root);
         storage.set_height(storage.get_height() + 1);
+    }
+
+public:
+    /// Update every parent node in the path with the fact that a new
+    /// leaf value has been inserted. This function will update all bounding boxes
+    /// and postings lists on its way to the root.
+    void update_path(gsl::span<const internal_ptr> path, node_ptr child, const value_type& v)
+    {
+        const trajectory_id_type tid = state.get_id(v);
+        const bounding_box mbb = state.get_mbb(v);
+        const auto label_counts = state.get_label_counts(v);
+        const u64 total_count = state.get_total_count(v);
+
+        // Increment the unit count for the given node & label.
+        auto increment_entry = [&](const list_ptr& list, entry_id_type node, u64 count) {
+            auto pos = list->find(node);
+            if (pos == list->end()) {
+                // First unit with that label. Make a new entry.
+                list->append(posting_type(node, count, {tid}));
+            } else {
+                // Replace the entry with an updated version.
+                posting_type e = *pos;
+
+                auto set = e.id_set();
+                set.add(tid);
+                e.id_set(set);
+                e.count(e.count() + count);
+
+                list->set(pos, e);
+            }
+        };
+
+        // Update mbbs and inverted indices in all parents.
+        // The mbb of the child's entry within the parent must fit the new box.
+        for (auto parent : path | boost::adaptors::reversed) {
+            const u32 i = state.index_of(parent, child);
+            bounding_box new_mbb = storage.get_mbb(parent, i).extend(mbb);
+            storage.set_mbb(parent, i, new_mbb);
+
+            index_ptr index = storage.index(parent);
+            increment_entry(index->total(), i, total_count);
+            for (const auto& lc : label_counts) {
+                increment_entry(index->find_or_create(lc.label)->postings_list(), i, lc.count);
+            }
+            child = parent;
+        }
     }
 
 private:
@@ -571,51 +632,6 @@ private:
             update_entry(index, label, posting_type(id, count, sum.label_tids.at(label)));
         }
         update_entry(index->total(), posting_type(id, sum.total_units, sum.total_tids));
-    }
-
-    /// Update every parent node in the path with the fact that a new
-    /// unit has been inserted into the given child, with the provided mbb
-    /// and label id.
-    void update_path(gsl::span<const internal_ptr> path, node_ptr child, const value_type& v)
-    {
-        const trajectory_id_type tid = state.get_id(v);
-        const bounding_box mbb = state.get_mbb(v);
-        const auto label_counts = state.get_label_counts(v);
-        const u64 total_count = state.get_total_count(v);
-
-        // Increment the unit count for the given node & label.
-        auto increment_entry = [&](const list_ptr& list, entry_id_type node, u64 count) {
-            auto pos = list->find(node);
-            if (pos == list->end()) {
-                // First unit with that label. Make a new entry.
-                list->append(posting_type(node, count, {tid}));
-            } else {
-                // Replace the entry with an updated version.
-                posting_type e = *pos;
-
-                auto set = e.id_set();
-                set.add(tid);
-                e.id_set(set);
-                e.count(e.count() + count);
-
-                list->set(pos, e);
-            }
-        };
-
-        // Update mbbs and inverted indices in all parents.
-        // The mbb of the child's entry within the parent must fit the new box.
-        for (auto parent : path | boost::adaptors::reversed) {
-            const u32 i = state.index_of(parent, child);
-            bounding_box new_mbb = storage.get_mbb(parent, i).extend(mbb);
-            storage.set_mbb(parent, i, new_mbb);
-
-            index_ptr index = storage.index(parent);
-            increment_entry(index->total(), i, total_count);
-            for (const auto& lc : label_counts) {
-                increment_entry(index->find_or_create(lc.label)->postings_list(), i, lc.count);
-            }
-            child = parent;
-        }
     }
 
     /// Updates the posting list entry for the given label. Creates the index entry if necessary.

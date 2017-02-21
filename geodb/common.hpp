@@ -40,13 +40,12 @@ void unused(Args&&...) {}
 
 /// The next statement (or block) will be exected only when
 /// debugging is enabled.
-#define geodb_debug if (1)
+
+#define GEODB_DEBUG
 
 #else
 
 #define geodb_assert(condition, message)
-
-#define geodb_debug if (0)
 
 #endif
 

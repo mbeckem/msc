@@ -510,19 +510,19 @@ private:
     }
 
     void assert_invariant() {
-        geodb_debug {
-            if (empty()) {
-                return;
-            }
-
-            auto last = m_intervals.end();
-            auto iter = m_intervals.begin();
-            auto prev = iter++;
-            for (; iter != last; ++iter, ++prev) {
-                geodb_assert(!iter->overlaps(*prev), "Intervals must not overlap");
-                geodb_assert(iter->begin() >= prev->end(), "intervals must be sorted");
-            }
+#ifdef GEODB_DEBUG
+        if (empty()) {
+            return;
         }
+
+        auto last = m_intervals.end();
+        auto iter = m_intervals.begin();
+        auto prev = iter++;
+        for (; iter != last; ++iter, ++prev) {
+            geodb_assert(!iter->overlaps(*prev), "Intervals must not overlap");
+            geodb_assert(iter->begin() >= prev->end(), "intervals must be sorted");
+        }
+#endif
     }
 
     template<typename Dest>

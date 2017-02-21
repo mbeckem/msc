@@ -2,6 +2,7 @@
 #define IRWI_BULK_LOAD_STR
 
 #include "geodb/common.hpp"
+#include "geodb/irwi/bulk_load_common.hpp"
 #include "geodb/irwi/tree.hpp"
 #include "geodb/irwi/tree_external.hpp"
 #include "geodb/utility/external_sort.hpp"
@@ -18,7 +19,10 @@ namespace geodb {
 
 /// FIXME: Consistently use size_t or tpie::stream_size_type
 template<typename Tree>
-class str_loader {
+class str_loader : private bulk_load_common<typename Tree::state_type> {
+    using common_t = typename str_loader::bulk_load_common;
+
+    using state_type = typename Tree::state_type;
     using storage_type = typename Tree::storage_type;
     using posting_type = typename Tree::posting_type;
 
@@ -29,7 +33,9 @@ class str_loader {
     using index_ptr = typename Tree::index_ptr;
     using list_ptr = typename Tree::list_ptr;
 
-    using list_summary = typename Tree::list_type::summary_type;
+    using node_summary = typename common_t::node_summary;
+    using list_summary = typename common_t::list_summary;
+    using label_summary = typename common_t::label_summary;
 
     static point center(const tree_entry& e) {
         auto x = (e.unit.start.x() + e.unit.end.x()) / 2;
@@ -62,55 +68,8 @@ class str_loader {
         }
     };
 
-    /// Represents a node of the lower level.
-    /// Lower-level nodes are combined into internal nodes until
-    /// only one node remains. This node becomes the root.
-    struct node_reference {
-        node_ptr ptr{};
-        bounding_box mbb;
-        list_summary total;     ///< Summary of `index->total`
-        u64 num_labels = 0;     ///< This many summaries follow.
-
-        template<typename Dst>
-        friend void serialize(Dst& dst, const node_reference& n) {
-            using tpie::serialize;
-            serialize(dst, n.ptr);
-            serialize(dst, n.mbb);
-            serialize(dst, n.total);
-            serialize(dst, n.num_labels);
-        }
-
-        template<typename Dst>
-        friend void unserialize(Dst& dst, node_reference& n) {
-            using tpie::unserialize;
-            unserialize(dst, n.ptr);
-            unserialize(dst, n.mbb);
-            unserialize(dst, n.total);
-            unserialize(dst, n.num_labels);
-        }
-    };
-
-    struct label_summary {
-        label_type label{};
-        list_summary summary;
-
-        template<typename Dst>
-        friend void serialize(Dst& dst, const label_summary& s) {
-            using tpie::serialize;
-            serialize(dst, s.label);
-            serialize(dst, s.summary);
-        }
-
-        template<typename Src>
-        friend void unserialize(Src& src, label_summary& s) {
-            using tpie::unserialize;
-            unserialize(src, s.label);
-            unserialize(src, s.summary);
-        }
-    };
-
 public:
-    str_loader(Tree& tree, tpie::uncompressed_stream<tree_entry>& input, tpie::progress_indicator_base& progress)
+    str_loader(Tree& tree, tpie::file_stream<tree_entry>& input, tpie::progress_indicator_base& progress)
         : m_tree(tree)
         , m_input(input)
         , m_progress(progress)
@@ -162,7 +121,7 @@ public:
         geodb_assert(count > 0, "Input must never be empty");
         if (count == 1) {
             // This only remaining node becomes the root.
-            node_reference node;
+            node_summary node;
             this_level.unserialize(node);
 
             storage_type& storage = m_tree.storage();
@@ -211,7 +170,8 @@ public:
 
     /// Recursively sort the input file using the given comparators.
     template<typename Comp, typename... Comps>
-    void sort_recursive(tpie::stream_size_type offset, tpie::stream_size_type size,
+    void sort_recursive(const tpie::stream_size_type offset,
+                        const tpie::stream_size_type size,
                         tpie::progress_indicator_base& progress,
                         Comp&& comp, Comps&&... comps) {
         constexpr size_t dimension = sizeof...(Comps) + 1;
@@ -233,26 +193,26 @@ public:
             const tpie::stream_size_type slab_size = m_leaf_size * S;
 
             // Number of processed / remaining items.
-            tpie::stream_size_type offset = 0;
+            tpie::stream_size_type slab_start = offset;
             tpie::stream_size_type remaining = size;
 
             // Keep track of current index (for reporting only).
-            const tpie::stream_size_type total_slabs = (size + slab_size - 1) / slab_size;
-            tpie::stream_size_type current_slab = 0;
+            const tpie::stream_size_type slab_count = (size + slab_size - 1) / slab_size;
+            tpie::stream_size_type slab_index = 0;
 
             // Recursivly visit the child slabs.
             recurse.init(remaining);
             while (remaining) {
                 const size_t count = std::min(remaining, slab_size);
-                const std::string title = fmt::format("Slab {} of {}", current_slab + 1, total_slabs);
+                const std::string title = fmt::format("Slab {} of {}", slab_index + 1, slab_count);
 
                 // Recursive sort.
                 tpie::progress_indicator_subindicator sub(&recurse, count, title.c_str());
-                sort_recursive(offset, count, sub, comps...);
+                sort_recursive(slab_start, count, sub, comps...);
 
                 remaining -= count;
-                offset += count;
-                current_slab += 1;
+                slab_start += count;
+                slab_index += 1;
             }
             recurse.done();
         }
@@ -271,8 +231,8 @@ public:
         // The memory used for this is in O(leaf_size) and thus very small.
         std::vector<trajectory_id_type> all_ids;
         std::map<label_type, std::vector<trajectory_id_type>> label_ids;
-        node_reference node;
-        label_summary summary;
+        node_summary node_sum;
+        label_summary label_sum;
 
         m_input.seek(0);
         progress.init(items_remaining);
@@ -293,17 +253,17 @@ public:
 
             // Create a new node entry containing index information and mbb
             // and write it to the file.
-            node.ptr = leaf;
-            node.mbb = m_tree.state.get_mbb(leaf);
-            make_simple_summary(all_ids, count, node.total);
-            node.num_labels = label_ids.size();
-            refs.serialize(node);
+            node_sum.ptr = leaf;
+            node_sum.mbb = m_tree.state.get_mbb(leaf);
+            make_simple_summary(all_ids, count, node_sum.total);
+            node_sum.num_labels = label_ids.size();
+            refs.serialize(node_sum);
 
             // Write a summary for each label.
             for (auto& pair : label_ids) {
-                summary.label = pair.first;
-                make_simple_summary(pair.second, pair.second.size(), summary.summary);
-                refs.serialize(summary);
+                label_sum.label = pair.first;
+                make_simple_summary(pair.second, pair.second.size(), label_sum.summary);
+                refs.serialize(label_sum);
             }
 
             items_remaining -= count;
@@ -327,7 +287,7 @@ public:
         tpie::stream_size_type internals = 0;
         tpie::stream_size_type items_remaining = count;
 
-        node_reference node_ref;
+        node_summary node_sum;
         label_summary label_sum;
 
         auto insert_index_entry = [](const auto& list, u32 id, const list_summary& summary) {
@@ -346,13 +306,13 @@ public:
             internal_ptr internal = storage.create_internal();
             index_ptr index = storage.index(internal);
             for (u32 i = 0; i < count; ++i) {
-                this_level.unserialize(node_ref);
+                this_level.unserialize(node_sum);
 
-                storage.set_child(internal, i, node_ref.ptr);
-                storage.set_mbb(internal, i, node_ref.mbb);
+                storage.set_child(internal, i, node_sum.ptr);
+                storage.set_mbb(internal, i, node_sum.mbb);
 
-                insert_index_entry(index->total(), i, node_ref.total);
-                for (size_t l = 0; l < node_ref.num_labels; ++l) {
+                insert_index_entry(index->total(), i, node_sum.total);
+                for (u64 l = 0; l < node_sum.num_labels; ++l) {
                     this_level.unserialize(label_sum);
                     list_ptr list = index->find_or_create(label_sum.label)->postings_list();
                     insert_index_entry(list, i, label_sum.summary);
@@ -361,11 +321,11 @@ public:
             storage.set_count(internal, count);
 
             // The node is complete, now summarize it for the next level.
-            node_ref.ptr = internal;
-            node_ref.mbb = m_tree.state.get_mbb(internal);
-            node_ref.total = index->total()->summarize();
-            node_ref.num_labels = index->size();
-            next_level.serialize(node_ref);
+            node_sum.ptr = internal;
+            node_sum.mbb = m_tree.state.get_mbb(internal);
+            node_sum.total = index->total()->summarize();
+            node_sum.num_labels = index->size();
+            next_level.serialize(node_sum);
 
             // Summarize every label.
             for (auto entry : *index) {
@@ -394,7 +354,7 @@ public:
 
 private:
     Tree& m_tree;
-    tpie::uncompressed_stream<tree_entry>& m_input;
+    tpie::file_stream<tree_entry>& m_input;
     tpie::progress_indicator_base& m_progress;
 
     /// Number of leaf items we are loading.
@@ -413,7 +373,7 @@ private:
 /// the STR (Sort Tile Recursive) Algorithm.
 /// Currently the tree has to be empty.
 template<typename Tree>
-void bulk_load_str(Tree& tree, tpie::uncompressed_stream<tree_entry>& entries, tpie::progress_indicator_base& progress) {
+void bulk_load_str(Tree& tree, tpie::file_stream<tree_entry>& entries, tpie::progress_indicator_base& progress) {
     if (!tree.empty()) {
         throw std::invalid_argument("Tree must be empty");
     }

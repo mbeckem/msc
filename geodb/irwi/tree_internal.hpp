@@ -68,15 +68,18 @@ private:
     /// Cast a child node to its appropriate type.
     /// This is a checked cast in debug builds.
     template<typename Child>
-    static Child* cast(base* b) {
+    Child* cast(base* b) const {
         geodb_assert(b, "null pointer treated as valid node");
-#ifndef NDEBUG
-        auto child = dynamic_cast<Child*>(b);
-        geodb_assert(child, "invalid cast");
-        return child;
-#else
-        return static_cast<Child*>(b);
+#ifdef GEODB_DEBUG
+            // Do not check leaf pointers if the leaves have been cut off,
+            // they are invalid anyway.
+            if (!std::is_same<Child, leaf>::value || !m_leaves_cut) {
+                auto child = dynamic_cast<Child*>(b);
+                geodb_assert(child, "invalid cast");
+            }
+        }
 #endif
+        return static_cast<Child*>(b);
     }
 
 public:
@@ -95,13 +98,13 @@ public:
 
     using leaf_ptr = leaf*;
 
-    using node_id_type = uintptr_t;
+    using node_id = uintptr_t;
 
     internal_ptr to_internal(node_ptr n) const { return cast<internal>(n); }
 
     leaf_ptr to_leaf(node_ptr n) const { return cast<leaf>(n); }
 
-    node_id_type get_id(node_ptr p) { return static_cast<node_id_type>(p); }
+    node_id get_id(node_ptr p) { return reinterpret_cast<node_id>(p); }
 
     size_t get_height() const { return m_height; }
 
@@ -192,8 +195,6 @@ public:
 
 public:
     tree_internal_impl(tree_internal<fanout_leaf, fanout_internal> params)
-        : m_height(1)
-        , m_root(create_leaf())
     {
         unused(params);
     }
@@ -261,7 +262,7 @@ private:
     }
 
 private:
-    size_t m_height = 0;    ///< 1: Root is leaf, 2: Everything else
+    size_t m_height = 0;    ///< 0: Tree is empty. 1: Root is leaf, 2: Everything else
     size_t m_size = 0;      ///< Number of data items inside the tree.
     size_t m_leaves = 0;    ///< Number of leaf nodes.
     size_t m_internals = 0; ///< Number of internal nodes.
