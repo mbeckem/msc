@@ -32,6 +32,7 @@ static string trajectories_path;
 static string tree_path;
 static size_t memory;
 static size_t max_leaves;
+static float beta;
 
 void parse_options(int argc, char** argv);
 
@@ -45,14 +46,16 @@ int main(int argc, char** argv) {
     return tpie_main([&]{
         parse_options(argc, argv);
 
+        fmt::print(cout, "Opening tree at {} with beta {}.\n", tree_path, beta);
+
+        tree_type tree{external(tree_path), beta};
+
         auto loader = get_algorithm();
 
         if (!fs::exists(trajectories_path)) {
             fmt::print(cerr, "File does not exist: {}\n", trajectories_path);
             return 1;
         }
-
-        tree_type tree{external(tree_path)};
 
         tpie::temp_file tmp;
         tpie::file_stream<tree_entry> entries;
@@ -86,6 +89,8 @@ void parse_options(int argc, char** argv) {
              "Path to prepared trajectory file.")
             ("tree", po::value(&tree_path)->value_name("PATH")->required(),
              "Path to irwi tree directory. Will be created if it doesn't exist.")
+            ("beta", po::value(&beta)->value_name("BETA")->default_value(0.5f),
+             "Weight factor between 0 and 1 for spatial and textual cost (1.0 is a normal rtree).")
             ("max-memory", po::value(&memory)->value_name("MB")->default_value(32),
              "Memory limit in megabytes. Used by the str algorithm.")
             ("max-leaves", po::value(&max_leaves)->value_name("LEAVES")->default_value(8192),
@@ -117,16 +122,15 @@ void parse_options(int argc, char** argv) {
 
 algorithm_type get_algorithm() {
     if (algorithm == "str") {
+        fmt::print(cout, "Using STR with memory limit {} MB.\n", memory);
         return [&](tree_type& tree, tpie::file_stream<tree_entry>& input, tpie::progress_indicator_base& progress) {
             size_t limit = memory * 1024 * 1024;
-
-            fmt::print(cout, "Running STR algorithm with memory limit {}\n", limit);
             tpie::get_memory_manager().set_limit(limit);
             bulk_load_str(tree, input, progress);
         };
     } else if (algorithm == "quickload") {
+        fmt::print(cout, "Using Quickload with leaf limit {}.\n", max_leaves);
         return [&](tree_type& tree, tpie::file_stream<tree_entry>& input, tpie::progress_indicator_base& progress) {
-            fmt::print(cout, "Running quickload algorithm with max_leaves={}\n", max_leaves);
             bulk_load_quickload(tree, input, max_leaves, progress);
         };
     } else {
