@@ -101,7 +101,7 @@ public:
 
     leaf_ptr to_leaf(node_ptr n) const { return cast<leaf>(n); }
 
-    node_id_type get_id(const node_ptr& p) { return static_cast<node_id_type>(p); }
+    node_id_type get_id(node_ptr p) { return static_cast<node_id_type>(p); }
 
     size_t get_height() const { return m_height; }
 
@@ -121,6 +121,7 @@ public:
     }
 
     leaf_ptr create_leaf() {
+        geodb_assert(!m_leaves_cut, "leaves have been cut off");
         ++m_leaves;
         return tpie::tpie_new<leaf>();
     }
@@ -153,16 +154,16 @@ public:
         i->entries[index].ptr = c;
     }
 
-    u32 get_count(leaf_ptr l) const { return l->count; }
+    u32 get_count(leaf_ptr l) const { return access(l)->count; }
 
-    void set_count(leaf_ptr l, u32 count) { l->count = count; }
+    void set_count(leaf_ptr l, u32 count) { access(l)->count = count; }
 
     LeafData get_data(leaf_ptr l, u32 index) const {
-        return l->entries[index];
+        return access(l)->entries[index];
     }
 
     void set_data(leaf_ptr l, u32 index, const LeafData& d) {
-        l->entries[index] = d;
+        access(l)->entries[index] = d;
     }
 
     size_t get_internal_count() const {
@@ -171,6 +172,22 @@ public:
 
     size_t get_leaf_count() const {
         return m_leaves;
+    }
+
+    /// Free all leaves but keep references to them in their parents.
+    /// Used by the quickload algorithm.
+    /// The number of leaves (i.e. `get_leaf_count()`) remains unaffected.
+    void cut_leaves() {
+        geodb_assert(!m_leaves_cut, "leaves were already cut off");
+
+        m_leaves_cut = true;
+        if (m_root) {
+            destroy_leaves(m_root, 1);
+        }
+    }
+
+    bool leaves_cut() const {
+        return m_leaves_cut;
     }
 
 public:
@@ -185,6 +202,7 @@ public:
         : m_height(other.m_height)
         , m_size(other.m_size)
         , m_root(other.m_root)
+        , m_leaves_cut(other.m_leaves_cut)
     {
         other.m_height = other.m_size = 0;
         other.m_root = nullptr;
@@ -194,14 +212,42 @@ public:
         if (m_root) {
             geodb_assert(m_height > 0, "height must be nonzero if a root exists");
             geodb_assert(m_size > 0, "size must be nonzero if a root exists");
-            destroy(m_root, 1);
+            if (m_leaves_cut) {
+                destroy<true>(m_root, 1);
+            } else {
+                destroy<false>(m_root, 1);
+            }
         }
     }
 
 private:
+    leaf* access(leaf* l) const {
+        geodb_assert(!m_leaves_cut, "leaves have been cut off and cannot be accessed");
+        return l;
+    }
+
     /// Delete the subtree rooted at ptr.
     /// Height is the level of ptr in the tree.
+    template<bool leaves_cut>
     void destroy(base* ptr, size_t height) {
+        geodb_assert(height > 0, "");
+        if (height == m_height) {
+            if (!leaves_cut) {
+                tpie::tpie_delete(cast<leaf>(ptr));
+            }
+            return;
+        }
+
+        internal* n = cast<internal>(ptr);
+        for (size_t i = 0; i < n->count; ++i) {
+            destroy<leaves_cut>(n->entries[i].ptr, height + 1);
+        }
+        tpie::tpie_delete(n);
+    }
+
+    /// Destroy only the leaves and leave dangling pointers
+    /// to them in internal nodes.
+    void destroy_leaves(base* ptr, size_t height) {
         geodb_assert(height > 0, "");
         if (height == m_height) {
             tpie::tpie_delete(cast<leaf>(ptr));
@@ -210,9 +256,8 @@ private:
 
         internal* n = cast<internal>(ptr);
         for (size_t i = 0; i < n->count; ++i) {
-            destroy(n->entries[i].ptr, height + 1);
+            destroy_leaves(n->entries[i].ptr, height + 1);
         }
-        tpie::tpie_delete(n);
     }
 
 private:
@@ -221,6 +266,7 @@ private:
     size_t m_leaves = 0;    ///< Number of leaf nodes.
     size_t m_internals = 0; ///< Number of internal nodes.
     base* m_root = nullptr;
+    bool m_leaves_cut = false;
 };
 
 /// Instructs the irwi tree to use internal memory for storage.
