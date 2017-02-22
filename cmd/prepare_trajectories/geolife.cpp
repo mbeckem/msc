@@ -160,11 +160,6 @@ struct geolife_parser {
             });
 
             for (; l_pos != l_end; ++l_pos) {
-                auto l_next = l_pos + 1;
-                if (l_next != l_end && l_pos->time == l_next->time) {
-                    continue; // Skip entries within the same moment, prefer the last one.
-                }
-
                 while (l_pos->time > a_pos->end && a_pos != a_end) {
                     ++a_pos;
                 }
