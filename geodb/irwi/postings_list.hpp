@@ -1,5 +1,5 @@
-#ifndef IRWI_POSTINGS_LIST_HPP
-#define IRWI_POSTINGS_LIST_HPP
+#ifndef GEODB_IRWI_POSTINGS_LIST_HPP
+#define GEODB_IRWI_POSTINGS_LIST_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/irwi/base.hpp"
@@ -249,4 +249,4 @@ private:
 
 } // namespace geodb
 
-#endif // IRWI_POSTINGS_LIST_HPP
+#endif // GEODB_IRWI_POSTINGS_LIST_HPP

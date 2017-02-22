@@ -1,5 +1,5 @@
-#ifndef UTILITY_TUPLE_UTILS_HPP
-#define UTILITY_TUPLE_UTILS_HPP
+#ifndef GEODB_UTILITY_TUPLE_UTILS_HPP
+#define GEODB_UTILITY_TUPLE_UTILS_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/type_traits.hpp"
@@ -54,4 +54,4 @@ void enumerate(F&& f) {
 
 } // namespace geodb
 
-#endif // UTILITY_TUPLE_UTILS_HPP
+#endif // GEODB_UTILITY_TUPLE_UTILS_HPP

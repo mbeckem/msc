@@ -1,5 +1,5 @@
-#ifndef IRWI_TREE_HPP
-#define IRWI_TREE_HPP
+#ifndef GEODB_IRWI_TREE_HPP
+#define GEODB_IRWI_TREE_HPP
 
 #include "geodb/bounding_box.hpp"
 #include "geodb/interval_set.hpp"
@@ -511,4 +511,4 @@ void dump(std::ostream& o, Cursor c, int indent_length = 0) {
 
 } // namespace geodb
 
-#endif // IRWI_TREE_HPP
+#endif // GEODB_IRWI_TREE_HPP

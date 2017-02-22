@@ -1,5 +1,5 @@
-#ifndef TYPE_TRAITS_HPP
-#define TYPE_TRAITS_HPP
+#ifndef GEODB_TYPE_TRAITS_HPP
+#define GEODB_TYPE_TRAITS_HPP
 
 #include "geodb/common.hpp"
 
@@ -35,4 +35,4 @@ using disable_if_t = std::enable_if_t<!b, T>;
 
 } // namespace geodb
 
-#endif // TYPE_TRAITS_HPP
+#endif // GEODB_TYPE_TRAITS_HPP

@@ -1,5 +1,5 @@
-#ifndef IRWI_STRING_MAP_HPP
-#define IRWI_STRING_MAP_HPP
+#ifndef GEODB_IRWI_STRING_MAP_HPP
+#define GEODB_IRWI_STRING_MAP_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/trajectory.hpp"
@@ -115,4 +115,4 @@ private:
 
 } // namespace geodb
 
-#endif // IRWI_STRING_MAP_HPP
+#endif // GEODB_IRWI_STRING_MAP_HPP

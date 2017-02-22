@@ -1,5 +1,5 @@
-#ifndef INTERVAL_SET_HPP
-#define INTERVAL_SET_HPP
+#ifndef GEODB_INTERVAL_SET_HPP
+#define GEODB_INTERVAL_SET_HPP
 
 #include "geodb/algorithm.hpp"
 #include "geodb/common.hpp"
@@ -672,4 +672,4 @@ private:
 
 } // namespace geodb
 
-#endif // INTERVAL_SET_HPP
+#endif // GEODB_INTERVAL_SET_HPP

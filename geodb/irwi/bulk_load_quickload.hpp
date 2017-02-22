@@ -1,5 +1,5 @@
-#ifndef IRWI_BULK_LOAD_QUICKLOAD_HPP
-#define IRWI_BULK_LOAD_QUICKLOAD_HPP
+#ifndef GEODB_IRWI_BULK_LOAD_QUICKLOAD_HPP
+#define GEODB_IRWI_BULK_LOAD_QUICKLOAD_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/irwi/base.hpp"
@@ -840,4 +840,4 @@ void bulk_load_quickload(Tree& tree, tpie::file_stream<tree_entry>& input, size_
 
 } // namespace geodb
 
-#endif // IRWI_BULK_LOAD_QUICKLOAD_HPP
+#endif // GEODB_IRWI_BULK_LOAD_QUICKLOAD_HPP

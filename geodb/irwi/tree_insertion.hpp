@@ -1,5 +1,5 @@
-#ifndef IRWI_TREE_INSERTION_HPP
-#define IRWI_TREE_INSERTION_HPP
+#ifndef GEODB_IRWI_TREE_INSERTION_HPP
+#define GEODB_IRWI_TREE_INSERTION_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/bounding_box.hpp"
@@ -747,4 +747,4 @@ private:
 
 } // namespace geodb
 
-#endif // IRWI_TREE_INSERTION_HPP
+#endif // GEODB_IRWI_TREE_INSERTION_HPP

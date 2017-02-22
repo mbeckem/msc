@@ -20,7 +20,7 @@ set(FORMS
 qt5_wrap_ui(FORMS_COMPILED ${FORMS})
 
 add_executable(inspector ${SOURCES} ${HEADERS} ${FORMS_COMPILED})
-target_link_libraries(inspector PRIVATE geodb)
+target_link_libraries(inspector PRIVATE common)
 target_link_libraries(inspector PRIVATE osg)
 target_link_libraries(inspector PRIVATE Qt5::Core Qt5::Gui Qt5::Widgets Qt5::OpenGL)
 

@@ -1,5 +1,5 @@
+#include "common/common.hpp"
 #include "geodb/filesystem.hpp"
-#include "geodb/tpie_main.hpp"
 #include "geodb/trajectory.hpp"
 #include "geodb/irwi/tree.hpp"
 #include "geodb/irwi/tree_external.hpp"
@@ -26,10 +26,7 @@ static u64 limit;
 
 using namespace geodb;
 
-using tree_storage_t = tree_external<block_size>;
-using tree_t = tree<tree_storage_t, 40>;
-
-void insert_trajectories(tree_t& tree, tpie::serialization_reader& input, tpie::progress_indicator_base& progress);
+void insert_trajectories(external_tree& tree, tpie::serialization_reader& input, tpie::progress_indicator_base& progress);
 void parse_options(int argc, char** argv);
 
 int main(int argc, char** argv) {
@@ -41,7 +38,7 @@ int main(int argc, char** argv) {
             return 1;
         }
 
-        tree_t tree(tree_storage_t{tree_path}, beta);
+        external_tree tree(external_storage{tree_path}, beta);
         fmt::print(cout, "Using tree \"{}\" of size {} with beta {}\n", tree_path, tree.size(), beta);
 
         tpie::serialization_reader reader;
@@ -56,7 +53,7 @@ int main(int argc, char** argv) {
     });
 }
 
-void insert_trajectories(tree_t& tree, tpie::serialization_reader& input, tpie::progress_indicator_base& progress)
+void insert_trajectories(external_tree& tree, tpie::serialization_reader& input, tpie::progress_indicator_base& progress)
 {
     u64 count = 0;
 

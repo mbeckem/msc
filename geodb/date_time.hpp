@@ -1,5 +1,5 @@
-#ifndef DATE_TIME_HPP
-#define DATE_TIME_HPP
+#ifndef GEODB_DATE_TIME_HPP
+#define GEODB_DATE_TIME_HPP
 
 #include "geodb/common.hpp"
 
@@ -13,4 +13,4 @@ namespace gregorian = boost::gregorian;
 
 } // namespace geodb
 
-#endif // DATE_TIME_HPP
+#endif // GEODB_DATE_TIME_HPP

@@ -1,5 +1,5 @@
-#ifndef IRWI_TREE_INTERNAL_HPP
-#define IRWI_TREE_INTERNAL_HPP
+#ifndef GEODB_IRWI_TREE_INTERNAL_HPP
+#define GEODB_IRWI_TREE_INTERNAL_HPP
 
 #include "geodb/irwi/base.hpp"
 #include "geodb/irwi/inverted_index.hpp"
@@ -77,7 +77,6 @@ private:
                 auto child = dynamic_cast<Child*>(b);
                 geodb_assert(child, "invalid cast");
             }
-        }
 #endif
         return static_cast<Child*>(b);
     }
@@ -286,4 +285,4 @@ struct tree_internal {
 } // namespace geodb
 
 
-#endif // IRWI_TREE_INTERNAL_HPP
+#endif // GEODB_IRWI_TREE_INTERNAL_HPP

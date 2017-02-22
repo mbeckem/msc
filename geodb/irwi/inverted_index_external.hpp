@@ -1,5 +1,5 @@
-#ifndef IRWI_INVERTED_INDEX_EXTERNAL_HPP
-#define IRWI_INVERTED_INDEX_EXTERNAL_HPP
+#ifndef GEODB_IRWI_INVERTED_INDEX_EXTERNAL_HPP
+#define GEODB_IRWI_INVERTED_INDEX_EXTERNAL_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/irwi/inverted_index.hpp"
@@ -183,4 +183,4 @@ private:
 
 } // namespace geodb
 
-#endif // IRWI_INVERTED_INDEX_EXTERNAL_HPP
+#endif // GEODB_IRWI_INVERTED_INDEX_EXTERNAL_HPP

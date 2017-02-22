@@ -1,5 +1,5 @@
-#ifndef IRWI_BULK_LOAD_STR
-#define IRWI_BULK_LOAD_STR
+#ifndef GEODB_IRWI_BULK_LOAD_STR
+#define GEODB_IRWI_BULK_LOAD_STR
 
 #include "geodb/common.hpp"
 #include "geodb/irwi/bulk_load_common.hpp"
@@ -388,4 +388,4 @@ void bulk_load_str(Tree& tree, tpie::file_stream<tree_entry>& entries, tpie::pro
 
 } // namespace geodb
 
-#endif // IRWI_BULK_LOAD_STR
+#endif // GEODB_IRWI_BULK_LOAD_STR

@@ -1,5 +1,5 @@
-#ifndef ALGORITHM_HPP
-#define ALGORITHM_HPP
+#ifndef GEODB_ALGORITHM_HPP
+#define GEODB_ALGORITHM_HPP
 
 #include "geodb/common.hpp"
 
@@ -191,4 +191,4 @@ std::vector<typename boost::range_value<Range>::type> to_vector(const Range& r) 
 
 } // namespace geodb
 
-#endif // ALGORITHM_HPP
+#endif // GEODB_ALGORITHM_HPP

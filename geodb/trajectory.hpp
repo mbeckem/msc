@@ -1,5 +1,5 @@
-#ifndef TRAJECTORY_HPP
-#define TRAJECTORY_HPP
+#ifndef GEODB_TRAJECTORY_HPP
+#define GEODB_TRAJECTORY_HPP
 
 #include "geodb/bounding_box.hpp"
 #include "geodb/common.hpp"
@@ -112,4 +112,4 @@ private:
 
 } // namespace geodb
 
-#endif // TRAJECTORY_HPP
+#endif // GEODB_TRAJECTORY_HPP

@@ -1,5 +1,5 @@
-#ifndef COMMON_HPP
-#define COMMON_HPP
+#ifndef GEODB_COMMON_HPP
+#define GEODB_COMMON_HPP
 
 #include <climits>
 #include <cstdint>
@@ -55,4 +55,4 @@ void assertion_failed_impl(const char* file, int line,
 
 } // namespace geodb
 
-#endif // COMMON_HPP
+#endif // GEODB_COMMON_HPP

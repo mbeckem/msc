@@ -1,5 +1,5 @@
-#ifndef IRWI_TREE_PARTITION_HPP
-#define IRWI_TREE_PARTITION_HPP
+#ifndef GEODB_IRWI_TREE_PARTITION_HPP
+#define GEODB_IRWI_TREE_PARTITION_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/bounding_box.hpp"
@@ -394,4 +394,4 @@ private:
 
 } // namespace geodb
 
-#endif // IRWI_TREE_PARTITION_HPP
+#endif // GEODB_IRWI_TREE_PARTITION_HPP

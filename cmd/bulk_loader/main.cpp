@@ -1,5 +1,5 @@
+#include "common/common.hpp"
 #include "geodb/filesystem.hpp"
-#include "geodb/tpie_main.hpp"
 #include "geodb/trajectory.hpp"
 #include "geodb/irwi/bulk_load_str.hpp"
 #include "geodb/irwi/bulk_load_quickload.hpp"
@@ -22,10 +22,7 @@ using namespace std;
 using namespace geodb;
 namespace po = boost::program_options;
 
-using external = tree_external<4096>;
-using tree_type = tree<external, 40>;
-
-using algorithm_type = std::function<void(tree_type&, tpie::file_stream<tree_entry>&, tpie::progress_indicator_base&)>;
+using algorithm_type = std::function<void(external_tree&, tpie::file_stream<tree_entry>&, tpie::progress_indicator_base&)>;
 
 static string algorithm;
 static string trajectories_path;
@@ -48,7 +45,7 @@ int main(int argc, char** argv) {
 
         fmt::print(cout, "Opening tree at {} with beta {}.\n", tree_path, beta);
 
-        tree_type tree{external(tree_path), beta};
+        external_tree tree{external_storage(tree_path), beta};
 
         auto loader = get_algorithm();
 
@@ -123,14 +120,14 @@ void parse_options(int argc, char** argv) {
 algorithm_type get_algorithm() {
     if (algorithm == "str") {
         fmt::print(cout, "Using STR with memory limit {} MB.\n", memory);
-        return [&](tree_type& tree, tpie::file_stream<tree_entry>& input, tpie::progress_indicator_base& progress) {
+        return [&](external_tree& tree, tpie::file_stream<tree_entry>& input, tpie::progress_indicator_base& progress) {
             size_t limit = memory * 1024 * 1024;
             tpie::get_memory_manager().set_limit(limit);
             bulk_load_str(tree, input, progress);
         };
     } else if (algorithm == "quickload") {
         fmt::print(cout, "Using Quickload with leaf limit {}.\n", max_leaves);
-        return [&](tree_type& tree, tpie::file_stream<tree_entry>& input, tpie::progress_indicator_base& progress) {
+        return [&](external_tree& tree, tpie::file_stream<tree_entry>& input, tpie::progress_indicator_base& progress) {
             bulk_load_quickload(tree, input, max_leaves, progress);
         };
     } else {

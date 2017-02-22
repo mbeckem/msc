@@ -14,7 +14,6 @@ set(HEADERS
     point.hpp
     interval.hpp
     interval_set.hpp
-    tpie_main.hpp
     trajectory.hpp
     type_traits.hpp
 

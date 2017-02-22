@@ -1,5 +1,5 @@
-#ifndef IRWI_POSTINGS_LIST_EXTERNAL_HPP
-#define IRWI_POSTINGS_LIST_EXTERNAL_HPP
+#ifndef GEODB_IRWI_POSTINGS_LIST_EXTERNAL_HPP
+#define GEODB_IRWI_POSTINGS_LIST_EXTERNAL_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/filesystem.hpp"
@@ -94,4 +94,4 @@ private:
 
 } // namespace geodb
 
-#endif // IRWI_POSTINGS_LIST_EXTERNAL_HPP
+#endif // GEODB_IRWI_POSTINGS_LIST_EXTERNAL_HPP

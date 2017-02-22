@@ -1,5 +1,5 @@
-#ifndef IRWI_POSTING_HPP
-#define IRWI_POSTING_HPP
+#ifndef GEODB_IRWI_POSTING_HPP
+#define GEODB_IRWI_POSTING_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/interval_set.hpp"
@@ -81,4 +81,4 @@ private:
 
 } // namespace geodb
 
-#endif // IRWI_POSTING_HPP
+#endif // GEODB_IRWI_POSTING_HPP

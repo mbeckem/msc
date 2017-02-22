@@ -1,5 +1,5 @@
-#ifndef IRWI_TREE_EXTERNAL_HPP
-#define IRWI_TREE_EXTERNAL_HPP
+#ifndef GEODB_IRWI_TREE_EXTERNAL_HPP
+#define GEODB_IRWI_TREE_EXTERNAL_HPP
 
 #include "geodb/irwi/base.hpp"
 #include "geodb/irwi/inverted_index.hpp"
@@ -434,4 +434,4 @@ struct tree_external {
 
 } // namespace geodb
 
-#endif // IRWI_TREE_EXTERNAL_HPP
+#endif // GEODB_IRWI_TREE_EXTERNAL_HPP

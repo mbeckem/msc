@@ -1,5 +1,5 @@
-#ifndef IRWI_STRING_MAP_INTERNAL_HPP
-#define IRWI_STRING_MAP_INTERNAL_HPP
+#ifndef GEODB_IRWI_STRING_MAP_INTERNAL_HPP
+#define GEODB_IRWI_STRING_MAP_INTERNAL_HPP
 
 #include "geodb/irwi/string_map_bimap.hpp"
 
@@ -61,4 +61,4 @@ private:
 
 } // namespace geodb
 
-#endif // IRWI_STRING_MAP_INTERNAL_HPP
+#endif // GEODB_IRWI_STRING_MAP_INTERNAL_HPP

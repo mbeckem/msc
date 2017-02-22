@@ -1,5 +1,5 @@
-#ifndef INTERVAL_HPP
-#define INTERVAL_HPP
+#ifndef GEODB_INTERVAL_HPP
+#define GEODB_INTERVAL_HPP
 
 #include "geodb/common.hpp"
 
@@ -126,4 +126,4 @@ std::ostream& operator<<(std::ostream& o, const interval<T>& i) {
 
 } // namespace geodb
 
-#endif // INTERVAL_HPP
+#endif // GEODB_INTERVAL_HPP

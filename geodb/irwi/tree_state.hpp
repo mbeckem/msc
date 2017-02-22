@@ -1,5 +1,5 @@
-#ifndef IRWI_TREE_STATE_HPP
-#define IRWI_TREE_STATE_HPP
+#ifndef GEODB_IRWI_TREE_STATE_HPP
+#define GEODB_IRWI_TREE_STATE_HPP
 
 #include "geodb/bounding_box.hpp"
 #include "geodb/common.hpp"
@@ -297,4 +297,4 @@ public:
 
 } // namespace geodb
 
-#endif // IRWI_TREE_STATE_HPP
+#endif // GEODB_IRWI_TREE_STATE_HPP

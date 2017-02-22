@@ -1,5 +1,5 @@
-#ifndef BOUNDING_BOX_HPP
-#define BOUNDING_BOX_HPP
+#ifndef GEODB_BOUNDING_BOX_HPP
+#define GEODB_BOUNDING_BOX_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/interval.hpp"
@@ -82,4 +82,4 @@ private:
 
 } // namespace geodb
 
-#endif // BOUNDING_BOX_HPP
+#endif // GEODB_BOUNDING_BOX_HPP

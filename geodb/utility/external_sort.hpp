@@ -1,5 +1,5 @@
-#ifndef UTILITY_EXTERNAL_SORT_HPP
-#define UTILITY_EXTERNAL_SORT_HPP
+#ifndef GEODB_UTILITY_EXTERNAL_SORT_HPP
+#define GEODB_UTILITY_EXTERNAL_SORT_HPP
 
 #include "geodb/common.hpp"
 
@@ -124,4 +124,4 @@ void external_sort(Stream& instream, Compare comp, tpie::progress_indicator_base
 
 } // namespace geodb
 
-#endif // UTILITY_EXTERNAL_SORT_HPP
+#endif // GEODB_UTILITY_EXTERNAL_SORT_HPP

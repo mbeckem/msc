@@ -37,7 +37,7 @@ void MainWindow::openTree() {
 
     try {
         // TODO: Read only support ?
-        tree_type tree(tree_storage(dir.toStdString()));
+        external_tree tree(external_storage(dir.toStdString()));
 
         int index = ui->tabWidget->addTab(new TreeDisplay(dir, std::move(tree)), basename);
         ui->tabWidget->setTabToolTip(index, dir);

@@ -1,5 +1,5 @@
-#ifndef IRWI_QUERY_HPP
-#define IRWI_QUERY_HPP
+#ifndef GEODB_IRWI_QUERY_HPP
+#define GEODB_IRWI_QUERY_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/trajectory.hpp"
@@ -26,4 +26,4 @@ struct match {
 
 } // namespace geodb
 
-#endif // IRWI_QUERY_HPP
+#endif // GEODB_IRWI_QUERY_HPP

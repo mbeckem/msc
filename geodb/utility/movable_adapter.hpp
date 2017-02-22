@@ -1,5 +1,5 @@
-#ifndef UTILITY_MOVABLE_ADAPTER_HPP
-#define UTILITY_MOVABLE_ADAPTER_HPP
+#ifndef GEODB_UTILITY_MOVABLE_ADAPTER_HPP
+#define GEODB_UTILITY_MOVABLE_ADAPTER_HPP
 
 #include "geodb/common.hpp"
 
@@ -86,4 +86,4 @@ movable_adapter<T> make_movable(Args&&... args) {
 
 } // namespace geodb
 
-#endif // UTILITY_MOVABLE_ADAPTER_HPP
+#endif // GEODB_UTILITY_MOVABLE_ADAPTER_HPP

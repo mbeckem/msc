@@ -1,5 +1,5 @@
-#ifndef FILESYSTEM_HPP
-#define FILESYSTEM_HPP
+#ifndef GEODB_FILESYSTEM_HPP
+#define GEODB_FILESYSTEM_HPP
 
 #include "geodb/common.hpp"
 
@@ -19,4 +19,4 @@ inline fs::path ensure_directory(fs::path p) {
 
 } // namespace geodb
 
-#endif // FILESYSTEM_HPP
+#endif // GEODB_FILESYSTEM_HPP

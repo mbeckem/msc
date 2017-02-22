@@ -1,5 +1,5 @@
-#ifndef IRWI_STRING_MAP_EXTERNAL_HPP
-#define IRWI_STRING_MAP_EXTERNAL_HPP
+#ifndef GEODB_IRWI_STRING_MAP_EXTERNAL_HPP
+#define GEODB_IRWI_STRING_MAP_EXTERNAL_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/filesystem.hpp"
@@ -123,4 +123,4 @@ private:
 
 } // namespace geodb
 
-#endif // IRWI_STRING_MAP_EXTERNAL_HPP
+#endif // GEODB_IRWI_STRING_MAP_EXTERNAL_HPP

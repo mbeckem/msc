@@ -1,5 +1,5 @@
-#ifndef IRWI_CURSOR_HPP
-#define IRWI_CURSOR_HPP
+#ifndef GEODB_IRWI_CURSOR_HPP
+#define GEODB_IRWI_CURSOR_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/bounding_box.hpp"
@@ -222,4 +222,4 @@ private:
 
 } // namespace geodb
 
-#endif // IRWI_CURSOR_HPP
+#endif // GEODB_IRWI_CURSOR_HPP

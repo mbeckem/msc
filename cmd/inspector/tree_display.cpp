@@ -45,7 +45,7 @@ QString to_string(const T& t) {
     return QString::fromStdString(ss.str());
 }
 
-TreeDisplay::TreeDisplay(const QString& path, tree_type tree, QWidget *parent)
+TreeDisplay::TreeDisplay(const QString& path, external_tree tree, QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::TreeDisplay)
     , m_path(path)
@@ -97,7 +97,7 @@ void TreeDisplay::changeEvent(QEvent *e)
     }
 }
 
-static void visitNode(const tree_type::cursor& node, QTreeWidgetItem* parent, int depth, int maxdepth) {
+static void visitNode(const external_tree::cursor& node, QTreeWidgetItem* parent, int depth, int maxdepth) {
     if (node.is_internal()) {
         for (size_t i = 0; i < node.size(); ++i) {
             QString label = QString::number(i) + " (id: " + QString::number(node.child_id(i)) + ")";
@@ -108,7 +108,7 @@ static void visitNode(const tree_type::cursor& node, QTreeWidgetItem* parent, in
         }
     } else {
         for (size_t i = 0; i < node.size(); ++i) {
-            tree_type::value_type value = node.value(i);
+            external_tree::value_type value = node.value(i);
             QString label = QString("%1 (trajectory: %2, unit: %3)")
                     .arg(i)
                     .arg(value.trajectory_id)
@@ -186,7 +186,7 @@ void TreeDisplay::refreshIndex() {
 
         auto items = list->all();
         std::sort(items.begin(), items.end(), [&](auto&& a, auto&& b) { return a.node() < b.node(); });
-        for (const tree_type::posting_type&  p : items) {
+        for (const external_tree::posting_type&  p : items) {
             QString index = QString::number(p.node());
             QString count = QString::number(p.count());
             QString trajectories = to_string(p.id_set());
@@ -289,7 +289,7 @@ static osg::Matrix global_transform(const geodb::bounding_box& root) {
                               1000.0 / double(width.t()));
 }
 
-osg::Node* TreeDisplay::createScene(const tree_type::cursor& node) {
+osg::Node* TreeDisplay::createScene(const external_tree::cursor& node) {
     osg::ref_ptr<osg::Group> group = new osg::Group;
     std::vector<QColor> colors = get_colors(node.id(), node.size());
 
@@ -300,7 +300,7 @@ osg::Node* TreeDisplay::createScene(const tree_type::cursor& node) {
     return group.release();
 }
 
-static void count_nodes(tree_type::cursor& node, size_t& count) {
+static void count_nodes(external_tree::cursor& node, size_t& count) {
     count += 1;
     if (node.is_internal()) {
         for (size_t i = 0; i < node.size(); ++i) {
@@ -311,14 +311,14 @@ static void count_nodes(tree_type::cursor& node, size_t& count) {
     }
 }
 
-static size_t count_nodes(const tree_cursor& node) {
+static size_t count_nodes(const external_tree::cursor& node) {
     size_t count = 0;
-    tree_cursor copy = node;
+    external_tree::cursor copy = node;
     count_nodes(copy, count);
     return count;
 }
 
-static osg::Node* make_tree(tree_cursor& node, const osg::Matrix& global, const std::vector<QColor> colors, size_t& index) {
+static osg::Node* make_tree(external_tree::cursor& node, const osg::Matrix& global, const std::vector<QColor> colors, size_t& index) {
     QColor color = colors[index++];
     osg::ref_ptr<osg::Group> group = new osg::Group;
 
@@ -338,9 +338,9 @@ static osg::Node* make_tree(tree_cursor& node, const osg::Matrix& global, const 
     return group.release();
 }
 
-osg::Node* TreeDisplay::createRecursiveScene(const tree_cursor& node) {
+osg::Node* TreeDisplay::createRecursiveScene(const external_tree::cursor& node) {
     std::vector<QColor> colors = get_colors(node.id(), count_nodes(node));
-    tree_cursor copy = node;
+    external_tree::cursor copy = node;
     size_t index = 0;
     return make_tree(copy, global_transform(node.mbb()), colors, index);
 }

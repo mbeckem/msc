@@ -1,5 +1,5 @@
-#ifndef UTILITY_SHARED_VALUES_HPP
-#define UTILITY_SHARED_VALUES_HPP
+#ifndef GEODB_UTILITY_SHARED_VALUES_HPP
+#define GEODB_UTILITY_SHARED_VALUES_HPP
 
 #include "geodb/common.hpp"
 
@@ -276,4 +276,4 @@ private:
 
 } // namespace geodb
 
-#endif // UTILITY_SHARED_VALUES_HPP
+#endif // GEODB_UTILITY_SHARED_VALUES_HPP

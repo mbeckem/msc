@@ -1,5 +1,5 @@
-#ifndef IRWI_BASE_HPP
-#define IRWI_BASE_HPP
+#ifndef GEODB_IRWI_BASE_HPP
+#define GEODB_IRWI_BASE_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/point.hpp"
@@ -78,4 +78,4 @@ struct tree_entry_accessor {
 
 } // namespace geodb
 
-#endif // IRWI_BASE_HPP
+#endif // GEODB_IRWI_BASE_HPP

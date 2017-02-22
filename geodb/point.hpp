@@ -1,5 +1,5 @@
-#ifndef POINT_HPP
-#define POINT_HPP
+#ifndef GEODB_POINT_HPP
+#define GEODB_POINT_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/type_traits.hpp"
@@ -212,4 +212,4 @@ private:
 
 } // namespace geodb
 
-#endif // POINT_HPP
+#endif // GEODB_POINT_HPP

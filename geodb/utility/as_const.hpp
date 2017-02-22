@@ -1,5 +1,5 @@
-#ifndef UTILITY_AS_CONST_HPP
-#define UTILITY_AS_CONST_HPP
+#ifndef GEODB_UTILITY_AS_CONST_HPP
+#define GEODB_UTILITY_AS_CONST_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/type_traits.hpp"
@@ -18,4 +18,4 @@ const T& as_const(const T& ref) {
 
 } // namespace geodb
 
-#endif // UTILITY_AS_CONST_HPP
+#endif // GEODB_UTILITY_AS_CONST_HPP

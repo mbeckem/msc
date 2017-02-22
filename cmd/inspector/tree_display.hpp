@@ -5,6 +5,7 @@
 
 #include <boost/optional.hpp>
 
+#include "common/common.hpp"
 #include "geodb/irwi/tree.hpp"
 #include "geodb/irwi/tree_external.hpp"
 
@@ -17,16 +18,12 @@ namespace Ui {
 class TreeDisplay;
 }
 
-using tree_storage = geodb::tree_external<4096>;
-using tree_type = geodb::tree<tree_storage, 40>;
-using tree_cursor = typename tree_type::cursor;
-
 class TreeDisplay : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit TreeDisplay(const QString& path, tree_type tree, QWidget *parent = 0);
+    explicit TreeDisplay(const QString& path, external_tree tree, QWidget *parent = 0);
     ~TreeDisplay();
 
 protected:
@@ -45,15 +42,15 @@ private:
     void parentActivated();
     void recurseClicked(bool checked);
 
-    osg::Node* createScene(const tree_cursor& node);
-    osg::Node* createRecursiveScene(const tree_cursor& node);
+    osg::Node* createScene(const external_tree::cursor& node);
+    osg::Node* createRecursiveScene(const external_tree::cursor& node);
 
 private:
     Ui::TreeDisplay *ui;
     bool m_recurse = false;
     QString m_path;
-    tree_type m_tree;
-    boost::optional<tree_cursor> m_current;
+    external_tree m_tree;
+    boost::optional<external_tree::cursor> m_current;
 };
 
 #endif // TREE_DISPLAY_HPP

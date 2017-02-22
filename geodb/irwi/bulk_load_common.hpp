@@ -1,5 +1,5 @@
-#ifndef IRWI_BULK_LOAD_COMMON_HPP
-#define IRWI_BULK_LOAD_COMMON_HPP
+#ifndef GEODB_IRWI_BULK_LOAD_COMMON_HPP
+#define GEODB_IRWI_BULK_LOAD_COMMON_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/bounding_box.hpp"
@@ -67,4 +67,4 @@ protected:
 
 } // namespace geodb
 
-#endif // IRWI_BULK_LOAD_COMMON_HPP
+#endif // GEODB_IRWI_BULK_LOAD_COMMON_HPP

@@ -1,5 +1,5 @@
-#ifndef PARSER_HPP
-#define PARSER_HPP
+#ifndef GEODB_PARSER_HPP
+#define GEODB_PARSER_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/date_time.hpp"
@@ -48,4 +48,4 @@ void parse_geolife_labels(std::istream& in, std::vector<geolife_activity>& out);
 
 } // namespace geodb
 
-#endif // PARSER_HPP
+#endif // GEODB_PARSER_HPP
