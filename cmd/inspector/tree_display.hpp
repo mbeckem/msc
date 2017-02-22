@@ -39,7 +39,11 @@ private:
     void refreshUp();
 
     void internalChildActivated(const QTreeWidgetItem* item, int column);
+
+    void rootActivated();
     void parentActivated();
+    void gotoActivated();
+
     void recurseClicked(bool checked);
 
     osg::Node* createScene(const external_tree::cursor& node);

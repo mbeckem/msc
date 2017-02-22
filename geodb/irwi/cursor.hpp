@@ -6,6 +6,8 @@
 #include "geodb/type_traits.hpp"
 #include "geodb/irwi/base.hpp"
 
+#include <boost/range/iterator_range.hpp>
+
 #include <vector>
 
 namespace geodb {
@@ -58,6 +60,11 @@ public:
     /// True if the current node has a parent.
     bool has_parent() const {
         return level() > 1;
+    }
+
+    /// True if the current node is the root.
+    bool is_root() const {
+        return !has_parent();
     }
 
     /// Returns the index of the this node within its parent.

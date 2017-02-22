@@ -12,6 +12,9 @@
 #include <osg/ShapeDrawable>
 #include <osg/io_utils>
 
+#include <QtWidgets/QInputDialog>
+#include <QtWidgets/QMessageBox>
+
 #include <sstream>
 
 static osg::Geode* make_box(const QColor& c) {
@@ -62,8 +65,14 @@ TreeDisplay::TreeDisplay(const QString& path, external_tree tree, QWidget *paren
     ui->fanoutText->setText(QString("%1 / %2")
                             .arg(m_tree.max_internal_entries())
                             .arg(m_tree.max_leaf_entries()));
+    ui->nodesText->setText(QString("%1 / %2")
+                            .arg(m_tree.internal_node_count())
+                            .arg(m_tree.leaf_node_count()));
+
     connect(ui->internalChildrenTree, &QTreeWidget::itemActivated, this, &TreeDisplay::internalChildActivated);
+    connect(ui->rootButton, &QPushButton::clicked, this, &TreeDisplay::rootActivated);
     connect(ui->parentButton, &QPushButton::clicked, this, &TreeDisplay::parentActivated);
+    connect(ui->gotoButton, &QPushButton::clicked, this, &TreeDisplay::gotoActivated);
 
     connect(ui->sceneRenderer, &SceneRenderer::eyeChanged, this, &TreeDisplay::refreshDirection);
     connect(ui->sceneRenderer, &SceneRenderer::centerChanged, this, &TreeDisplay::refreshDirection);
@@ -118,18 +127,49 @@ static void visitNode(const external_tree::cursor& node, QTreeWidgetItem* parent
     }
 }
 
+static QString get_path(external_tree::cursor node) {
+    QString path;
+    while (1) {
+        QString id = QString::number(node.id());
+        if (!path.isEmpty())
+            id += "/";
+        path = id + path;
+
+        if (!node.has_parent())
+            break;
+
+        node.move_parent();
+    }
+    return path;
+}
+
+static QString get_type(const external_tree::cursor& node) {
+    if (node.is_leaf()) {
+        return "Leaf";
+    }
+    if (node.is_root()) {
+        return "Internal (root)";
+    }
+    return "Internal";
+}
+
 void TreeDisplay::refreshNode() {
     if (m_current) {
-        QString type = m_current->is_internal() ? "internal" : "leaf";
-        QString label = QString("id: %1, type: %2").arg(m_current->id()).arg(type);
-        if (!m_current->has_parent()) {
-            label += " (root)";
-        }
-        ui->nodeText->setText(label);
+        ui->nodeIdText->setText(QString::number(m_current->id()));
+        ui->nodeTypeText->setText(get_type(*m_current));
+        ui->nodePathText->setText(get_path(*m_current));
+
         ui->parentButton->setEnabled(m_current->has_parent());
+        ui->rootButton->setEnabled(!m_current->is_root());
+        ui->gotoButton->setEnabled(true);
     } else {
-        ui->nodeText->setText("None");
+        ui->nodeIdText->setText("N/A");
+        ui->nodeTypeText->setText("N/A");
+        ui->nodePathText->setText("N/A");
+
         ui->parentButton->setEnabled(false);
+        ui->rootButton->setEnabled(false);
+        ui->gotoButton->setEnabled(false);
     }
 
     refreshChildren();
@@ -244,12 +284,86 @@ void TreeDisplay::internalChildActivated(const QTreeWidgetItem* item, int column
     refreshNode();
 }
 
+void TreeDisplay::rootActivated() {
+    if (!m_current) {
+        return;
+    }
+    m_current->move_root();
+    refreshNode();
+}
+
 void TreeDisplay::parentActivated() {
     if (!m_current || !m_current->has_parent()) {
         return;
     }
     m_current->move_parent();
     refreshNode();
+}
+
+void TreeDisplay::gotoActivated() {
+    if (!m_current) {
+        return;
+    }
+
+    QString pathText = QInputDialog::getText(this, "Go to node",
+                                             "Enter the node path (node IDs separated by \"/\"):");
+    if (pathText.isNull()) {
+        return;
+    }
+
+    QStringList path = pathText.split("/", QString::SkipEmptyParts);
+    if (path.empty()) {
+        m_current->move_root();
+        refreshNode();
+        return;
+    }
+
+    using node_id = external_tree::cursor::node_id;
+
+    try {
+        // Parses the node id from the text or throws QString.
+        auto get_id = [](const QString& idText) {
+            bool ok = false;
+            node_id result = idText.toULongLong(&ok);
+            if (!ok) {
+                throw QString("Invalid node id: %1.").arg(idText);
+            }
+            return result;
+        };
+
+        // Returns the index of `child` in `c` or throws a QString.
+        auto index_of = [](const external_tree::cursor& c, node_id child) {
+            geodb_assert(c.is_internal(), "Must be an internal node");
+            const size_t size = c.size();
+            for (size_t i = 0; i < size; ++i) {
+                if (c.child_id(i) == child)
+                    return i;
+            }
+            throw QString("%1 is not a child of %2.").arg(child).arg(c.id());
+        };
+
+        external_tree::cursor c = m_current->root();
+        if (get_id(path.front()) != c.id()) {
+            throw QString("First node id must point to the root.");
+        }
+        path.pop_front();
+
+        for (const QString& idText : path) {
+            node_id childId = get_id(idText);
+            if (!c.is_internal()) {
+                throw QString("Cannot navigate to %1 because %2 is already a leaf.")
+                        .arg(childId)
+                        .arg(c.id());
+            }
+            size_t index = index_of(c, childId);
+            c.move_child(index);
+        }
+
+        m_current = c;
+        refreshNode();
+    } catch (QString error) {
+        QMessageBox::critical(this, "Error", error);
+    }
 }
 
 void TreeDisplay::recurseClicked(bool checked) {
