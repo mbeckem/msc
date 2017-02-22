@@ -118,7 +118,6 @@ struct geolife_parser {
         );
         int current = 0;
 
-        std::string prefix = fs::basename(path);
         progress.init(files);
         for (const fs::directory_entry& e : fs::directory_iterator(path)) {
             if (!fs::is_regular_file(e.status())) {
@@ -129,7 +128,7 @@ struct geolife_parser {
             progress.push_breadcrumb(title.c_str(), tpie::IMPORTANCE_MINOR);
             progress.refresh();
 
-            parse_subtrajectories(prefix, e.path(), activities);
+            parse_subtrajectories(e.path(), activities);
 
             progress.pop_breadcrumb();
             progress.step(1);
@@ -138,7 +137,7 @@ struct geolife_parser {
     }
 
     // FIXME: 1 trajectory per file
-    void parse_subtrajectories(const std::string& prefix, const fs::path& path, const std::vector<activity>& activities) {
+    void parse_subtrajectories(const fs::path& path, const std::vector<activity>& activities) {
         std::vector<geolife_point> list;
         try {
             fs::ifstream in(path);
@@ -161,6 +160,11 @@ struct geolife_parser {
             });
 
             for (; l_pos != l_end; ++l_pos) {
+                auto l_next = l_pos + 1;
+                if (l_next != l_end && l_pos->time == l_next->time) {
+                    continue; // Skip entries within the same moment, prefer the last one.
+                }
+
                 while (l_pos->time > a_pos->end && a_pos != a_end) {
                     ++a_pos;
                 }
@@ -177,7 +181,7 @@ struct geolife_parser {
 
             if (elems.size() >= 2) {
                 ++count;
-                point_trajectory result(next_id++, prefix + "/" + fs::basename(path), std::move(elems));
+                point_trajectory result(next_id++, path.string(), std::move(elems));
                 out.serialize(result);
             }
         }

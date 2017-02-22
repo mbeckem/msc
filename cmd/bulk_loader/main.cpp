@@ -160,7 +160,11 @@ void create_entries(const string& path,
             if (pos != end) {
                 auto last = pos++;
                 for (; pos != end; ++pos) {
-                    tree_entry e{trajectory.id, index++, trajectory_unit{last->spatial, pos->spatial, last->textual}};
+                    tree_entry e;
+                    e.trajectory_id = trajectory.id;
+                    e.unit_index = index++;
+                    e.unit = trajectory_unit{last->spatial, pos->spatial, last->textual};
+
                     entries.write(e);
                     last = pos;
                 }
