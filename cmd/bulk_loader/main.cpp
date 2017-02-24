@@ -69,14 +69,18 @@ int main(int argc, char** argv) {
 
         tpie::progress_indicator_subindicator load_progress(&arrow, 90, "Create tree");
 
-        const tpie::stream_size_type bytes_before = tpie::get_bytes_read() + tpie::get_bytes_written();
+        const tpie::stream_size_type read_before = tpie::get_bytes_read();
+        const tpie::stream_size_type written_before = tpie::get_bytes_written();
         loader(tree, entries, load_progress);
-        const tpie::stream_size_type bytes_after = tpie::get_bytes_read() + tpie::get_bytes_written();
 
-        const tpie::stream_size_type io_count = (bytes_after - bytes_before) / block_size;
-        fmt::print(cout, "Block read/writes: {}\n", io_count);
+        const tpie::stream_size_type read_io = (tpie::get_bytes_read() - read_before) / block_size;
+        const tpie::stream_size_type written_io = (tpie::get_bytes_written() - written_before) / block_size;
 
         arrow.done();
+
+        fmt::print("\n"
+                   "Read blocks: {}\n"
+                   "Written blocks: {}\n", read_io, written_io);
 
         return 0;
     });
