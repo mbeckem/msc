@@ -4,34 +4,49 @@
 #include "geodb/common.hpp"
 #include "geodb/filesystem.hpp"
 
-#include <boost/noncopyable.hpp>
 #include <tpie/tempname.h>
+
+#include <memory>
 
 namespace geodb {
 
-/// A temporary directory on disk. The directory will be deleted when
-/// this object goes out of scope.
-class temp_dir : boost::noncopyable {
+/// A temporary directory on disk.
+///
+/// Copying a temp_dir will increase the reference count of the directory on disk.///
+/// The directory will be deleted when the last reference goes out of scope.
+class temp_dir {
+private:
+    // No attempt is made to count the size of the directory,
+    // in constrast to tpie::tmpfile;
+    struct inner {
+        fs::path path;
+
+        inner(fs::path path)
+            : path(std::move(path))
+        {
+            fs::create_directories(path);
+        }
+
+        ~inner() {
+            if (fs::exists(path)) {
+                fs::remove_all(path);
+            }
+        }
+    };
+
 public:
     /// Create a new temporary directory with a unique name.
     /// \param id
     ///     This string will become part of the directory name.
-    temp_dir(const std::string& id = ""): m_path(tpie::tempname::tpie_dir_name(id)) {
-        fs::create_directories(m_path);
-    }
-
-    /// The destructors recursively removes the entire directory.
-    ~temp_dir() {
-        if (fs::exists(m_path)) {
-            fs::remove_all(m_path);
-        }
-    }
+    temp_dir(const std::string& id = "")
+        : m_inner(std::make_shared<inner>(tpie::tempname::tpie_dir_name(id)))
+    {}
 
     /// Returns the filesystem path of this directory.
-    const fs::path& path() const { return m_path; }
+    const fs::path& path() const { return m_inner->path; }
 
 private:
-    fs::path m_path;
+    std::shared_ptr<inner> m_inner;
 };
 
 } // namespace geodb
