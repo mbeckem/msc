@@ -1,8 +1,8 @@
 # Build type: Profile
-set(CMAKE_CXX_FLAGS_PROFILE "-O3 -DNDEBUG -g" CACHE STRING
+set(CMAKE_CXX_FLAGS_PROFILE "-O3 -DNDEBUG -g -fno-omit-frame-pointer" CACHE STRING
     "Flags used by the C++ compiler during profile builds."
     FORCE)
-set(CMAKE_C_FLAGS_PROFILE "-O3 -DNDEBUG -g" CACHE STRING
+set(CMAKE_C_FLAGS_PROFILE "-O3 -DNDEBUG -g -fno-omit-frame-pointer" CACHE STRING
     "Flags used by the C compiler during profile builds."
     FORCE)
 set(CMAKE_EXE_LINKER_FLAGS_PROFILE
