@@ -13,7 +13,10 @@ namespace geodb {
 /// this object goes out of scope.
 class temp_dir : boost::noncopyable {
 public:
-    temp_dir(): m_path(tpie::tempname::tpie_dir_name()) {
+    /// Create a new temporary directory with a unique name.
+    /// \param id
+    ///     This string will become part of the directory name.
+    temp_dir(const std::string& id = ""): m_path(tpie::tempname::tpie_dir_name(id)) {
         fs::create_directories(m_path);
     }
 
