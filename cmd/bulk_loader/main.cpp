@@ -12,6 +12,7 @@
 #include <tpie/fractional_progress.h>
 #include <tpie/progress_indicator_arrow.h>
 #include <tpie/serialization_stream.h>
+#include <tpie/stats.h>
 
 #include <functional>
 #include <iostream>
@@ -67,7 +68,13 @@ int main(int argc, char** argv) {
         create_entries(trajectories_path, entries, create_progress);
 
         tpie::progress_indicator_subindicator load_progress(&arrow, 90, "Create tree");
+
+        const tpie::stream_size_type bytes_before = tpie::get_bytes_read() + tpie::get_bytes_written();
         loader(tree, entries, load_progress);
+        const tpie::stream_size_type bytes_after = tpie::get_bytes_read() + tpie::get_bytes_written();
+
+        const tpie::stream_size_type io_count = (bytes_after - bytes_before) / block_size;
+        fmt::print(cout, "Block read/writes: {}\n", io_count);
 
         arrow.done();
 
