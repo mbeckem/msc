@@ -7,6 +7,7 @@
 #include "geodb/irwi/inverted_index_external.hpp"
 #include "geodb/utility/as_const.hpp"
 #include "geodb/utility/file_allocator.hpp"
+#include "geodb/utility/raw_stream.hpp"
 #include "geodb/utility/shared_values.hpp"
 
 #include <boost/noncopyable.hpp>
@@ -283,17 +284,17 @@ public:
         , m_index_alloc(ensure_directory(m_directory / "inverted_index"))
         , m_blocks((m_directory / "tree.blocks").string(), block_size, 32, true)
     {
-        tpie::default_raw_file_accessor rf;
-        if (rf.try_open_rw(state_path().string())) {
+        raw_stream rf;
+        if (rf.try_open(state_path())) {
             int file_version;
-            read(rf, file_version);
+            rf.read(file_version);
             if (file_version != version()) {
                 throw std::invalid_argument(fmt::format("Invalid file format version. Expected {} but got {}.",
                                                         version(), file_version));
             }
 
             size_t file_block_size;
-            read(rf, file_block_size);
+            rf.read(file_block_size);
             if (file_block_size != block_size) {
                 throw std::invalid_argument(fmt::format("Invalid block size. Expected {} but got {}.",
                                                         block_size, file_block_size));
@@ -301,52 +302,40 @@ public:
 
 
             size_t file_lambda;
-            read(rf, file_lambda);
+            rf.read(file_lambda);
             if (file_lambda != Lambda) {
                 throw std::invalid_argument(fmt::format("Invalid lambda value. Expected {} but got {}.",
                                                         Lambda, file_lambda));
             }
 
-            read(rf, m_size);
-            read(rf, m_height);
-            read(rf, m_leaf_count);
-            read(rf, m_internal_count);
-            read(rf, m_root);
+            rf.read(m_size);
+            rf.read(m_height);
+            rf.read(m_leaf_count);
+            rf.read(m_internal_count);
+            rf.read(m_root);
         }
     }
 
     ~tree_external_impl() {
-        tpie::default_raw_file_accessor rf;
-        rf.open_rw_new(state_path().string());
+        raw_stream rf;
+        rf.open_new(state_path());
 
         int file_version = version();
-        write(rf, file_version);
+        rf.write(file_version);
 
         size_t file_block_size = block_size;
         size_t file_lambda = Lambda;
-        write(rf, file_block_size);
-        write(rf, file_lambda);
+        rf.write(file_block_size);
+        rf.write(file_lambda);
 
-        write(rf, m_size);
-        write(rf, m_height);
-        write(rf, m_leaf_count);
-        write(rf, m_internal_count);
-        write(rf, m_root);
+        rf.write(m_size);
+        rf.write(m_height);
+        rf.write(m_leaf_count);
+        rf.write(m_internal_count);
+        rf.write(m_root);
     }
 
 private:
-    template<typename T>
-    void write(tpie::default_raw_file_accessor& rf, const T& t) {
-        static_assert(std::is_trivially_copyable<T>::value, "");
-        rf.write_i(std::addressof(t), sizeof(T));
-    }
-
-    template<typename T>
-    void read(tpie::default_raw_file_accessor& rf, T& t) {
-        static_assert(std::is_trivially_copyable<T>::value, "");
-        rf.read_i(std::addressof(t), sizeof(T));
-    }
-
     fs::path state_path() const {
         return m_directory / "tree.state";
     }

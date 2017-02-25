@@ -23,6 +23,7 @@ set(HEADERS
     utility/file_allocator.hpp
     utility/movable_adapter.hpp
     utility/range_utils.hpp
+    utility/raw_stream.hpp
     utility/shared_values.hpp
     utility/temp_dir.hpp
     utility/tuple_utils.hpp

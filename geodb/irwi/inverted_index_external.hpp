@@ -6,6 +6,7 @@
 #include "geodb/irwi/postings_list.hpp"
 #include "geodb/irwi/postings_list_external.hpp"
 #include "geodb/utility/as_const.hpp"
+#include "geodb/utility/raw_stream.hpp"
 #include "geodb/utility/shared_values.hpp"
 
 #include <tpie/btree.h>
@@ -130,21 +131,20 @@ public:
         , m_btree((m_directory / "index.btree").string())
         , m_alloc(ensure_directory(m_directory / "postings_lists"))
     {
-        tpie::default_raw_file_accessor rf;
-
         // Restore the pointer to the `total` postings list or
         // create it if it didn't exist.
-        if (rf.try_open_rw(state_path().string())) {
-            rf.read_i(&m_total, sizeof(m_total));
+        raw_stream rf;
+        if (rf.try_open(state_path())) {
+            rf.read(m_total);
         } else {
             m_total = m_alloc.alloc();
         }
     }
 
     ~inverted_index_external_impl() {
-        tpie::default_raw_file_accessor rf;
-        rf.open_rw_new(state_path().string());
-        rf.write_i(&m_total, sizeof(m_total));
+        raw_stream rf;
+        rf.open_new(state_path());
+        rf.write(m_total);
     }
 
 private:

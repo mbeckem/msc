@@ -24,7 +24,7 @@ private:
         inner(fs::path path)
             : path(std::move(path))
         {
-            fs::create_directories(path);
+            fs::create_directories(this->path);
         }
 
         ~inner() {

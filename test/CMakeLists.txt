@@ -13,6 +13,7 @@ set(SOURCES
     point.cpp
     postings_list.cpp
     range_utils.cpp
+    raw_stream.cpp
     shared_values.cpp
     string_map.cpp
     trajectory.cpp
