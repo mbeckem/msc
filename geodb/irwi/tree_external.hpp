@@ -2,6 +2,7 @@
 #define GEODB_IRWI_TREE_EXTERNAL_HPP
 
 #include "geodb/irwi/base.hpp"
+#include "geodb/irwi/block_handle.hpp"
 #include "geodb/irwi/inverted_index.hpp"
 #include "geodb/irwi/inverted_index_external.hpp"
 #include "geodb/utility/as_const.hpp"
@@ -39,6 +40,8 @@ private:
 
     using block_type = tpie::blocks::block;
 
+    using block_handle_type = block_handle<block_size>;
+
 public:
     static constexpr size_t max_internal_entries() {
         size_t header = sizeof(index_id_type) + 4;  // Inverted index + child count.
@@ -52,39 +55,11 @@ public:
 
 private:
 
-    // block sizes are always the same.
-    // the IRWI block_handle class wastes space by
-    // additionaly storing the block size.
-    struct block_handle {
-        // for serialization support.
-        static const bool is_trivially_serializable = true;
-
-        u64 index = 0;
-
-        block_handle() {}
-
-        block_handle(tpie::blocks::block_handle h)
-            : index(h.position / block_size)
-        {
-            geodb_assert(h.position % block_size == 0,
-                         "position must be a multiple of block_size");
-            geodb_assert(h.size == block_size, "block must have the correct size");
-        }
-
-        bool operator==(const block_handle& other) const {
-            return index == other.index;
-        }
-
-        operator tpie::blocks::block_handle() const {
-            return { index * block_size, block_size };
-        }
-    };
-
 #pragma pack(push, 1)
     /// An entry of an internal node.
     struct internal_entry {
         bounding_box mbb;           ///< Minimum bounding box for the subtree of that child.
-        block_handle ptr;      ///< Pointer to the child.
+        block_handle_type ptr;      ///< Pointer to the child.
     };
 
     /// Represents an internal node in main memory and on disk.
@@ -146,9 +121,9 @@ public:
     /// Points to the location of a node of unknown type.
     struct node_ptr {
         node_ptr() {}
-        node_ptr(block_handle handle): handle(handle) {}
+        node_ptr(block_handle_type handle): handle(handle) {}
 
-        block_handle handle;
+        block_handle_type handle;
 
         bool operator==(const node_ptr& other) const {
             return handle == other.handle;
@@ -173,7 +148,7 @@ public:
         return leaf_ptr(n.handle);
     }
 
-    node_id get_id(const node_ptr& n) const { return n.handle.index; }
+    node_id get_id(const node_ptr& n) const { return n.handle.index(); }
 
     size_t get_height() const { return m_height; }
 
@@ -404,7 +379,7 @@ private:
     size_t m_internal_count = 0;
 
     /// Always points to either a leaf (height: 1) or an internal node (anything else).
-    block_handle m_root;
+    block_handle_type m_root;
 
     /// Allocator for inverted-index directories.
     mutable directory_allocator_type m_index_alloc;
