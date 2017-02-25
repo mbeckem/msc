@@ -21,10 +21,10 @@ private:
     struct inner {
         fs::path path;
 
-        inner(fs::path path)
-            : path(std::move(path))
+        inner(fs::path p)
+            : path(std::move(p))
         {
-            fs::create_directories(this->path);
+            fs::create_directories(path);
         }
 
         ~inner() {

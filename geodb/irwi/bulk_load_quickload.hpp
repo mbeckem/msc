@@ -2,6 +2,7 @@
 #define GEODB_IRWI_BULK_LOAD_QUICKLOAD_HPP
 
 #include "geodb/common.hpp"
+#include "geodb/external_list.hpp"
 #include "geodb/irwi/base.hpp"
 #include "geodb/irwi/bulk_load_common.hpp"
 #include "geodb/irwi/tree_state.hpp"
@@ -11,6 +12,10 @@
 #include "geodb/utility/temp_dir.hpp"
 #include "geodb/utility/range_utils.hpp"
 
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/member.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/sequenced_index.hpp>
 #include <gsl/span>
 #include <tpie/file_stream.h>
 #include <tpie/progress_indicator_base.h>
@@ -160,6 +165,30 @@ private:
     }
 };
 
+namespace quick_load_pass_detail {
+
+using namespace boost::multi_index;
+
+struct id_tag {};
+struct order_tag {};
+
+// Node states are indexed by their node id (for fast lookup)
+// and can be traversed in insertion order (for deterministic order).
+// Otherwise, the order would be unspecified because the node ids are based
+// on heap pointers.
+template<typename NodeState, typename NodeId>
+using node_map_t = multi_index_container<
+    NodeState,
+    indexed_by<
+        ordered_unique<tag<id_tag>, member<
+            NodeState, NodeId, &NodeState::id
+        >>,
+        sequenced<tag<order_tag>>
+    >
+>;
+
+} // namespace quick_load_pass_detail
+
 /// A quick load pass reads node entries from a lower level and combines them
 /// into nodes for the current level.
 /// This process is repeated until only one node remains.
@@ -170,17 +199,17 @@ class quick_load_pass {
 
     using node_id = typename tree_type::node_id;
 
+    using bucket_allocator = file_allocator<u64>;
+
 public:
     using file_stream = tpie::file_stream<Value>;
 
-    using bucket_allocator = file_allocator<u64>;
-
 private:
-    struct node_state {
+    struct node_state : boost::noncopyable {
         /// The leaf that this bucket belongs to.
         /// The content of the leaf is stored in a contiguous
         /// subrange of m_leaf_buffer.
-        node_id leaf = 0;
+        node_id id = 0;
 
         /// Offset of the first entry of the original leaf.
         tpie::stream_size_type value_offset = 0;
@@ -189,16 +218,29 @@ private:
         tpie::stream_size_type value_count = 0;
 
         /// True if the bucket has been initialized.
-        bool has_bucket = false;
+        mutable bool has_bucket = false;
 
         /// The id of the bucket (if any), allocated using m_bucket_alloc.
-        u64 bucket_id = 0;
+        mutable u64 bucket_id = 0;
 
         /// Handle to the bucket (if any).
-        file_stream bucket;
+        mutable file_stream bucket;
+
+        node_state(node_id id,
+                   tpie::stream_size_type value_offset,
+                   tpie::stream_size_type value_count)
+            : id(id)
+            , value_offset(value_offset)
+            , value_count(value_count)
+        {}
     };
 
-    using node_map = std::unordered_map<node_id, node_state>;
+    using id_tag = quick_load_pass_detail::id_tag;
+    using order_tag = quick_load_pass_detail::order_tag;
+    using node_map = quick_load_pass_detail::node_map_t<node_state, node_id>;
+
+    using id_iterator = typename node_map::template index_iterator<id_tag>::type;
+    using order_iterator = typename node_map::template index_iterator<order_tag>::type;
 
 private:
     /// Contains the temporary bucket files.
@@ -228,7 +270,7 @@ private:
 
 public:
     quick_load_pass(size_t max_leaves, Accessor accessor, float weight)
-        : m_bucket_dir()
+        : m_bucket_dir("buckets")
         , m_bucket_alloc(m_bucket_dir.path(), ".bucket")
         , m_max_leaves(max_leaves)
         , m_accessor(std::move(accessor))
@@ -307,8 +349,8 @@ private:
 
         // A leaf with an empty bucket will be forwarded to the next level,
         // the others are placed into the todo list.
-        for (auto& p : m_nodes) {
-            node_state& n = p.second;
+        // Iterate in insertion order for deterministic processing.
+        for (const node_state& n : m_nodes.template get<order_tag>()) {
             if (!n.has_bucket) {
                 forward_leaf(n, target);
             } else {
@@ -345,17 +387,11 @@ private:
         geodb_assert(m_leaf_buffer.offset() == m_leaf_buffer.size(),
                      "buffer must be at end");
 
-        typename node_map::iterator pos;
+        auto& index = m_nodes.template get<id_tag>();
+        id_iterator pos;
         bool inserted;
-        std::tie(pos, inserted) = m_nodes.emplace(std::piecewise_construct,
-                                                    std::make_tuple(leaf),
-                                                    std::make_tuple());
+        std::tie(pos, inserted) = index.emplace(leaf, m_leaf_buffer.offset(), data.size());
         geodb_assert(inserted, "A bucket for the given leaf already exists.");
-
-        node_state& n = pos->second;
-        n.leaf = leaf;
-        n.value_offset = m_leaf_buffer.offset();
-        n.value_count = data.size();
 
         for (const Value& v : data) {
             m_leaf_buffer.write(v);
@@ -365,7 +401,7 @@ private:
     /// Inserts `v` into the bucket associated with `leaf`.
     /// Lazily creates the bucket on first use.
     void insert_into_bucket(node_id leaf, const Value& v) {
-        node_state& n = find_state(leaf);
+        const node_state& n = find_state(leaf);
 
         // Allocate and initialize a new bucket if none exists yet.
         if (!n.has_bucket) {
@@ -384,10 +420,11 @@ private:
     }
 
     /// Finds the bucket associated with the given leaf.
-    node_state& find_state(node_id leaf) {
-        auto pos = m_nodes.find(leaf);
-        geodb_assert(pos != m_nodes.end(), "There is no bucket for the given leaf.");
-        return pos->second;
+    const node_state& find_state(node_id leaf) {
+        auto& index = m_nodes.template get<id_tag>();
+        id_iterator pos = index.find(leaf);
+        geodb_assert(pos != index.end(), "There is no bucket for the given leaf.");
+        return *pos;
     }
 
     /// Clear the tree.
@@ -427,11 +464,10 @@ struct pseudo_leaf_entry {
     /// real node (in external storage) represented by this entry.
     tpie::stream_size_type summary_ptr = 0;
 
-    /// Points to the <label, count> collection
-    /// in the label_lookup file.
+    /// Index of the first <label, count> tuple.
     tpie::stream_size_type labels_begin = 0;
 
-    /// Number of label entries in the collection.
+    /// Number of <label, count> objects.
     tpie::stream_size_type labels_size = 0;
 
     /// Total number of trajectory units in the subtree
@@ -443,91 +479,6 @@ struct pseudo_leaf_entry {
     bounding_box mbb;
 };
 
-/// Makes pseudo_leaf_entry instances act like ordinary irwi leaf entries.
-class pseudo_leaf_entry_accessor {
-private:
-    struct label_count_iterator;
-
-    tpie::file_stream<label_count>& label_counts;
-
-public:
-    pseudo_leaf_entry_accessor(tpie::file_stream<label_count>& label_counts)
-        : label_counts(label_counts)
-    {}
-
-    trajectory_id_type get_id(const pseudo_leaf_entry& e) const {
-        unused(e);
-        return 0; // Does not matter, the tree is never queried.
-    }
-
-    bounding_box get_mbb(const pseudo_leaf_entry& e) const {
-        return e.mbb;
-    }
-
-    u64 get_total_count(const pseudo_leaf_entry& e) const {
-        return e.unit_count;
-    }
-
-    auto get_label_counts(const pseudo_leaf_entry& e) const {
-        return boost::make_iterator_range(
-                    label_count_iterator(label_counts, e.labels_begin, 0),
-                    label_count_iterator(label_counts, e.labels_begin, e.labels_size));
-    }
-
-private:
-    /// Iterates over a contiguous list of \ref label_count objects
-    /// in a file. The list starts at stream offset `base`.
-    class label_count_iterator : public boost::iterators::iterator_facade<
-            label_count_iterator,           // Derived
-            label_count,                    // Value
-            boost::forward_traversal_tag,   // Traversal
-            label_count                     // "Reference"
-        >
-    {
-    private:
-        tpie::file_stream<label_count>* label_counts = nullptr;
-        tpie::stream_size_type base = 0;
-        tpie::stream_size_type index = 0;
-
-    public:
-        label_count_iterator() = default;
-
-        label_count_iterator(tpie::file_stream<label_count>& label_counts,
-                             tpie::stream_size_type base,
-                             tpie::stream_size_type index)
-            : label_counts(&label_counts)
-            , base(base)
-            , index(index)
-        {}
-
-    private:
-        friend class boost::iterator_core_access;
-
-        bool equal(const label_count_iterator& other) const {
-            geodb_assert(label_counts == other.label_counts,
-                         "Comparing iterators of different files");
-            geodb_assert(base == other.base,
-                         "Comparing iterators of different lists");
-            return index == other.index;
-        }
-
-        label_count dereference() const {
-            geodb_assert(label_counts, "dereferencing invalid iterator");
-
-            tpie::stream_size_type offset = base + index;
-            if (label_counts->offset() != offset) {
-                label_counts->seek(offset);
-            }
-
-            return label_counts->read();
-        }
-
-        void increment() {
-            geodb_assert(label_counts, "incrementing invalid iterator");
-            ++index;
-        }
-    };
-};
 
 template<typename Tree>
 class quick_loader : private bulk_load_common<typename Tree::state_type> {
@@ -551,40 +502,75 @@ class quick_loader : private bulk_load_common<typename Tree::state_type> {
     using label_summary = typename common_t::label_summary;
     using list_summary = typename common_t::list_summary;
 
+    using file_allocator_type = file_allocator<u64>;
+
+    using label_count_list = external_list<label_count, storage_type::get_block_size()>;
+
     // Number of entries in internal nodes of the quickload tree.
-    // Not related to the tree we are building right now.
+    // Not related to the tree we are building right now,
+    // because only leaf nodes of that internal tree become leaf or
+    // internal nodes on disk.
     static constexpr size_t internal_fanout() { return 63; }
 
     using leaf_pass_t = quick_load_pass<
         tree_entry, detail::tree_entry_accessor,
         tree_type::max_leaf_entries(), internal_fanout()>;
 
+    class pseudo_leaf_entry_accessor;
+
     using internal_pass_t = quick_load_pass<
         pseudo_leaf_entry, pseudo_leaf_entry_accessor,
         tree_type::max_internal_entries(), internal_fanout()>;
 
-    struct last_level_t {
-        last_level_t(gsl::span<tpie::temp_file, 3> files) {
-            entries.open(files[0]);
-            label_lookup.open(files[1]);
-            node_summaries.open(files[2]);
-        }
+    struct level_resources : boost::noncopyable {
+        const fs::path directory;
+        const fs::path entry_file;
+        const fs::path summary_file;
+        const fs::path label_counts_dir;
 
-        tpie::file_stream<pseudo_leaf_entry> entries;
-        tpie::file_stream<label_count> label_lookup;
-        tpie::serialization_reader node_summaries;
+        level_resources(const fs::path& parent_dir, int pass)
+            : directory(parent_dir / fmt::format("pass-{}", pass))
+            , entry_file(directory / "entries.data")
+            , summary_file(directory / "summaries.data")
+            , label_counts_dir(ensure_directory(directory / "label_counts"))
+        {}
+
+        ~level_resources() {
+            fs::remove_all(directory);
+        }
     };
 
+    using level_resources_ptr = std::shared_ptr<level_resources>;
+
     struct next_level_t {
-        next_level_t(gsl::span<tpie::temp_file, 3> files) {
-            entries.open(files[0]);
-            label_lookup.open(files[1]);
-            node_summaries.open(files[2]);
+        next_level_t(level_resources_ptr resources, size_t cache_blocks)
+            : resources(resources)
+            , label_counts(resources->label_counts_dir, cache_blocks)
+        {
+            entries.open(resources->entry_file.string());
+            summaries.open(resources->summary_file.string());
         }
 
+        level_resources_ptr resources;
         tpie::file_stream<pseudo_leaf_entry> entries;
-        tpie::file_stream<label_count> label_lookup;
-        tpie::serialization_writer node_summaries;
+        tpie::serialization_writer summaries;
+        label_count_list label_counts;
+    };
+
+    struct last_level_t {
+        last_level_t(level_resources_ptr resources, size_t cache_blocks)
+            : resources(resources)
+            , label_counts(resources->label_counts_dir, cache_blocks)
+        {
+            entries.open(resources->entry_file.string());
+            summaries.open(resources->summary_file.string());
+        }
+
+
+        level_resources_ptr resources;
+        tpie::file_stream<pseudo_leaf_entry> entries;
+        tpie::serialization_reader summaries;
+        label_count_list label_counts;
     };
 
 public:
@@ -606,30 +592,29 @@ public:
     /// Creates the tree bottom-up and invokes the quick_load_pass class
     /// for every individual level.
     void build() {
-        std::vector<tpie::temp_file> source_files;
-        std::vector<tpie::temp_file> target_files(3);
+        temp_dir dir("quickload");
 
-        auto new_target_files = [&]{
-            target_files.clear();
-            target_files.resize(3);
+        auto make_pass_dir = [&, pass = 0]() mutable {
+            return std::make_shared<level_resources>(dir.path(), pass++);
         };
+
+        level_resources_ptr resources = make_pass_dir();
 
         u64 count = 0;
         {
-            next_level_t next_level(target_files);
+            next_level_t next_level(resources, 1);
             count = create_leaves(m_input, next_level);
         }
 
         // Loop until only one node remains.
         size_t height = 1;
         while (1) {
-            source_files = target_files;
-            last_level_t last_level(source_files);
+            last_level_t last_level(resources, m_max_leaves); // FIXME dynamic cache size.
 
             geodb_assert(count > 0, "invalid node count");
             if (count == 1) {
                 node_summary node_sum;
-                last_level.node_summaries.unserialize(node_sum);
+                last_level.summaries.unserialize(node_sum);
 
                 storage().set_size(m_input_size);
                 storage().set_root(node_sum.ptr);
@@ -637,174 +622,335 @@ public:
                 return;
             }
 
-            new_target_files();
-            next_level_t next_level(target_files);
+            level_resources_ptr next_resources = make_pass_dir();
+            next_level_t next_level(next_resources, 1);
+
             count = create_internals(last_level, next_level);
+            resources = next_resources;
             ++height;
         }
     }
 
 private:
-    u64 create_leaves(tpie::file_stream<tree_entry>& source, next_level_t& next_level)
-    {
-        u64 count = 0;
+    class level_creator_base {
+    private:
+        state_type& m_state;
+
+    protected:
+        level_creator_base(state_type& state)
+            : m_state(state) {}
+
+        state_type& state() const { return m_state; }
+        storage_type& storage() const { return m_state.storage(); }
+
+        label_count get_label_count(const label_summary& ls) const {
+            return { ls.label, ls.summary.count };
+        }
+    };
+
+    class leaf_level_creator : level_creator_base {
+        next_level_t& next_level;
+
+        u64 m_count = 0;
+        std::vector<trajectory_id_type> all_ids_buf;
+        std::map<label_type, std::vector<trajectory_id_type>> label_ids_buf;
+        node_summary node_summary_buf;
+        label_summary label_summary_buf;
+
+    public:
+        leaf_level_creator(state_type& state, next_level_t& next_level)
+            : level_creator_base(state)
+            , next_level(next_level)
+        {}
+
+        u64 count() const {
+            return m_count;
+        }
+
+        void operator()(gsl::span<const tree_entry> entries) {
+            leaf_ptr leaf = create_node(entries);
+            summarize(leaf);
+            ++m_count;
+        }
+
+    private:
+        /// Creates a new leaf from the given set of tree entries.
+        leaf_ptr create_node(gsl::span<const tree_entry> entries) {
+            geodb_assert(entries.size() > 0, "Entry set is empty");
+            geodb_assert(size_t(entries.size()) <= storage_type::max_leaf_entries(),
+                         "Too many leaf entries");
+
+            // Create a new leaf in the result tree.
+            const leaf_ptr leaf = storage().create_leaf();
+            const u32 count = entries.size();
+            for (u32 i = 0; i < count; ++i) {
+                const tree_entry& entry = entries[i];
+                storage().set_data(leaf, i, entry);
+            }
+            storage().set_count(leaf, count);
+            return leaf;
+        }
+
+        /// The summary of the leaf will be written to the next_level instance.
+        void summarize(leaf_ptr leaf) {
+            std::vector<trajectory_id_type>& all_ids = all_ids_buf;
+            std::map<label_type, std::vector<trajectory_id_type>>& label_ids = label_ids_buf;
+            node_summary& node_sum = node_summary_buf;
+            label_summary& label_sum = label_summary_buf;
+
+            const u32 count = storage().get_count(leaf);
+            for (u32 i = 0; i < count; ++i) {
+                tree_entry entry = storage().get_data(leaf, i);
+
+                all_ids.push_back(entry.trajectory_id);
+                label_ids[entry.unit.label].push_back(entry.trajectory_id);
+            }
+
+            node_sum.ptr = leaf;
+            node_sum.mbb = state().get_mbb(leaf);
+            make_simple_summary(all_ids, count, node_sum.total);
+            node_sum.num_labels = label_ids.size();
+
+            const tpie::stream_size_type summary_ptr = next_level.summaries.size();
+            next_level.summaries.serialize(node_sum);
+
+            label_count_list& label_counts = next_level.label_counts;
+            const tpie::stream_size_type labels_size = label_ids.size();
+            const tpie::stream_size_type labels_begin = label_counts.size();
+            for (auto& pair : label_ids) {
+                label_sum.label = pair.first;
+                make_simple_summary(pair.second, pair.second.size(), label_sum.summary);
+                next_level.summaries.serialize(label_sum);
+                label_counts.append(this->get_label_count(label_sum));
+            }
+
+            // The pseudo leaf represents this all entries of this leaf
+            // and will be used as a leaf entry in the next pass.
+            pseudo_leaf_entry entry;
+            entry.summary_ptr = summary_ptr;
+            entry.labels_begin = labels_begin;
+            entry.labels_size = labels_size;
+            entry.unit_count = node_sum.total.count;
+            entry.mbb = node_sum.mbb;
+            next_level.entries.write(entry);
+
+            all_ids.clear();
+            label_ids.clear();
+        }
+
+        void make_simple_summary(std::vector<trajectory_id_type>& ids, u64 units, list_summary& out) {
+            std::sort(ids.begin(), ids.end());
+            ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+
+            out.count = units;
+            out.trajectories.assign(ids.begin(), ids.end());
+        }
+    };
+
+    class internal_level_creator : level_creator_base {
+        last_level_t& last_level;
+        next_level_t& next_level;
+        u64 m_count = 0;
+        node_summary node_summary_buf;
+        label_summary label_summary_buf;
+
+    public:
+        internal_level_creator(state_type& state, last_level_t& last_level, next_level_t& next_level)
+            : level_creator_base(state)
+            , last_level(last_level)
+            , next_level(next_level)
+        {}
+
+        u64 count() const {
+            return m_count;
+        }
+
+        void operator()(gsl::span<const pseudo_leaf_entry> entries) {
+            internal_ptr internal = create_node(entries);
+            summarize(internal);
+            ++m_count;
+        }
+
+    private:
+        /// Create a new internal node in external storage from the given list of pseudo entries.
+        /// Read the node summary (index, mbb, etc.) from the summary file
+        /// that was created in the last phase.
+        internal_ptr create_node(gsl::span<const pseudo_leaf_entry> entries) {
+            geodb_assert(entries.size() > 0, "Entry set is empty");
+            geodb_assert(size_t(entries.size()) <= storage_type::max_internal_entries(),
+                         "Too many leaf entries");
+
+            node_summary& node_sum = node_summary_buf;
+            label_summary& label_sum = label_summary_buf;
+            tpie::serialization_reader& summaries = last_level.summaries;
+
+            const u32 count = entries.size();
+            internal_ptr internal = storage().create_internal();
+            index_ptr index = storage().index(internal);
+            for (u32 i = 0; i < count; ++i) {
+                tpie::stream_size_type summary_ptr = entries[i].summary_ptr;
+                summaries.seek(summary_ptr);
+                summaries.unserialize(node_sum);
+
+                storage().set_child(internal, i, node_sum.ptr);
+                storage().set_mbb(internal, i, node_sum.mbb);
+
+                // Create the inverted index for this child entry.
+                insert_index_entry(index->total(), i, node_sum.total);
+                for (u64 l = 0; l < node_sum.num_labels; ++l) {
+                    summaries.unserialize(label_sum);
+                    list_ptr list = index->find_or_create(label_sum.label)->postings_list();
+                    insert_index_entry(list, i, label_sum.summary);
+                }
+            }
+            storage().set_count(internal, count);
+            return internal;
+        }
+
+        /// Summarize this node for the next level.
+        void summarize(internal_ptr internal) {
+            node_summary& node_sum = node_summary_buf;
+            label_summary& label_sum = label_summary_buf;
+            tpie::serialization_writer& summaries = next_level.summaries;
+
+            index_ptr index = storage().index(internal);
+
+            const tpie::stream_size_type summary_ptr = next_level.summaries.size();
+            node_sum.ptr = internal;
+            node_sum.mbb = state().get_mbb(internal);
+            node_sum.total = index->total()->summarize();
+            node_sum.num_labels = index->size();
+            summaries.serialize(node_sum);
+
+            label_count_list& label_counts = next_level.label_counts;
+            const tpie::stream_size_type labels_size = index->size();
+            const tpie::stream_size_type labels_begin = label_counts.size();
+            for (auto entry : *index) {
+                label_sum.label = entry.label();
+                label_sum.summary = entry.postings_list()->summarize();
+                next_level.summaries.serialize(label_sum);
+                label_counts.append(this->get_label_count(label_sum));
+            }
+
+            // The pseudo leaf entry represents the entire subtree and
+            // will be used as a leaf entry in the next pass.
+            pseudo_leaf_entry entry;
+            entry.summary_ptr = summary_ptr;
+            entry.labels_begin = labels_begin;
+            entry.labels_size = labels_size;
+            entry.mbb = node_sum.mbb;
+            entry.unit_count = node_sum.total.count;
+            next_level.entries.write(entry);
+        }
+
+        /// Append a new posting entry entry for the given child entry.
+        void insert_index_entry(const list_ptr& list, u32 id, const list_summary& summary) {
+            posting_type entry(id, summary.count, summary.trajectories);
+            list->append(entry);
+        }
+    };
+
+    /// Create a level of leaf nodes from a sequence of leaf entries by using the
+    /// quickload_pass template.
+    u64 create_leaves(tpie::file_stream<tree_entry>& source, next_level_t& next_level) {
+        leaf_level_creator creator(state(), next_level);
 
         leaf_pass_t pass(m_max_leaves, detail::tree_entry_accessor(), m_weight);
-        pass.run(source, [&](gsl::span<const tree_entry> entries) {
-            create_leaf(entries, next_level);
-            ++count;
-        });
+        pass.run(source, creator);
 
-        return count;
+        return creator.count();
     }
 
-    /// Creates a new leaf from the given set of tree entries.
-    /// The summary of the leaf will be written to the next_level instance.
-    void create_leaf(gsl::span<const tree_entry> entries, next_level_t& next_level) {
-        geodb_assert(entries.size() > 0, "Entry set is empty");
-        geodb_assert(size_t(entries.size()) <= storage_type::max_leaf_entries(),
-                     "Too many leaf entries");
+    /// Makes pseudo_leaf_entry instances act like ordinary irwi leaf entries.
+    class pseudo_leaf_entry_accessor {
+    private:
+        struct label_count_iterator;
 
-        std::vector<trajectory_id_type> all_ids;
-        std::map<label_type, std::vector<trajectory_id_type>> label_ids;
-        node_summary node_sum;
-        label_summary label_sum;
+        label_count_list& label_counts;
 
-        // Create a new leaf in the result tree.
-        const leaf_ptr leaf = storage().create_leaf();
-        const u32 count = entries.size();
-        for (u32 i = 0; i < count; ++i) {
-            const tree_entry& entry = entries[i];
+    public:
+        pseudo_leaf_entry_accessor(label_count_list& label_counts)
+            : label_counts(label_counts)
+        {}
 
-            storage().set_data(leaf, i, entry);
-            all_ids.push_back(entry.trajectory_id);
-            label_ids[entry.unit.label].push_back(entry.trajectory_id);
-        }
-        storage().set_count(leaf, count);
-
-        // Summarize the leaf for the next level.
-        node_sum.ptr = leaf;
-        node_sum.mbb = state().get_mbb(leaf);
-        make_simple_summary(all_ids, count, node_sum.total);
-        node_sum.num_labels = label_ids.size();
-
-        const tpie::stream_size_type summary_ptr = next_level.node_summaries.size();
-        next_level.node_summaries.serialize(node_sum);
-
-        const tpie::stream_size_type labels_ptr = next_level.label_lookup.size();
-        for (auto& pair : label_ids) {
-            label_sum.label = pair.first;
-            make_simple_summary(pair.second, pair.second.size(), label_sum.summary);
-            next_level.node_summaries.serialize(label_sum);
-            next_level.label_lookup.write(get_label_count(label_sum));
+        trajectory_id_type get_id(const pseudo_leaf_entry& e) const {
+            unused(e);
+            return 0; // Does not matter, the tree is never queried.
         }
 
-        // The pseudo leaf represents this all entries of this leaf
-        // and will be used as a leaf entry in the next pass.
-        pseudo_leaf_entry entry;
-        entry.summary_ptr = summary_ptr;
-        entry.labels_begin = labels_ptr;
-        entry.labels_size = label_ids.size();
-        entry.unit_count = node_sum.total.count;
-        entry.mbb = node_sum.mbb;
-        next_level.entries.write(entry);
-    }
+        bounding_box get_mbb(const pseudo_leaf_entry& e) const {
+            return e.mbb;
+        }
+
+        u64 get_total_count(const pseudo_leaf_entry& e) const {
+            return e.unit_count;
+        }
+
+        auto get_label_counts(const pseudo_leaf_entry& e) const {
+            return boost::make_iterator_range(
+                        label_count_iterator(label_counts, e.labels_begin, 0),
+                        label_count_iterator(label_counts, e.labels_begin, e.labels_size));
+        }
+
+    private:
+        /// Iterates over a contiguous list of \ref label_count objects
+        /// in a file. The list starts at stream offset `base`.
+        class label_count_iterator : public boost::iterators::iterator_facade<
+                label_count_iterator,           // Derived
+                label_count,                    // Value
+                boost::forward_traversal_tag,   // Traversal
+                label_count                     // "Reference"
+            >
+        {
+        private:
+            label_count_list* label_counts = nullptr;
+            tpie::stream_size_type base = 0;
+            tpie::stream_size_type index = 0;
+
+        public:
+            label_count_iterator() = default;
+
+            label_count_iterator(label_count_list& label_counts,
+                                 tpie::stream_size_type base,
+                                 tpie::stream_size_type index)
+                : label_counts(&label_counts)
+                , base(base)
+                , index(index)
+            {}
+
+        private:
+            friend class boost::iterator_core_access;
+
+            bool equal(const label_count_iterator& other) const {
+                geodb_assert(label_counts == other.label_counts,
+                             "Comparing iterators of different files");
+                geodb_assert(base == other.base,
+                             "Comparing iterators of different lists");
+                return index == other.index;
+            }
+
+            label_count dereference() const {
+                geodb_assert(label_counts, "dereferencing invalid iterator");
+
+                return (*label_counts)[base + index];
+            }
+
+            void increment() {
+                geodb_assert(label_counts, "incrementing invalid iterator");
+                ++index;
+            }
+        };
+    };
 
     /// Creates a new level of internal nodes by passing the set entries from the last
     /// level to the quick_load_pass class.
     u64 create_internals(last_level_t& last_level, next_level_t& next_level) {
-        u64 count = 0;
+        internal_level_creator creator(state(), last_level, next_level);
 
-        internal_pass_t pass(m_max_leaves, pseudo_leaf_entry_accessor(last_level.label_lookup), m_weight);
-        pass.run(last_level.entries, [&](gsl::span<const pseudo_leaf_entry> entries) {
-            create_internal(entries, last_level.node_summaries, next_level);
-            ++count;
-        });
+        internal_pass_t pass(m_max_leaves, pseudo_leaf_entry_accessor(last_level.label_counts), m_weight);
+        pass.run(last_level.entries, creator);
 
-        return count;
-    }
-
-    /// Creates an internal node from a given set of pseudo_leaf_entries.
-    /// Reads the summaries of child nodes from the `summaries` file.
-    /// The summary of the new internal node will be written into the `next_level`.
-    void create_internal(gsl::span<const pseudo_leaf_entry> entries,
-                         tpie::serialization_reader& summaries,
-                         next_level_t& next_level)
-    {
-        geodb_assert(entries.size() > 0, "Entry set is empty");
-        geodb_assert(size_t(entries.size()) <= storage_type::max_internal_entries(),
-                     "Too many leaf entries");
-
-        auto insert_index_entry = [](const auto& list, u32 id, const list_summary& summary) {
-            posting_type entry(id, summary.count, summary.trajectories);
-            list->append(entry);
-        };
-
-        node_summary node_sum;
-        label_summary label_sum;
-
-
-        // Create a new internal node from the given list of pseudo entries.
-        // Read the node summary (index, mbb, etc.) from the summary file
-        // that was created in the last phase.
-        const u32 count = entries.size();
-        internal_ptr internal = storage().create_internal();
-        index_ptr index = storage().index(internal);
-        for (u32 i = 0; i < count; ++i) {
-            tpie::stream_size_type summary_ptr = entries[i].summary_ptr;
-            summaries.seek(summary_ptr);
-            summaries.unserialize(node_sum);
-
-            storage().set_child(internal, i, node_sum.ptr);
-            storage().set_mbb(internal, i, node_sum.mbb);
-
-            // Create the inverted index for this child entry.
-            insert_index_entry(index->total(), i, node_sum.total);
-            for (u64 l = 0; l < node_sum.num_labels; ++l) {
-                summaries.unserialize(label_sum);
-                list_ptr list = index->find_or_create(label_sum.label)->postings_list();
-                insert_index_entry(list, i, label_sum.summary);
-            }
-        }
-        storage().set_count(internal, count);
-
-        // Summarize this node for the next level.
-        const tpie::stream_size_type summary_ptr = next_level.node_summaries.size();
-        node_sum.ptr = internal;
-        node_sum.mbb = state().get_mbb(internal);
-        node_sum.total = index->total()->summarize();
-        node_sum.num_labels = index->size();
-        next_level.node_summaries.serialize(node_sum);
-
-        const tpie::stream_size_type labels_ptr = next_level.label_lookup.size();
-        for (auto entry : *index) {
-            label_sum.label = entry.label();
-            label_sum.summary = entry.postings_list()->summarize();
-            next_level.node_summaries.serialize(label_sum);
-            next_level.label_lookup.write(get_label_count(label_sum));
-        }
-
-        // The pseudo leaf entry represents the entire subtree and
-        // will be used as a leaf entry in the next pass.
-        pseudo_leaf_entry entry;
-        entry.summary_ptr = summary_ptr;
-        entry.labels_begin = labels_ptr;
-        entry.labels_size = node_sum.num_labels;
-        entry.mbb = node_sum.mbb;
-        entry.unit_count = node_sum.total.count;
-        next_level.entries.write(entry);
-    }
-
-    void make_simple_summary(std::vector<trajectory_id_type>& ids, u64 units, list_summary& out) {
-        std::sort(ids.begin(), ids.end());
-        ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
-
-        out.count = units;
-        out.trajectories.assign(ids.begin(), ids.end());
-    }
-
-    label_count get_label_count(const label_summary& ls) {
-        return { ls.label, ls.summary.count };
+        return creator.count();
     }
 
 private:
@@ -812,9 +958,15 @@ private:
     storage_type& storage() { return m_tree.storage(); }
 
 private:
+    /// The external tree we are loading into.
     tree_type& m_tree;
+
+    /// The maximum number of leaves (for the lowest level).
     const size_t m_max_leaves;
+
+    /// beta
     const float m_weight;
+
     tpie::file_stream<tree_entry>& m_input;
     const tpie::stream_size_type m_input_size;
 };

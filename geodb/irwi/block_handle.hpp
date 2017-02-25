@@ -21,6 +21,9 @@ private:
 public:
     block_handle() {}
 
+    /// Construct a handle from a raw block index.
+    block_handle(u64 index): m_index(index) {}
+
     /// Block handle must refer to a block of size `block_size`
     /// and a valid position divisible by `block_size`.
     block_handle(tpie::blocks::block_handle h)

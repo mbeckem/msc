@@ -44,6 +44,10 @@ private:
     using block_handle_type = block_handle<block_size>;
 
 public:
+    static constexpr size_t get_block_size() {
+        return block_size;
+    }
+
     static constexpr size_t max_internal_entries() {
         size_t header = sizeof(index_id_type) + 4;  // Inverted index + child count.
         return (block_size - header) / sizeof(internal_entry);
