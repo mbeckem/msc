@@ -281,8 +281,10 @@ public:
     }
 
     /// Reads instances of `Value` from the source and pushes
-    /// groups of `Value` to the target. The target is responsible for
-    /// actually creating the appropriate nodes in the external storage.
+    /// groups of `Value` to the target.
+    /// These groups represent leaf nodes assembled by the algorithm.
+    /// The target is responsible for actually creating the
+    /// appropriate nodes on disk.
     ///
     /// \param source
     ///     A stream containing leaf values for the current pass.
@@ -292,7 +294,7 @@ public:
     ///     created by the algorithm.
     template<typename NextLevel>
     void run(file_stream& source, NextLevel&& target) {
-        // The todo queue contains references the buckets that
+        // The todo queue contains references to the buckets that
         // still have to be processed in the future.
         tpie::queue<u64> todo;
         run(source, target, todo);
@@ -303,6 +305,8 @@ public:
 
         // Handle entries in todo. The files were allocated
         // as buckets and have to be freed individually.
+        // Recursive calls to run() might add their own new
+        // entries into `todo`.
         file_stream bucket;
         while (!todo.empty()) {
             const u64 bucket_id = todo.pop();
