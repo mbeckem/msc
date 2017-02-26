@@ -136,12 +136,16 @@ private:
 
     template<typename Callback>
     void for_each_leaf(Callback&& cb) {
-        geodb_assert(storage().get_height() > 0, "invalid height");
+        if (storage().get_height() == 0) {
+            return;
+        }
+
         if (storage().get_height() == 1) {
             cb(storage().to_leaf(storage().get_root()));
-        } else {
-            for_each_leaf(storage().to_internal(storage().get_root()), 1, cb);
-        }
+            return;
+        } 
+        
+        for_each_leaf(storage().to_internal(storage().get_root()), 1, cb);        
     }
 
     template<typename Callback>
