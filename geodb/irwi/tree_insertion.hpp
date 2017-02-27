@@ -68,8 +68,11 @@ public:
     /// Finds the appropriate leaf node for the insertion of \p d.
     /// Stores the path of internal node parents in \p path.
     ///
+    /// Updates the child entries of all internal nodes on the way
+    /// to reflect the insertion of `v`.
+    ///
     /// \pre Thre tree is not empty.
-    leaf_ptr find_leaf(const value_type& v, std::vector<internal_ptr>& path) {
+    leaf_ptr traverse_tree(const value_type& v, std::vector<internal_ptr>& path) {
         geodb_assert(storage.get_height() > 0, "empty tree has no leaves");
 
         path.clear();
@@ -83,7 +86,10 @@ public:
         for (size_t level = 1;; ++level) {
             path.push_back(current);
 
-            const node_ptr child = find_insertion_entry(current, v);
+            const u32 child_index = find_insertion_entry(current, v);
+            update_parent(current, child_index, v);
+
+            const node_ptr child = storage.get_child(current, child_index);
             if (level + 1 == storage.get_height()) {
                 // Next level is the leaf level.
                 return storage.to_leaf(child);
@@ -112,63 +118,43 @@ public:
             return;
         }
 
-        leaf_ptr leaf = find_leaf(v, path);
-        insert_at_leaf(leaf, v, path);
+        leaf_ptr leaf = traverse_tree(v, path);
+        storage.set_size(storage.get_size() + 1);
+        if (storage.get_count(leaf) < State::max_leaf_entries()) {
+            insert_entry(leaf, v);
+            return;
+        }
+
+        insert_at_full(leaf, v, path);
     }
 
 private:
-    void insert_at_leaf(leaf_ptr leaf, const value_type& v, gsl::span<const internal_ptr> path) {
-        storage.set_size(storage.get_size() + 1);
-        {
-            const u32 count = storage.get_count(leaf);
-            if (count < State::max_leaf_entries()) {
-                // The leaf has room for this entry.
-                insert_entry(leaf, v);
-                update_path(path, leaf, v);
-                return;
-            }
-        }
-
+    /// Inserts the new value at the given leaf, which must be full.
+    /// Splits the leaf and its parents, if necessary.
+    /// If the root has to be split, a new root is created and the tree's height increases by one.
+    void insert_at_full(leaf_ptr leaf, const value_type& v, gsl::span<const internal_ptr> path) {
         // The leaf is full. Split it and insert the new entry.
         const leaf_ptr new_leaf = split_and_insert(leaf, v);
         if (path.empty()) {
             // The root was a leaf and has been split.
-            internal_ptr root = storage.create_internal();
-            insert_entry(root, leaf);
-            insert_entry(root, new_leaf);
-            storage.set_root(root);
-            storage.set_height(2);
+            make_root(leaf, new_leaf);
             return;
         }
 
         // There was at least one internal node parent.
-        // The content of l has changed, update the parent's mbb and inverted index.
-        internal_ptr parent = back(path);
-        replace_entry(parent, leaf);
-        if (storage.get_count(parent) < State::max_internal_entries()) {
-            // The direct parent has enough space to store the new leaf.
-            // Insert the new leaf and notify the parents about the insertion
-            // of `d`. p will be up-to-date because ll is going to be inserted
-            // and l has been reinserted already.
-            insert_entry(parent, new_leaf);
-            pop_back(path);
-            update_path(path, parent, v);
+        if (register_split(back(path), leaf, new_leaf)) {
             return;
         }
 
         // At this point, we have two internal nodes that need to be inserted
-        // into their parent. If there is no parent, then we create a new
-        // internal node that becomes our new root.
-        internal_ptr new_internal = split_and_insert(parent, new_leaf);
-        internal_ptr old_internal = parent;
+        // into their parent.
+        internal_ptr old_internal = back(path);
+        internal_ptr new_internal = split_and_insert(old_internal, new_leaf);
         pop_back(path);
+
         while (!path.empty()) {
-            parent = back(path);
-            replace_entry(parent, old_internal);
-            if (storage.get_count(parent) < State::max_internal_entries()) {
-                insert_entry(parent, new_internal);
-                pop_back(path);
-                update_path(path, parent, v);
+            internal_ptr parent = back(path);
+            if (register_split(parent, old_internal, new_internal)) {
                 return;
             }
 
@@ -179,65 +165,87 @@ private:
 
         // Two internal nodes remain but there is no parent in path:
         // We need a new root.
+        make_root(old_internal, new_internal);
+    }
+
+    /// Registers the fact that `old_child` has been split into `old_child` and `new_child`.
+    ///
+    /// The existing child entry for `old_child` will be updated (this includes its inverted
+    /// index entries).
+    ///
+    /// If `new_child` fits into the parent, it will be inserted and the function will return `true`.
+    /// Otherwise, `new_child` will not be inserted and remain dangling, in which case
+    /// the function returns `false`. The next parent will have be split in order to make space
+    /// for `new_child`.
+    ///
+    /// \param parent       The parent node.
+    /// \param old_child    The existing child node (that has been split).
+    /// \param new_child    The new child node (the result of the split operation).
+    ///
+    /// \return Returns true iff there was space for the insertion of `new_child`.
+    template<typename NodePointer>
+    bool register_split(internal_ptr parent, NodePointer old_child, NodePointer new_child) {
+        replace_entry(parent, old_child);
+        if (storage.get_count(parent) < State::max_internal_entries()) {
+            insert_entry(parent, new_child);
+            return true;
+        }
+        return false;
+    }
+
+    /// Creates a new root from the two given child pointers.
+    template<typename NodePointer>
+    void make_root(NodePointer a, NodePointer b) {
         internal_ptr root = storage.create_internal();
-        insert_entry(root, old_internal);
-        insert_entry(root, new_internal);
+        insert_entry(root, a);
+        insert_entry(root, b);
         storage.set_root(root);
         storage.set_height(storage.get_height() + 1);
     }
 
-public:
-    /// Update every parent node in the path with the fact that a new
-    /// leaf value has been inserted. This function will update all bounding boxes
-    /// and postings lists on its way to the root.
-    void update_path(gsl::span<const internal_ptr> path, node_ptr child, const value_type& v)
-    {
+    /// Update the parent node to reflect the insertion of `v`.
+    /// The bounding box for the given child and its inverted index entries will be expanded.
+    void update_parent(internal_ptr parent, u32 child_index, const value_type& v) {
+        geodb_assert(child_index < storage.get_count(parent), "index out of bounds");
+
         const trajectory_id_type tid = state.get_id(v);
         const bounding_box mbb = state.get_mbb(v);
         const auto label_counts = state.get_label_counts(v);
         const u64 total_count = state.get_total_count(v);
 
-        // Increment the unit count for the given node & label.
-        auto increment_entry = [&](const list_ptr& list, entry_id_type node, u64 count) {
-            auto pos = list->find(node);
-            if (pos == list->end()) {
-                // First unit with that label. Make a new entry.
-                list->append(posting_type(node, count, {tid}));
-            } else {
-                // Replace the entry with an updated version.
-                posting_type e = *pos;
-
-                auto set = e.id_set();
-                set.add(tid);
-                e.id_set(set);
-                e.count(e.count() + count);
-
-                list->set(pos, e);
-            }
-        };
-
-        // Update mbbs and inverted indices in all parents.
-        // The mbb of the child's entry within the parent must fit the new box.
-        for (auto parent : path | boost::adaptors::reversed) {
-            const u32 i = state.index_of(parent, child);
-            bounding_box new_mbb = storage.get_mbb(parent, i).extend(mbb);
-            storage.set_mbb(parent, i, new_mbb);
-
-            index_ptr index = storage.index(parent);
-            increment_entry(index->total(), i, total_count);
-            for (const auto& lc : label_counts) {
-                increment_entry(index->find_or_create(lc.label)->postings_list(), i, lc.count);
-            }
-            child = parent;
+        index_ptr index = storage.index(parent);
+        storage.set_mbb(parent, child_index, storage.get_mbb(parent, child_index).extend(mbb));
+        increment_entry(*index->total(), child_index, tid, total_count);
+        for (const auto& lc : label_counts) {
+            list_ptr list = index->find_or_create(lc.label)->postings_list();
+            increment_entry(*list, child_index, tid, lc.count);
         }
     }
 
-private:
+    /// Update the entry for `child` in the given list or insert a new one.
+    void increment_entry(list_type& list, entry_id_type child, trajectory_id_type tid, u64 count) {
+        auto pos = list.find(child);
+        if (pos == list.end()) {
+            // First unit with that label. Make a new entry.
+            list.append(posting_type(child, count, {tid}));
+        } else {
+            // Replace the entry with an updated version.
+            posting_type e = *pos;
+
+            auto set = e.id_set();
+            set.add(tid);
+            e.id_set(set);
+            e.count(e.count() + count);
+
+            list.set(pos, e);
+        }
+    }
+
     /// Given an internal node, and the mbb + label of a new entry,
     /// find the best child entry within the internal node.
     /// This function respects the spatial cost (i.e. growing the bounding box)
     /// and the textual cost (introducing uncommon labels into a subtree).
-    node_ptr find_insertion_entry(internal_ptr n, const value_type& v) {
+    u32 find_insertion_entry(internal_ptr n, const value_type& v) {
         const u32 count = storage.get_count(n);
         geodb_assert(count > 0, "empty internal node");
 
@@ -263,7 +271,7 @@ private:
                 min_size = size;
             }
         }
-        return storage.get_child(n, min_index);
+        return min_index;
     }
 
     /// Splits the leaf into two leaves and inserts the extra entry.

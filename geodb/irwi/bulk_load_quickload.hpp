@@ -88,10 +88,7 @@ public:
         // Find the leaf, but dont insert the value there.
         tree_insertion<state_type> ins(state());
         std::vector<internal_ptr>& path = m_path_buf;
-        leaf_ptr leaf = ins.find_leaf(v, path);
-
-        // Act like the insertion took place by updating the mbbs and indices.
-        ins.update_path(path, leaf, v);
+        leaf_ptr leaf = ins.traverse_tree(v, path);
 
         // Return the leaf id to the caller so that the value can be placed into the
         // appropriate bucket.
