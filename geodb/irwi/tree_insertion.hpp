@@ -586,20 +586,7 @@ private:
         storage.set_child(p, i, c);
 
         index_ptr index = storage.index(p);
-        const auto sum = summarize(c);
-
-        // Update the postings lists for all labels that occur in the summary.
-        // TODO: One map isntead of 2
-        for (auto& pair : sum.label_units) {
-            label_type label = pair.first;
-            u64 count = pair.second;
-            if (count > 0) {
-                index->find_or_create(label)
-                        ->postings_list()
-                        ->append(posting_type(i, count, sum.label_tids.at(label)));
-            }
-        }
-        index->total()->append(posting_type(i, sum.total_units, sum.total_tids));
+        insert_index(*index, i, c);
     }
 
     /// Reinserts a node into its parent.
@@ -611,52 +598,68 @@ private:
     ///             Can be either a leaf or an internal node.
     template<typename NodePointer>
     void replace_entry(internal_ptr p, NodePointer c) {
-        const u32 id = state.index_of(p, c);
-        const index_summary sum = summarize(c);
-        const index_ptr index = storage.index(p);
+        const u32 i = state.index_of(p, c);
+        index_ptr index = storage.index(p);
 
-        // Adjust the mbb to fit the node's current entry set.
-        storage.set_mbb(p, id, state.get_mbb(c));
+        clear_index(*index, i);
+        insert_index(*index, i, c);
+        storage.set_mbb(p, i, state.get_mbb(c));
+    }
 
-        // Erase all posting list entries for labels that do not occur in c anymore.
-        for (auto i = index->begin(), e = index->end(); i != e; ++i) {
-            const label_type label = i->label();
+    /// Inserts the summarized index of `c` into the parent index.
+    void insert_index(index_type& parent_index, u32 i, internal_ptr c) {
+        auto get_posting = [&](list_type& list) {
+            auto list_sum = list.summarize();
+            return posting_type(i, list_sum.count, list_sum.trajectories);
+        };
 
-            if (sum.label_units.find(label) == sum.label_units.end()) {
-                const auto list = i->postings_list();
-                const auto pos = list->find(id);
-                if (pos != list->end()) {
-                    list->remove(pos);
-                }
+        index_ptr child_index = storage.index(c);
+
+        parent_index.total()->append(get_posting(*child_index->total()));
+        for (auto entry : *child_index) {
+            list_ptr parent_list = parent_index.find_or_create(entry.label())->postings_list();
+            list_ptr child_list = entry.postings_list();
+            posting_type list_entry = get_posting(*child_list);
+
+            if (list_entry.count() > 0) {
+                parent_list->append(list_entry);
             }
         }
+    }
 
-        // Update the entries for labels in 'c'.
-        // A label might be new if it was new with the unit that caused the node to split.
-        // TODO: 1 map
-        for (auto pair : sum.label_units) {
+    /// Insert the summary of `c` into the parent index.
+    void insert_index(index_type& parent_index, u32 i, leaf_ptr c) {
+        const auto sum = summarize(c);
+
+        // Update the postings lists for all labels that occur in the summary.
+        // TODO: One map isntead of 2
+        for (auto& pair : sum.label_units) {
             label_type label = pair.first;
             u64 count = pair.second;
-            update_entry(index, label, posting_type(id, count, sum.label_tids.at(label)));
+            if (count > 0) {
+                parent_index.find_or_create(label)
+                        ->postings_list()
+                        ->append(posting_type(i, count, sum.label_tids.at(label)));
+            }
         }
-        update_entry(index->total(), posting_type(id, sum.total_units, sum.total_tids));
+        parent_index.total()->append(posting_type(i, sum.total_units, sum.total_tids));
     }
 
-    /// Updates the posting list entry for the given label. Creates the index entry if necessary.
-    void update_entry(const index_ptr& index, label_type label, const posting_type& e) {
-        const auto iter = index->find_or_create(label);
-        const auto list = iter->postings_list();
-        update_entry(list, e);
+    /// Remove all references to the given child entry from the index.
+    void clear_index(index_type& index, entry_id_type id) {
+        for (auto entry : index) {
+            list_ptr list = entry.postings_list();
+            remove_posting(*list, id);
+        }
+        remove_posting(*index.total(), id);
     }
 
-    /// Updates the entry in `list` for the node `e.node()`.
-    /// Inserts the entry at the end if no entry for this node existed.
-    void update_entry(const list_ptr& list, const posting_type& e) {
-        const auto pos = list->find(e.node());
-        if (pos != list->end()) {
-            list->set(pos, e);
-        } else {
-            list->append(e);
+    /// Removes the posting with the given id from the given list.
+    /// Does nothing if no such posting exists.
+    void remove_posting(list_type& list, entry_id_type id) {
+        auto pos = list.find(id);
+        if (pos != list.end()) {
+            list.remove(pos);
         }
     }
 
@@ -731,6 +734,9 @@ private:
     ///     The current postings list.
     /// \param count
     ///     The current internal node's child count.
+    /// \param[out] cost
+    ///     Will contain the unit count for every child of the current node.
+    ///     The type of count depends on the input list (either total units or label units).
     void counts(const list_type& list, u32 count, internal_count_vec& result) {
         result.clear();
         result.resize(count, 0);
@@ -751,7 +757,6 @@ private:
         span = span.first(span.size() - 1);
     }
 };
-
 
 } // namespace geodb
 
