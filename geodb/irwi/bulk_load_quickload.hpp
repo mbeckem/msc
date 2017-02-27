@@ -530,52 +530,41 @@ class quick_loader : private bulk_load_common<typename Tree::state_type> {
         pseudo_leaf_entry, pseudo_leaf_entry_accessor,
         tree_type::max_internal_entries(), internal_fanout()>;
 
-    struct level_resources : boost::noncopyable {
-        const fs::path directory;
-        const fs::path entry_file;
-        const fs::path summary_file;
-        const fs::path label_counts_dir;
+    struct level_files {
+        temp_dir directory;
+        fs::path entry_file;
+        fs::path summary_file;
+        fs::path label_counts_dir;
 
-        level_resources(const fs::path& parent_dir, int pass)
-            : directory(parent_dir / fmt::format("pass-{}", pass))
-            , entry_file(directory / "entries.data")
-            , summary_file(directory / "summaries.data")
-            , label_counts_dir(ensure_directory(directory / "label_counts"))
+        level_files(int pass)
+            : directory(fmt::format("quickload-pass-{}", pass))
+            , entry_file(directory.path() / "entries.data")
+            , summary_file(directory.path() / "summaries.data")
+            , label_counts_dir(ensure_directory(directory.path() / "label_counts"))
         {}
-
-        ~level_resources() {
-            fs::remove_all(directory);
-        }
     };
 
-    using level_resources_ptr = std::shared_ptr<level_resources>;
-
     struct next_level_t {
-        next_level_t(level_resources_ptr resources, size_t cache_blocks)
-            : resources(resources)
-            , label_counts(resources->label_counts_dir, cache_blocks)
+        next_level_t(const level_files& files, size_t cache_blocks)
+            : label_counts(files.label_counts_dir, cache_blocks)
         {
-            entries.open(resources->entry_file.string());
-            summaries.open(resources->summary_file.string());
+            entries.open(files.entry_file.string());
+            summaries.open(files.summary_file.string());
         }
 
-        level_resources_ptr resources;
         tpie::file_stream<pseudo_leaf_entry> entries;
         tpie::serialization_writer summaries;
         label_count_list label_counts;
     };
 
     struct last_level_t {
-        last_level_t(level_resources_ptr resources, size_t cache_blocks)
-            : resources(resources)
-            , label_counts(resources->label_counts_dir, cache_blocks)
+        last_level_t(const level_files& files, size_t cache_blocks)
+            : label_counts(files.label_counts_dir, cache_blocks)
         {
-            entries.open(resources->entry_file.string());
-            summaries.open(resources->summary_file.string());
+            entries.open(files.entry_file.string());
+            summaries.open(files.summary_file.string());
         }
 
-
-        level_resources_ptr resources;
         tpie::file_stream<pseudo_leaf_entry> entries;
         tpie::serialization_reader summaries;
         label_count_list label_counts;
@@ -600,46 +589,50 @@ public:
     /// Creates the tree bottom-up and invokes the quick_load_pass class
     /// for every individual level.
     void build() {
-        temp_dir dir("quickload");
-
-        auto make_pass_dir = [&, pass = 0]() mutable {
-            return std::make_shared<level_resources>(dir.path(), pass++);
+        auto make_next_files = [pass = 0]() mutable {
+            return level_files(pass++);
         };
 
-        level_resources_ptr resources = make_pass_dir();
+        // Points to the files of the current level.
+        level_files files = make_next_files();
 
         u64 count = 0;
         {
-            next_level_t next_level(resources, 1);
-            count = create_leaves(m_input, next_level);
+            count = create_leaves(m_input, files);
+            geodb_assert(count > 0, "invalid node count");
         }
 
         // Loop until only one node remains.
         size_t height = 1;
-        while (1) {
-            last_level_t last_level(resources, m_max_leaves); // FIXME dynamic cache size.
+        while (count > 1) {
+            // Points to the files of the next level.
+            level_files next_files = make_next_files();
 
+            count = create_internals(files, next_files);
             geodb_assert(count > 0, "invalid node count");
-            if (count == 1) {
-                node_summary node_sum;
-                last_level.summaries.unserialize(node_sum);
 
-                storage().set_size(m_input_size);
-                storage().set_root(node_sum.ptr);
-                storage().set_height(height);
-                return;
-            }
-
-            level_resources_ptr next_resources = make_pass_dir();
-            next_level_t next_level(next_resources, 1);
-
-            count = create_internals(last_level, next_level);
-            resources = next_resources;
+            files = next_files;
             ++height;
         }
+
+        storage().set_size(m_input_size);
+        storage().set_root(get_root(files));
+        storage().set_height(height);
+        return;
     }
 
 private:
+    node_ptr get_root(const level_files& last_level) {
+        tpie::serialization_reader reader;
+        reader.open(last_level.summary_file.string());
+
+        geodb_assert(reader.can_read(), "file must not be empty");
+
+        node_summary sum;
+        reader.unserialize(sum);
+        return sum.ptr;
+    }
+
     class level_creator_base {
     private:
         state_type& m_state;
@@ -755,6 +748,17 @@ private:
         }
     };
 
+    /// Create a level of leaf nodes from a sequence of leaf entries by using the
+    /// quickload_pass template.
+    u64 create_leaves(tpie::file_stream<tree_entry>& source, const level_files& next_files) {
+        next_level_t next_level(next_files, 1);
+        leaf_level_creator creator(state(), next_level);
+        leaf_pass_t pass(m_max_leaves, detail::tree_entry_accessor(), m_weight);
+
+        pass.run(source, creator);
+        return creator.count();
+    }
+
     class internal_level_creator : level_creator_base {
         last_level_t& last_level;
         next_level_t& next_level;
@@ -858,17 +862,6 @@ private:
         }
     };
 
-    /// Create a level of leaf nodes from a sequence of leaf entries by using the
-    /// quickload_pass template.
-    u64 create_leaves(tpie::file_stream<tree_entry>& source, next_level_t& next_level) {
-        leaf_level_creator creator(state(), next_level);
-
-        leaf_pass_t pass(m_max_leaves, detail::tree_entry_accessor(), m_weight);
-        pass.run(source, creator);
-
-        return creator.count();
-    }
-
     /// Makes pseudo_leaf_entry instances act like ordinary irwi leaf entries.
     class pseudo_leaf_entry_accessor {
     private:
@@ -952,12 +945,15 @@ private:
 
     /// Creates a new level of internal nodes by passing the set entries from the last
     /// level to the quick_load_pass class.
-    u64 create_internals(last_level_t& last_level, next_level_t& next_level) {
+    u64 create_internals(const level_files& last_files, const level_files& next_files) {
+        static constexpr size_t cache_blocks = tree_type::max_internal_entries() * 4;
+
+        last_level_t last_level(last_files, cache_blocks);
+        next_level_t next_level(next_files, 1);
         internal_level_creator creator(state(), last_level, next_level);
-
         internal_pass_t pass(m_max_leaves, pseudo_leaf_entry_accessor(last_level.label_counts), m_weight);
-        pass.run(last_level.entries, creator);
 
+        pass.run(last_level.entries, creator);
         return creator.count();
     }
 
