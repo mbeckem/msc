@@ -31,6 +31,7 @@ static string tree_path;
 static size_t memory;
 static size_t max_leaves;
 static float beta;
+static string stats;
 
 void parse_options(int argc, char** argv);
 
@@ -64,24 +65,27 @@ int main(int argc, char** argv) {
         arrow.set_indicator_length(60);
         arrow.init();
 
-        tpie::progress_indicator_subindicator create_progress(&arrow, 10, "Create leaf entries");
-        create_entries(trajectories_path, entries, create_progress);
+        const measure_t m = measure_call([&]{
+            tpie::progress_indicator_subindicator create_progress(&arrow, 10, "Create leaf entries");
+            create_entries(trajectories_path, entries, create_progress);
 
-        tpie::progress_indicator_subindicator load_progress(&arrow, 90, "Create tree");
+            tpie::progress_indicator_subindicator load_progress(&arrow, 90, "Create tree");
 
-        const tpie::stream_size_type read_before = tpie::get_bytes_read();
-        const tpie::stream_size_type written_before = tpie::get_bytes_written();
-        loader(tree, entries, load_progress);
-
-        const tpie::stream_size_type read_io = (tpie::get_bytes_read() - read_before) / block_size;
-        const tpie::stream_size_type written_io = (tpie::get_bytes_written() - written_before) / block_size;
+            loader(tree, entries, load_progress);
+        });
 
         arrow.done();
 
         fmt::print("\n"
-                   "Read blocks: {}\n"
-                   "Written blocks: {}\n", read_io, written_io);
+                   "Done.\n"
+                   "Blocks read: {}\n"
+                   "Blocks written: {}\n"
+                   "Seconds: {}\n",
+                   m.reads, m.writes, m.duration);
 
+        if (!stats.empty()) {
+            write_json(stats, m);
+        }
         return 0;
     });
 }
@@ -102,7 +106,9 @@ void parse_options(int argc, char** argv) {
             ("max-memory", po::value(&memory)->value_name("MB")->default_value(32),
              "Memory limit in megabytes. Used by the str algorithm.")
             ("max-leaves", po::value(&max_leaves)->value_name("LEAVES")->default_value(8192),
-             "Leaf limit. Used by the quickload algorithm.");
+             "Leaf limit. Used by the quickload algorithm.")
+            ("stats", po::value(&stats)->value_name("FILE"),
+             "Output path for stats in json format.");
 
     po::variables_map vm;
     try {
