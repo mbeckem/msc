@@ -154,30 +154,44 @@ namespace detail {
         auto remove_pos = boost::begin(remove); // points to next iterator to be removed
         auto remove_end = boost::end(remove);
 
-        iterator out = intervals.begin();   // position in output range
-        iterator in = out;                  // position in input range
-        iterator last = intervals.end();
-        while (remove_pos != remove_end) {
-            if (in == *remove_pos) {
-                // This interval should be removed and merged with its successor.
-                // Simply skip this interval when copying and update the begin value
-                // of the next interval.
-                T begin = in->begin();
-                ++in;
-                *in = interval<T>(begin, in->end());
-                ++remove_pos;
-            } else {
-                // Keep this interval by copying it into the output range.
-                *out = *in;
-                ++out;
-                ++in;
-            };
+        if (remove_pos == remove_end) {
+            return;
         }
-        // End of "remove" has been reached; keep all remaining intervals.
+
+        // 1.   Jump directly to the first interval that should be merged with its successor.
+        //      Any interval before that one can be left untouched.
+        // 2.   Update the successor of the item with the begin value to merge the intervals.
+        // 3.   Copy intervals until the next element to be removed in found.
+        // 4.   Repeat until all intervals in `remove` have been handled.
+        // 5.   Copy any remaining intervals at the end.
+        const iterator last = intervals.end();
+        iterator in = *remove_pos++;    // Points to the current read position.
+        iterator out = in;              // Points to the current write position.
+        iterator next;
+        while (1) {
+            T begin = in->begin();
+            ++in;
+            *in = interval<T>(begin, in->end());
+
+            if (remove_pos == remove_end) {
+                // No more elements to be removed.
+                break;
+            }
+
+            // There is at least one more item to be removed.
+            // Copy all items in [in, next), then update the `in` pointer
+            // for the next loop iteration.
+            next = *remove_pos++;
+            for (; in != next; ++in, ++out) {
+                *out = *in;
+            }
+        }
+
+        // Copy the items after the last removed interval.
         for (; in != last; ++in, ++out) {
             *out = *in;
         }
-        intervals.erase(out, intervals.end());
+        intervals.erase(out, last);
     }
 
     /// Merges adjacent intervals until there are no more than

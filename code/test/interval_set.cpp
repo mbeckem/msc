@@ -249,6 +249,20 @@ TEST_CASE("correct merging of gaps between intervals", "[interval-set]") {
     }
 }
 
+TEST_CASE("merge consecutive intervals", "[interval-set]") {
+    std::vector<interval<int>> intervals{-100, 1, 2, 3, 4, 5, 6, 7, {100, 110}};
+    std::vector<interval<int>> expected{-100, {1, 7}, {100, 110}};
+    detail::merge_intervals(intervals, 3);
+    REQUIRE(boost::equal(intervals, expected));
+}
+
+TEST_CASE("merge with spots in between", "[interval-set]") {
+    std::vector<interval<int>> intervals{0, 10, 11, 16, 20, 21, 25, 28, 32, 36, 51, 52, 53, 54, 66, 70};
+    std::vector<interval<int>> expected{0, {10, 11}, 16, {20, 21}, 25, 28, 32, 36, {51, 54}, 66, 70};
+    detail::merge_intervals(intervals, 11);
+    REQUIRE(boost::equal(intervals, expected));
+}
+
 TEST_CASE("set union", "[interval-set]") {
     std::vector<small_set> sets;
 
