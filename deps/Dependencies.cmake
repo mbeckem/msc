@@ -13,6 +13,7 @@ else()
     target_compile_definitions(gsl INTERFACE GSL_UNENFORCED_ON_CONTRACT_VIOLATION)
 endif()
 
+### catch
 add_library(catch INTERFACE)
 target_include_directories(catch INTERFACE "${DEPS_SOURCE_DIR}/catch")
 
@@ -28,6 +29,10 @@ add_library(fmt INTERFACE)
 add_dependencies(fmt project_fmt)
 target_include_directories(fmt SYSTEM INTERFACE "${INSTALL_DIR}/include")
 target_link_libraries(fmt INTERFACE "${INSTALL_DIR}/lib/libfmt.a")
+
+### json
+add_library(json INTERFACE)
+target_include_directories(json INTERFACE "${DEPS_SOURCE_DIR}/json")
 
 ## tpie
 ExternalProject_add(project_tpie
