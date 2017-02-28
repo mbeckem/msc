@@ -16,6 +16,12 @@ if(NOT CMAKE_BUILD_TYPE)
         FORCE)
 endif()
 
+# Write all output files to the project's (binary-) root,
+# regardless of where they are declared in the folder structure.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
+
 # Set compiler specific flags.
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_EXTENSIONS OFF)
