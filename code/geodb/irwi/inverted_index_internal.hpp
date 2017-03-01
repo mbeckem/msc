@@ -34,8 +34,10 @@ public:
 
     using const_list_ptr = const list_type*;
 
-    /* private */ using map_type = std::map<label_type, list_type>;
+private:
+    using map_type = std::map<label_type, list_type>;
 
+public:
     using iterator_type = typename map_type::const_iterator;
 
     iterator_type begin() const { return m_lists.begin(); }

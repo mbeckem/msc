@@ -3,6 +3,7 @@
 
 #include "geodb/common.hpp"
 #include "geodb/bounding_box.hpp"
+#include "geodb/hybrid_map.hpp"
 #include "geodb/trajectory.hpp"
 #include "geodb/irwi/tree_partition.hpp"
 
@@ -36,21 +37,41 @@ class tree_insertion {
     using list_ptr = typename State::list_ptr;
     using const_list_ptr = typename State::const_list_ptr;
 
+    using list_summary_type = typename list_type::summary_type;
+
     using posting_type = typename State::posting_type;
+    using posting_data_type = posting_data<State::lambda()>;
 
     using partition_type = tree_partition<State>;
     using which_t = typename partition_type::which_t;
     using split_element = typename partition_type::split_element;
     using internal_entry = typename partition_type::internal_entry;
 
+    template<typename Key, typename Value>
+    using map_type = typename storage_type::template map_type<Key, Value>;
+
+    /// The summary of a leaf node can be kept in internal memory
+    /// because the total number of entries has a fixed upper bound
+    /// (i.e. the leaf fanout).
+    struct leaf_node_summary {
+        /// The total count & trajectory id set.
+        posting_data_type total;
+
+        /// One count & trajecory id set for every label
+        /// that occurs in the leaf. These entries will become
+        /// members of the parent's inverted index.
+        internal_map<label_type, posting_data_type> labels;
+    };
+
     /// Summary of the inverted index of some node.
-    /// Uses O(num_labels * Lambda) space.
     // TODO: Use external storage if the number of labels is very large.
-    struct index_summary {
-        id_set_type total_tids;
-        u64 total_units = 0;
-        std::unordered_map<label_type, u64> label_units;
-        std::unordered_map<label_type, id_set_type> label_tids;
+    struct index_node_summary {
+        posting_data_type total;
+        map_type<label_type, posting_data_type> labels;
+
+        index_node_summary(storage_type& storage)
+            : labels(storage.template make_map<label_type, posting_data_type>())
+        {}
     };
 
     using internal_count_vec = boost::container::static_vector<u64, State::max_internal_entries()>;
@@ -313,7 +334,7 @@ private:
     ///     The new leaf or internal node that should be inserted.
     template<typename NodePointer>
     internal_ptr split_and_insert(internal_ptr old_internal, NodePointer extra) {
-        const index_summary summary = summarize(extra);
+        const auto summary = summarize(extra);
 
         std::vector<internal_entry> entries = get_entries(old_internal, extra, summary);
         std::vector<split_element> split;
@@ -362,8 +383,9 @@ private:
     }
 
     /// \pre split is sorted by old index.
+    template<typename Summary>
     void apply_index_split(index_ptr old_index, index_ptr new_index,
-                           const index_summary& summary,
+                           const Summary& summary,
                            const std::vector<split_element>& split)
     {
         std::vector<posting_type> result_left, result_right;
@@ -418,12 +440,12 @@ private:
         // The required entries can be calcuated by examining the already
         // existing summary.
         auto append_entries = [&](auto& index, entry_id_type id) {
-            index->total()->append(posting_type(id, summary.total_units, summary.total_tids));
+            index->total()->append(posting_type(id, summary.total));
             // TODO: One map instead of 2.
-            for (auto pair : summary.label_units) {
+            for (auto pair : summary.labels) {
                 index->find_or_create(pair.first)
                         ->postings_list()
-                        ->append(posting_type(id, pair.second, summary.label_tids.at(pair.first)));
+                        ->append(posting_type(id, pair.second));
             }
         };
 
@@ -459,8 +481,8 @@ private:
 
     /// Returns a vector that contains all (indexed) child entries of the given internal node
     /// and the extra node.
-    template<typename NodePointer>
-    std::vector<internal_entry> get_entries(internal_ptr internal, NodePointer extra, const index_summary& summary)
+    template<typename NodePointer, typename Summary>
+    std::vector<internal_entry> get_entries(internal_ptr internal, NodePointer extra, const Summary& summary)
     {
         const u32 count = storage.get_count(internal);
 
@@ -504,63 +526,73 @@ private:
         internal_entry& last = entries.back();
         last.ptr = extra;
         last.mbb = state.get_mbb(extra);
-        for (const auto& pair : summary.label_units) {
-            last.label_units.insert(pair.first, pair.second);
+        for (const auto& pair : summary.labels) {
+            last.label_units.insert(pair.first, pair.second.count());
         }
-        last.total_units = summary.total_units;
+        last.total_units = summary.total.count();
 
         return entries;
     }
 
     /// Summarizes a leaf node. This summary will become part of
     /// the new parent's inverted index.
-    index_summary summarize(leaf_ptr n) const {
+    leaf_node_summary summarize(leaf_ptr n) const {
         const u32 count = storage.get_count(n);
 
-        index_summary s;
+        list_summary_type total;
+        std::map<label_type, list_summary_type> labels;
+
         for (u32 i = 0 ; i < count; ++i) {
             value_type v = storage.get_data(n, i);
             const trajectory_id_type tid = state.get_id(v);
             const auto label_counts = state.get_label_counts(v);
             const u64 total_count = state.get_total_count(v);
 
-            s.total_tids.add(tid);
-            s.total_units += total_count;
+            total.trajectories.add(tid);
+            total.count += total_count;
 
             for (const auto& lc : label_counts) {
-                s.label_tids[lc.label].add(tid);
-                s.label_units[lc.label] += lc.count;
+                list_summary_type& entry = labels[lc.label];
+
+                entry.trajectories.add(tid);
+                entry.count += lc.count;
             }
         }
-        return s;
+
+        leaf_node_summary summary;
+        summary.total.count(total.count);
+        summary.total.id_set(total.trajectories);
+        for (auto& pair : labels) {
+            posting_data_type pd;
+            pd.count(pair.second.count);
+            pd.id_set(pair.second.trajectories);
+            summary.labels.insert(pair.first, pd);
+        }
+        return summary;
     }
 
     /// Summarizes an internal node by summing the entries of
     /// all postings lists in its inverted index.
     /// This summary will become part of the new parent's inverted index.
-    index_summary summarize(internal_ptr n) const {
-        auto sum_list = [&](const auto& list, id_set_type& ids, u64& count) {
-            auto sum = list->summarize();
-            ids = std::move(sum.trajectories);
-            count = sum.count;
-        };
-
+    index_node_summary summarize(internal_ptr n) const {
         auto index = storage.const_index(n);
 
-        index_summary s;
-        sum_list(index->total(), s.total_tids, s.total_units);
+        auto to_posting_data = [&](const auto& list) {
+            auto sum = list->summarize();
+            return posting_data_type(sum.count, sum.trajectories);
+        };
+
+        index_node_summary summary(storage);
+        summary.total = to_posting_data(index->total());
         for (const auto& entry : *index) {
             const label_type label = entry.label();
 
-            id_set_type tids;
-            u64 count;
-            sum_list(entry.postings_list(), tids, count);
-            if (count > 0) {
-                s.label_units[label] = count;
-                s.label_tids[label] = std::move(tids);
+            auto pd = to_posting_data(entry.postings_list());
+            if (pd.count() > 0) {
+                summary.labels.insert(label, pd);
             }
         }
-        return s;
+        return summary;
     }
 
     /// Insert a data entry into a leaf. The leaf must not be full.
@@ -634,17 +666,16 @@ private:
         const auto sum = summarize(c);
 
         // Update the postings lists for all labels that occur in the summary.
-        // TODO: One map isntead of 2
-        for (auto& pair : sum.label_units) {
+        for (auto&& pair : sum.labels) {
             label_type label = pair.first;
-            u64 count = pair.second;
-            if (count > 0) {
+            const posting_data_type& data = pair.second;
+            if (data.count() > 0) {
                 parent_index.find_or_create(label)
                         ->postings_list()
-                        ->append(posting_type(i, count, sum.label_tids.at(label)));
+                        ->append(posting_type(i, data));
             }
         }
-        parent_index.total()->append(posting_type(i, sum.total_units, sum.total_tids));
+        parent_index.total()->append(posting_type(i, sum.total));
     }
 
     /// Remove all references to the given child entry from the index.

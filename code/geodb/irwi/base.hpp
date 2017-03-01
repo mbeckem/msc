@@ -51,7 +51,7 @@ namespace detail {
 
 struct tree_entry_accessor {
     struct label_count {
-        static constexpr u64 count = 1;
+        static const constexpr u64 count = 1;
 
         label_type label;
     };
@@ -64,8 +64,8 @@ struct tree_entry_accessor {
         return e.unit.get_bounding_box();
     }
 
-    u64 get_total_count(const tree_entry& e) const {
-        unused(e);
+    constexpr u64 get_total_count(const tree_entry& e) const {
+        (void) e;
         return 1;
     }
 

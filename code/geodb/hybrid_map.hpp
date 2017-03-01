@@ -94,6 +94,10 @@ public:
     /// Create an empty map.
     internal_map() = default;
 
+    internal_map(internal_map&&) noexcept = default;
+
+    internal_map& operator=(internal_map&&) noexcept = default;
+
     /// Returns the iterator to the first element (or `end()`).
     iterator begin() const { return m_map.begin(); }
 
@@ -215,6 +219,10 @@ public:
     external_map()
         : m_tree(std::make_unique<tree_t>((m_dir.path() / "map.tree").string()))
     {}
+
+    external_map(external_map&&) noexcept = default;
+
+    external_map& operator=(external_map&&) noexcept = default;
 
     /// Returns an iterator to the first element (or `end()`).
     iterator begin() const { return m_tree->begin(); }
@@ -357,6 +365,10 @@ public:
         : m_backend()
         , m_limit(limit)
     {}
+
+    hybrid_map(hybrid_map&&) noexcept = default;
+
+    hybrid_map& operator=(hybrid_map&&) noexcept = default;
 
     /// Returns an iterator to the first element (or `end()`).
     iterator begin() const {

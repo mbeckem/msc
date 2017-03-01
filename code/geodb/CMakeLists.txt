@@ -2,6 +2,8 @@ set(SOURCES
     common.cpp
     parser.cpp
     trajectory.cpp
+
+    irwi/base.cpp
 )
 
 set(HEADERS
