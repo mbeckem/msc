@@ -1,6 +1,7 @@
 #ifndef GEODB_IRWI_TREE_INTERNAL_HPP
 #define GEODB_IRWI_TREE_INTERNAL_HPP
 
+#include "geodb/hybrid_map.hpp"
 #include "geodb/irwi/base.hpp"
 #include "geodb/irwi/inverted_index.hpp"
 #include "geodb/irwi/inverted_index_internal.hpp"
@@ -190,6 +191,14 @@ public:
 
     bool leaves_cut() const {
         return m_leaves_cut;
+    }
+
+    template<typename Key, typename Value>
+    using map_type = internal_map<Key, Value>;
+
+    template<typename Key, typename Value>
+    map_type<Key, Value> make_map() {
+        return map_type<Key, Value>();
     }
 
 public:

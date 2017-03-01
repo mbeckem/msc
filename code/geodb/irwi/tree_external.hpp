@@ -1,6 +1,7 @@
 #ifndef GEODB_IRWI_TREE_EXTERNAL_HPP
 #define GEODB_IRWI_TREE_EXTERNAL_HPP
 
+#include "geodb/hybrid_map.hpp"
 #include "geodb/irwi/base.hpp"
 #include "geodb/irwi/block_handle.hpp"
 #include "geodb/irwi/inverted_index.hpp"
@@ -275,6 +276,15 @@ public:
 
     size_t get_internal_count() const {
         return m_internal_count;
+    }
+
+    template<typename Key, typename Value>
+    using map_type = hybrid_map<Key, Value, block_size>;
+
+    template<typename Key, typename Value>
+    map_type<Key, Value> make_map() {
+        // TODO: Could assign a special directory instead of global /tmp/
+        return map_type<Key, Value>();
     }
 
 public:

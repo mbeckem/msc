@@ -2,6 +2,7 @@ set(SOURCES
     algorithm.cpp
     bounding_box.cpp
     file_allocator.cpp
+    hybrid_map.cpp
     id_allocator.cpp
     interval.cpp
     interval_set.cpp
