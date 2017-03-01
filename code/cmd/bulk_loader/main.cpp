@@ -31,7 +31,7 @@ static string tree_path;
 static size_t memory;
 static size_t max_leaves;
 static float beta;
-static string stats;
+static string stats_file;
 
 void parse_options(int argc, char** argv);
 
@@ -65,12 +65,11 @@ int main(int argc, char** argv) {
         arrow.set_indicator_length(60);
         arrow.init();
 
-        const measure_t m = measure_call([&]{
+        const measure_t stats = measure_call([&]{
             tpie::progress_indicator_subindicator create_progress(&arrow, 10, "Create leaf entries");
             create_entries(trajectories_path, entries, create_progress);
 
             tpie::progress_indicator_subindicator load_progress(&arrow, 90, "Create tree");
-
             loader(tree, entries, load_progress);
         });
 
@@ -81,10 +80,10 @@ int main(int argc, char** argv) {
                    "Blocks read: {}\n"
                    "Blocks written: {}\n"
                    "Seconds: {}\n",
-                   m.reads, m.writes, m.duration);
+                   stats.reads, stats.writes, stats.duration);
 
-        if (!stats.empty()) {
-            write_json(stats, m);
+        if (!stats_file.empty()) {
+            write_json(stats_file, stats);
         }
         return 0;
     });
@@ -107,7 +106,7 @@ void parse_options(int argc, char** argv) {
              "Memory limit in megabytes. Used by the str algorithm.")
             ("max-leaves", po::value(&max_leaves)->value_name("LEAVES")->default_value(8192),
              "Leaf limit. Used by the quickload algorithm.")
-            ("stats", po::value(&stats)->value_name("FILE"),
+            ("stats", po::value(&stats_file)->value_name("FILE"),
              "Output path for stats in json format.");
 
     po::variables_map vm;
