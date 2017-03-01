@@ -207,13 +207,13 @@ private:
             node_part* best_part = nullptr;
             float best_diff = 0;
             std::tie(best_part, best_diff) = pick_part(remaining[0]);
-            for (u32& index : remaining) {
+            for (u32 i = 1; i < remaining.size(); ++i) {
                 node_part* part;
                 float diff;
-                std::tie(part, diff) = pick_part(index);
+                std::tie(part, diff) = pick_part(remaining[i]);
 
                 if (diff > best_diff) {
-                    best_item = &index;
+                    best_item = &remaining[i];
                     best_part = part;
                     best_diff = diff;
                 }
