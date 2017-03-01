@@ -53,6 +53,7 @@ struct measure_t {
     u64 reads = 0;        // Block reads
     u64 writes = 0;       // Block writes
     u64 duration = 0;     // Time taken (seconds)
+    u64 block_size = 0;   // Block size in bytes.
 };
 
 inline void to_json(json& j, const measure_t& m) {
@@ -60,6 +61,7 @@ inline void to_json(json& j, const measure_t& m) {
     j["reads"] = m.reads;
     j["writes"] = m.writes;
     j["duration"] = m.duration;
+    j["block_size"] = m.block_size;
 }
 
 /// Calls the given function and measures time taken
@@ -78,6 +80,7 @@ measure_t measure_call(Func&& f) {
     m.reads = (tpie::get_bytes_read() - bytes_read) / block_size;
     m.writes = (tpie::get_bytes_written() - bytes_written) / block_size;
     m.duration = duration_cast<seconds>(steady_clock::now() - start).count();
+    m.block_size = block_size;
     return m;
 }
 
