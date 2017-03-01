@@ -30,6 +30,9 @@ class tree_partition {
 
     using posting_type = typename State::posting_type;
 
+    template<typename Key, typename Value>
+    using map_type = typename storage_type::template map_type<Key, Value>;
+
     /// A label id and a count of trajectory units.
     struct label_count {
         label_type label;
@@ -54,7 +57,7 @@ public:
     struct internal_entry {
         node_ptr ptr{};
         bounding_box mbb;
-        std::map<label_type, u64> label_units; // label -> unit count
+        map_type<label_type, u64> label_units;  // label -> unit count
         u64 total_units = 0;
     };
 
@@ -125,8 +128,8 @@ private:
         u32 left_seed, right_seed;
         std::tie(left_seed, right_seed) = pick_seeds(e);
 
-        node_part left_part(left, get_mbb(e, left_seed), get_labels(e, left_seed));
-        node_part right_part(right, get_mbb(e, right_seed), get_labels(e, right_seed));
+        node_part left_part(storage, left, get_mbb(e, left_seed), get_labels(e, left_seed));
+        node_part right_part(storage, right, get_mbb(e, right_seed), get_labels(e, right_seed));
 
         split.push_back(split_element(left_seed, 0, left));
         split.push_back(split_element(right_seed, 0, right));
@@ -272,7 +275,7 @@ private:
         bounding_box m_mbb;
 
         /// Map of label -> count.
-        std::map<label_type, u64> m_labels;
+        map_type<label_type, u64> m_labels;
 
         /// Number of entries.
         u32 m_size = 0;
@@ -282,14 +285,15 @@ private:
 
     public:
         template<typename LabelCounts>
-        node_part(which_t which, const bounding_box& seed_mbb, const LabelCounts& seed_labels)
+        node_part(storage_type& storage, which_t which, const bounding_box& seed_mbb, const LabelCounts& seed_labels)
             : m_which(which)
             , m_mbb(seed_mbb)
+            , m_labels(storage.template make_map<label_type, u64>())
             , m_size(1)
             , m_total_units(0)
         {
             for (const auto& lc : seed_labels) {
-                m_labels[lc.label] += lc.count;
+                m_labels.insert(lc.label, lc.count);
                 m_total_units += lc.count;
             }
         }
@@ -321,8 +325,16 @@ private:
         template<typename LabelCounts>
         u32 add(const bounding_box& b, const LabelCounts& label_counts) {
             m_mbb = m_mbb.extend(b);
+
+            const auto end = m_labels.end();
             for (const auto& lc : label_counts) {
-                m_labels[lc.label] += lc.count;
+                auto pos = m_labels.find(lc.label);
+                if (pos != end) {
+                    m_labels.replace(pos, pos->second + lc.count);
+                } else {
+                    m_labels.insert(lc.label, lc.count);
+                }
+
                 m_total_units += lc.count;
             }
             return m_size++;
@@ -389,7 +401,6 @@ private:
         }
         return max;
     }
-
 };
 
 } // namespace geodb

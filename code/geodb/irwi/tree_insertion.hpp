@@ -494,7 +494,7 @@ private:
                 if (list->size() > 0) {
                     for (const posting_type& p : *list) {
                         internal_entry& e = entries[p.node()];
-                        e.label_units[label] = p.count();
+                        e.label_units.insert(label, p.count());
                     }
                 }
             }
@@ -504,7 +504,9 @@ private:
         internal_entry& last = entries.back();
         last.ptr = extra;
         last.mbb = state.get_mbb(extra);
-        last.label_units.insert(summary.label_units.begin(), summary.label_units.end());
+        for (const auto& pair : summary.label_units) {
+            last.label_units.insert(pair.first, pair.second);
+        }
         last.total_units = summary.total_units;
 
         return entries;
