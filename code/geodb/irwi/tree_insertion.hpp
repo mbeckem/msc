@@ -389,6 +389,8 @@ private:
                            const std::vector<split_element>& split)
     {
         std::vector<posting_type> result_left, result_right;
+        result_left.reserve(State::max_internal_entries());
+        result_right.reserve(State::max_internal_entries());
         auto split_entries = [&](list_ptr list) {
             result_left.clear();
             result_right.clear();
