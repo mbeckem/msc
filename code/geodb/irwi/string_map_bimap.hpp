@@ -10,7 +10,7 @@
 
 namespace geodb {
 
-namespace detail {
+namespace string_map_bimap_ {
 
 using namespace boost::multi_index;
 using boost::multi_index_container;
@@ -19,7 +19,7 @@ struct label_id {};
 struct label_name {};
 struct insertion_order {};
 
-using internal_index_t = multi_index_container<
+using container = multi_index_container<
     label_mapping,
     indexed_by<
         ordered_unique<tag<label_id>, member<
@@ -32,17 +32,17 @@ using internal_index_t = multi_index_container<
     >
 >;
 
-} // namespace detail
+} // namespace string_map_bimap_
 
 /// A bimap contains a set of mappings (label_name, label_id)
 /// where both label_name and label_id are unique across all elements.
 /// Both values can be used to find a mapping in the container.
 /// Mappings are iterated in insertion order.
 class string_map_bimap {
-    using index_type = detail::internal_index_t;
-    using id_tag = detail::label_id;
-    using name_tag = detail::label_name;
-    using order_tag = detail::insertion_order;
+    using index_type = string_map_bimap_::container;
+    using id_tag = string_map_bimap_::label_id;
+    using name_tag = string_map_bimap_::label_name;
+    using order_tag = string_map_bimap_::insertion_order;
 
 public:
     // Elements are iterated in insertion order by default.

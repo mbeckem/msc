@@ -20,7 +20,7 @@ namespace shared_instances_ {
     class lookup_tag;
 
     template<typename Entry, typename Key>
-    using container_t = multi_index_container<
+    using container = multi_index_container<
         Entry,
         indexed_by<
             hashed_unique<tag<lookup_tag>, member<Entry, Key, &Entry::key>>
@@ -75,7 +75,7 @@ private:
     }
 
     using intrusive_t = boost::intrusive_ptr<const entry>;
-    using container_t = shared_instances_::container_t<entry, Key>;
+    using container_t = shared_instances_::container<entry, Key>;
     using lookup_t = shared_instances_::lookup_tag;
 
     // Reference counted pointer using boost::intrusiv_ptr.

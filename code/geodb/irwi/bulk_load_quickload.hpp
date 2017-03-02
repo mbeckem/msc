@@ -166,7 +166,7 @@ private:
     }
 };
 
-namespace quick_load_pass_detail {
+namespace quick_load_pass_ {
 
 using namespace boost::multi_index;
 
@@ -178,7 +178,7 @@ struct order_tag {};
 // Otherwise, the order would be unspecified because the node ids are based
 // on heap pointers.
 template<typename NodeState, typename NodeId>
-using node_map_t = multi_index_container<
+using container = multi_index_container<
     NodeState,
     indexed_by<
         ordered_unique<tag<id_tag>, member<
@@ -188,7 +188,7 @@ using node_map_t = multi_index_container<
     >
 >;
 
-} // namespace quick_load_pass_detail
+} // namespace quick_load_pass_
 
 /// A quick load pass reads node entries from a lower level and combines them
 /// into nodes for the current level.
@@ -236,9 +236,9 @@ private:
         {}
     };
 
-    using id_tag = quick_load_pass_detail::id_tag;
-    using order_tag = quick_load_pass_detail::order_tag;
-    using node_map = quick_load_pass_detail::node_map_t<node_state, node_id>;
+    using id_tag = quick_load_pass_::id_tag;
+    using order_tag = quick_load_pass_::order_tag;
+    using node_map = quick_load_pass_::container<node_state, node_id>;
 
     using id_iterator = typename node_map::template index_iterator<id_tag>::type;
     using order_iterator = typename node_map::template index_iterator<order_tag>::type;
