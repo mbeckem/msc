@@ -297,7 +297,7 @@ public:
     }
 
 public:
-    static constexpr int version() { return 1; }
+    static constexpr int version() { return 2; }
 
     // ----------------------------------------
     //      Construction/Destruction
@@ -331,6 +331,20 @@ public:
                                                         Lambda, file_lambda));
             }
 
+            size_t file_internal_fanout;
+            rf.read(file_internal_fanout);
+            if (file_internal_fanout != max_internal_entries()) {
+                throw std::invalid_argument(fmt::format("Invalid internal node fanout. Expected {} but got {}.",
+                                                        max_internal_entries(), file_internal_fanout));
+            }
+
+            size_t file_leaf_fanout;
+            rf.read(file_leaf_fanout);
+            if (file_leaf_fanout != max_leaf_entries()) {
+                throw std::invalid_argument(fmt::format("Invalid leaf node fanout. Expected {} but got {}.",
+                                                        max_leaf_entries(), file_leaf_fanout));
+            }
+
             rf.read(m_size);
             rf.read(m_height);
             rf.read(m_leaf_count);
@@ -348,8 +362,12 @@ public:
 
         size_t file_block_size = block_size;
         size_t file_lambda = Lambda;
+        size_t file_internal_fanout = max_internal_entries();
+        size_t file_leaf_fanout = max_leaf_entries();
         rf.write(file_block_size);
         rf.write(file_lambda);
+        rf.write(file_internal_fanout);
+        rf.write(file_leaf_fanout);
 
         rf.write(m_size);
         rf.write(m_height);
