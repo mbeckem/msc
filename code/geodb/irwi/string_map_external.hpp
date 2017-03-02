@@ -4,25 +4,16 @@
 #include "geodb/common.hpp"
 #include "geodb/filesystem.hpp"
 #include "geodb/irwi/string_map_bimap.hpp"
+#include "geodb/utility/movable_adapter.hpp"
 
 #include <boost/noncopyable.hpp>
-#include <tpie/uncompressed_stream.h>
+#include <tpie/file_stream.h>
 
 namespace geodb {
 
 class string_map_external;
 
 class string_map_external_impl;
-
-class string_map_external {
-public:
-    string_map_external(fs::path path)
-        : path(std::move(path)) {}
-
-    fs::path path;
-
-    using implementation = string_map_external_impl;
-};
 
 class string_map_external_impl : boost::noncopyable {
 
@@ -60,8 +51,8 @@ public:
     void set_last_id(label_type id) { m_last_id = id; }
 
 public:
-    string_map_external_impl(string_map_external params) {
-        m_stream.open(params.path.string());
+    string_map_external_impl(const fs::path& path) {
+        m_stream.open(path.string());
         if (m_stream.size() > 0) {
             read_raw(m_last_id);
             while (m_stream.can_read()) {
@@ -112,13 +103,32 @@ private:
 private:
     /// The map is backed by a file on disk. When a new entry
     /// is being inserted, a copy of that entry will be appended to the file.
-    tpie::uncompressed_stream<char> m_stream; // TODO: Just how dumb is a 1-byte large element?
+    tpie::file_stream<char> m_stream; // TODO: Just how dumb is a 1-byte large element?
 
     /// The label id.
     label_type m_last_id = 0;
 
     /// Contains the mappings in internal storage for fast lookup performance.
     map_type m_map;
+};
+
+class string_map_external {
+private:
+    fs::path path;
+
+public:
+    string_map_external(fs::path path)
+        : path(std::move(path)) {}
+
+private:
+    template<typename StorageSpec>
+    friend class string_map;
+
+    using implementation = string_map_external_impl;
+
+    movable_adapter<implementation> construct() const {
+        return { in_place_t(), path };
+    }
 };
 
 } // namespace geodb

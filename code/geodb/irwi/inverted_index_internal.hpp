@@ -15,14 +15,25 @@ class inverted_index_internal_storage_impl;
 
 class inverted_index_internal_storage {
 public:
+    inverted_index_internal_storage() = default;
+
+private:
+    template<typename StorageSpec, u32 Lambda>
+    friend class inverted_index;
+
     template<u32 Lambda>
     using implementation = inverted_index_internal_storage_impl<Lambda>;
+
+    template<u32 Lambda>
+    implementation<Lambda> construct() const {
+        return {};
+    }
 };
 
 /// Internal storage for an inverted index.
 /// Backed by an in-memory map of (label -> postings list) entries.
 template<u32 Lambda>
-class inverted_index_internal_storage_impl : boost::noncopyable {
+class inverted_index_internal_storage_impl {
 public:
     // ----------------------------------------
     //      Storage interface for inverted index
@@ -80,7 +91,7 @@ public:
     }
 
 public:
-    inverted_index_internal_storage_impl(inverted_index_internal_storage)
+    inverted_index_internal_storage_impl()
         : m_total(tpie::make_unique<list_type>())
     {}
 

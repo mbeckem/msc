@@ -57,8 +57,8 @@ public:
     using const_iterator = iterator;
 
 public:
-    string_map(StorageSpec s = StorageSpec())
-        : m_storage(in_place_t(), std::move(s)) {}
+    string_map(const StorageSpec& s = StorageSpec())
+        : m_storage(s.construct()) {}
 
     string_map(string_map&& other) noexcept = default;
 

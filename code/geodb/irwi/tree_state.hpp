@@ -89,8 +89,8 @@ private:
     float m_weight = 0;
 
 public:
-    tree_state(StorageSpec s, Accessor accessor, float weight)
-        : m_storage(in_place_t(), std::move(s))
+    tree_state(const StorageSpec& s, Accessor accessor, float weight)
+        : m_storage(s.template construct<Value, Lambda>())
         , m_accessor(std::move(accessor))
         , m_weight(weight)
     {

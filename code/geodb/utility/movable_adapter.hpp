@@ -64,6 +64,10 @@ public:
         : m_inner(std::forward<Args>(args)...)
     {}
 
+    movable_adapter(T&& other) noexcept
+        : m_inner(std::move(other))
+    {}
+
     movable_adapter(movable_adapter&& other) noexcept
         : m_inner(std::move(other.m_inner))
     {}

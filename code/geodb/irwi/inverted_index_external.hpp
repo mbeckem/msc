@@ -24,17 +24,28 @@ class inverted_index_external_impl;
 /// external storage.
 template<size_t block_size>
 class inverted_index_external {
-public:
-    template<u32 Lambda>
-    using implementation = inverted_index_external_impl<block_size, Lambda>;
+private:
+    fs::path directory;
 
+public:
     /// \param directory
     ///     Path to the directory on disk.
     inverted_index_external(fs::path directory)
         : directory(std::move(directory))
     {}
 
-    fs::path directory;
+private:
+    template<typename StorageSpec, u32 Lambda>
+    friend class inverted_index;
+
+    template<u32 Lambda>
+    using implementation = inverted_index_external_impl<block_size, Lambda>;
+
+    template<u32 Lambda>
+    movable_adapter<implementation<Lambda>>
+    construct() const {
+        return { in_place_t(), directory };
+    }
 };
 
 /// External storage for an inverted index.
@@ -126,10 +137,10 @@ public:
     }
 
 public:
-    inverted_index_external_impl(inverted_index_external<block_size> params)
-        : m_directory(std::move(params.directory))
-        , m_btree((m_directory / "index.btree").string())
-        , m_alloc(ensure_directory(m_directory / "postings_lists"))
+    inverted_index_external_impl(const fs::path& directory)
+        : m_directory(directory)
+        , m_btree((directory / "index.btree").string())
+        , m_alloc(ensure_directory(directory / "postings_lists"))
     {
         // Restore the pointer to the `total` postings list or
         // create it if it didn't exist.

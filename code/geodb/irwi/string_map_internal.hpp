@@ -9,11 +9,6 @@ class string_map_internal;
 
 class string_map_internal_impl;
 
-class string_map_internal {
-public:
-    using implementation = string_map_internal_impl;
-};
-
 /// Implementation of internal storage for string maps.
 /// Mappings are kept in a boost::multiindex.
 class string_map_internal_impl {
@@ -50,13 +45,28 @@ public:
     }
 
 public:
-    string_map_internal_impl(string_map_internal) {}
+    string_map_internal_impl() = default;
 
     string_map_internal_impl(string_map_internal_impl&&) noexcept = default;
 
 private:
     label_type m_last_id = 0;
     map_type m_map;
+};
+
+class string_map_internal {
+public:
+    string_map_internal() = default;
+
+private:
+    template<typename StorageSpec>
+    friend class string_map;
+
+    using implementation = string_map_internal_impl;
+
+    implementation construct() const {
+        return {};
+    }
 };
 
 } // namespace geodb

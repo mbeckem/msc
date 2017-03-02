@@ -9,6 +9,7 @@
 #include "geodb/irwi/inverted_index_external.hpp"
 #include "geodb/utility/as_const.hpp"
 #include "geodb/utility/file_allocator.hpp"
+#include "geodb/utility/movable_adapter.hpp"
 #include "geodb/utility/raw_stream.hpp"
 #include "geodb/utility/shared_values.hpp"
 
@@ -18,10 +19,10 @@
 
 namespace geodb {
 
-template<size_t block_size>
+template<size_t block_size, size_t fanout_leaf = 0, size_t fanout_internal = fanout_leaf>
 struct tree_external;
 
-template<size_t block_size, typename LeafData, u32 Lambda>
+template<size_t block_size, size_t fanout_leaf, size_t fanout_internal, typename LeafData, u32 Lambda>
 struct tree_external_impl;
 
 /// Implementation of external storage for the irwi tree.
@@ -31,7 +32,7 @@ struct tree_external_impl;
 /// Every internal node has its own inverted index.
 /// The inverted index uses external memory with the same block size
 /// as this class.
-template<size_t block_size, typename LeafData, u32 Lambda>
+template<size_t block_size, size_t fanout_leaf, size_t fanout_internal, typename LeafData, u32 Lambda>
 class tree_external_impl : boost::noncopyable {
 private:
     // Uses external storage for storing the inverted file for each node.
@@ -51,11 +52,19 @@ public:
     }
 
     static constexpr size_t max_internal_entries() {
+        if (fanout_internal) {
+            return fanout_internal;
+        }
+
         size_t header = sizeof(index_id_type) + 4;  // Inverted index + child count.
         return (block_size - header) / sizeof(internal_entry);
     }
 
     static constexpr size_t max_leaf_entries() {
+        if (fanout_leaf) {
+            return fanout_leaf;
+        }
+
         size_t header = 4; // Child count.
         return (block_size - header) / sizeof(LeafData);
     }
@@ -302,10 +311,10 @@ public:
     // ----------------------------------------
     //      Construction/Destruction
     // ----------------------------------------
-    tree_external_impl(tree_external<block_size> params)
-        : m_directory(std::move(params.directory))
-        , m_index_alloc(ensure_directory(m_directory / "inverted_index"))
-        , m_blocks((m_directory / "tree.blocks").string(), block_size, 32, true)
+    tree_external_impl(const fs::path& directory)
+        : m_directory(directory)
+        , m_index_alloc(ensure_directory(directory / "inverted_index"))
+        , m_blocks((directory / "tree.blocks").string(), block_size, 32, true)
     {
         raw_stream rf;
         if (rf.try_open(state_path())) {
@@ -426,15 +435,35 @@ private:
 ///
 /// \tparam block_size
 ///     Block size used for external memory.
-template<size_t block_size>
-struct tree_external {
-    template<typename LeafData, u32 Lambda>
-    using implementation = tree_external_impl<block_size, LeafData, Lambda>;
+/// \tparam fanout_leaf
+///     The custom fanout for leaf nodes.
+///     A value of zero (the default) will choose the maximum fanout for
+///     the given block size.
+/// \tparam fanout_internal
+///     The custom fanout for internal nodes.
+///     A value of zero will choose the maximum fanout for the given block size.
+///     Defaults to `fanout_leaf`.
+template<size_t block_size, size_t fanout_leaf, size_t fanout_internal>
+class tree_external {
+private:
+    fs::path directory;
 
+public:
     tree_external(fs::path directory):
         directory(directory) {}
 
-    fs::path directory;
+private:
+    template<typename StorageSpec, typename Value, typename Accessor, u32 Lambda>
+    friend class tree_state;
+
+    template<typename LeafData, u32 Lambda>
+    using implementation = tree_external_impl<block_size, fanout_leaf, fanout_internal, LeafData, Lambda>;
+
+    template<typename LeafData, u32 Lambda>
+    movable_adapter<implementation<LeafData, Lambda>>
+    construct() const {
+        return { in_place_t(), directory };
+    }
 };
 
 } // namespace geodb

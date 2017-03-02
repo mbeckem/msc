@@ -2,6 +2,7 @@
 #define GEODB_IRWI_POSTINGS_LIST_INTERNAL_HPP
 
 #include "geodb/common.hpp"
+#include "geodb/irwi/base.hpp"
 
 #include <vector>
 
@@ -15,8 +16,19 @@ class postings_list_internal_impl;
 /// Internal posting list storage backed by an in-memory vector.
 class postings_list_internal {
 public:
+    postings_list_internal() = default;
+
+private:
+    template<typename StorageSpec, u32 Lambda>
+    friend class postings_list;
+
     template<typename Posting>
     using implementation = postings_list_internal_impl<Posting>;
+
+    template<typename Posting>
+    implementation<Posting> construct() const {
+        return {};
+    }
 };
 
 template<typename Posting>
@@ -51,7 +63,7 @@ public:
         return m_entries.size();
     }
 
-    postings_list_internal_impl(postings_list_internal) {}
+    postings_list_internal_impl() {}
 
 private:
     std::vector<posting_type> m_entries;

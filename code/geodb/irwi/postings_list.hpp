@@ -135,8 +135,8 @@ private:
     using storage_type = typename StorageSpec::template implementation<posting_type>;
 
 public:
-    postings_list(StorageSpec s = StorageSpec())
-        : m_storage(in_place_t(), std::move(s)) {}
+    postings_list(const StorageSpec& s = StorageSpec())
+        : m_storage(s.template construct<posting_type>()) {}
 
     iterator begin() const { return { this, 0 }; }
 

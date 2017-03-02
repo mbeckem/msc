@@ -3,6 +3,8 @@
 
 #include "geodb/common.hpp"
 #include "geodb/filesystem.hpp"
+#include "geodb/irwi/base.hpp"
+#include "geodb/utility/movable_adapter.hpp"
 
 #include <boost/noncopyable.hpp>
 #include <tpie/uncompressed_stream.h>
@@ -15,13 +17,24 @@ template<typename Posting>
 class postings_list_external_impl;
 
 class postings_list_external {
-public:
+private:
     fs::path path;
 
+public:
     postings_list_external(fs::path path): path(std::move(path)) {}
+
+private:
+    template<typename StorageSpec, u32 Lambda>
+    friend class postings_list;
 
     template<typename Posting>
     using implementation = postings_list_external_impl<Posting>;
+
+    template<typename Posting>
+    movable_adapter<implementation<Posting>>
+    construct() const {
+        return {in_place_t(), path};
+    }
 };
 
 /// External storage for a posting list is implemented on top of
@@ -30,11 +43,11 @@ public:
 template<typename Posting>
 class postings_list_external_impl : boost::noncopyable {
 public:
-    postings_list_external_impl(postings_list_external storage)
+    postings_list_external_impl(const fs::path& path)
         : m_accessor()
         , m_entries(1.0, &m_accessor)
     {
-         m_entries.open(storage.path.string());
+         m_entries.open(path.string());
     }
 
     postings_list_external_impl(postings_list_external_impl&&) = delete;

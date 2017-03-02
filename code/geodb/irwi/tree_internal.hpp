@@ -211,9 +211,9 @@ public:
     }
 
 public:
-    tree_internal_impl(tree_internal<fanout_leaf, fanout_internal> params)
+    tree_internal_impl()
     {
-        unused(params);
+
     }
 
     tree_internal_impl(tree_internal_impl&& other) noexcept
@@ -295,9 +295,22 @@ private:
 ///     The maximum number of children in internal nodes.
 ///     Defaults to fanout_leaf.
 template<u32 fanout_leaf, u32 fanout_internal>
-struct tree_internal {
+class tree_internal {
+public:
+    tree_internal() = default;
+
+private:
+    template<typename StorageSpec, typename Value, typename Accessor, u32 Lambda>
+    friend class tree_state;
+
     template<typename LeafData, u32 Lambda>
     using implementation = tree_internal_impl<fanout_leaf, fanout_internal, LeafData, Lambda>;
+
+    template<typename LeafData, u32 Lambda>
+    implementation<LeafData, Lambda>
+    construct() const {
+        return {};
+    }
 };
 
 } // namespace geodb

@@ -248,8 +248,8 @@ private:
     }
 
 public:
-    inverted_index(StorageSpec s = StorageSpec())
-        : m_storage(in_place_t(), std::move(s)) {}
+    inverted_index(const StorageSpec& s = StorageSpec())
+        : m_storage(s.template construct<Lambda>()) {}
 
 private:
     movable_adapter<storage_type> m_storage;
