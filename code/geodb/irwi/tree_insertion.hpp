@@ -3,9 +3,11 @@
 
 #include "geodb/common.hpp"
 #include "geodb/bounding_box.hpp"
+#include "geodb/hybrid_buffer.hpp"
 #include "geodb/hybrid_map.hpp"
 #include "geodb/trajectory.hpp"
 #include "geodb/irwi/tree_partition.hpp"
+#include "geodb/utility/function_utils.hpp"
 
 #include <boost/container/static_vector.hpp>
 #include <boost/range/adaptor/reversed.hpp>
@@ -50,27 +52,38 @@ class tree_insertion {
     template<typename Key, typename Value>
     using map_type = typename storage_type::template map_type<Key, Value>;
 
-    /// The summary of a leaf node can be kept in internal memory
-    /// because the total number of entries has a fixed upper bound
-    /// (i.e. the leaf fanout).
-    struct leaf_node_summary {
-        /// The total count & trajectory id set.
-        posting_data_type total;
+    template<typename Value>
+    using buffer_type = typename storage_type::template buffer_type<Value>;
 
-        /// One count & trajecory id set for every label
-        /// that occurs in the leaf. These entries will become
-        /// members of the parent's inverted index.
-        internal_map<label_type, posting_data_type> labels;
+    struct label_summary {
+        label_type label = 0;
+        posting_data_type data;
+
+        label_summary() = default;
+
+        label_summary(label_type label, u64 count, const id_set_type& ids)
+            : label(label)
+            , data(count, ids)
+        {}
     };
 
-    /// Summary of the inverted index of some node.
-    // TODO: Use external storage if the number of labels is very large.
-    struct index_node_summary {
-        posting_data_type total;
-        map_type<label_type, posting_data_type> labels;
+    /// Summary of the subtree rooted at some node.
+    struct node_summary {
+        /// Pointer to the node.
+        node_ptr ptr{};
 
-        index_node_summary(storage_type& storage)
-            : labels(storage.template make_map<label_type, posting_data_type>())
+        /// Bounding box that contains all items in the node's subtree.
+        bounding_box mbb;
+
+        /// The total count & trajectory id set for this subtree.
+        posting_data_type total;
+
+        /// A unit count & trajectory id set for every label
+        /// in this node. Ordered by label (ascending).
+        buffer_type<label_summary> labels;
+
+        node_summary(storage_type& storage)
+            : labels(storage.template make_buffer<label_summary>())
         {}
     };
 
@@ -153,40 +166,38 @@ private:
     /// Inserts the new value at the given leaf, which must be full.
     /// Splits the leaf and its parents, if necessary.
     /// If the root has to be split, a new root is created and the tree's height increases by one.
-    void insert_at_full(leaf_ptr leaf, const value_type& v, gsl::span<const internal_ptr> path) {
+    void insert_at_full(leaf_ptr old_leaf, const value_type& v, gsl::span<const internal_ptr> path) {
         // The leaf is full. Split it and insert the new entry.
-        const leaf_ptr new_leaf = split_and_insert(leaf, v);
+        node_summary new_summary = summarize(split_and_insert(old_leaf, v));
+        node_summary old_summary = summarize(old_leaf);
+
         if (path.empty()) {
             // The root was a leaf and has been split.
-            make_root(leaf, new_leaf);
+            make_root(old_summary, new_summary);
             return;
         }
 
         // There was at least one internal node parent.
-        if (register_split(back(path), leaf, new_leaf)) {
+        if (register_split(back(path), old_summary, new_summary)) {
             return;
         }
 
-        // At this point, we have two internal nodes that need to be inserted
+        // At this point, we have two nodes that need to be inserted
         // into their parent.
-        internal_ptr old_internal = back(path);
-        internal_ptr new_internal = split_and_insert(old_internal, new_leaf);
-        pop_back(path);
-
         while (!path.empty()) {
             internal_ptr parent = back(path);
-            if (register_split(parent, old_internal, new_internal)) {
+            if (register_split(parent, old_summary, new_summary)) {
                 return;
             }
 
+            new_summary = summarize(split_and_insert(parent, new_summary));
+            old_summary = summarize(parent);
             pop_back(path);
-            new_internal = split_and_insert(parent, new_internal);
-            old_internal = parent;
         }
 
         // Two internal nodes remain but there is no parent in path:
         // We need a new root.
-        make_root(old_internal, new_internal);
+        make_root(old_summary, new_summary);
     }
 
     /// Registers the fact that `old_child` has been split into `old_child` and `new_child`.
@@ -204,8 +215,7 @@ private:
     /// \param new_child    The new child node (the result of the split operation).
     ///
     /// \return Returns true iff there was space for the insertion of `new_child`.
-    template<typename NodePointer>
-    bool register_split(internal_ptr parent, NodePointer old_child, NodePointer new_child) {
+    bool register_split(internal_ptr parent, const node_summary& old_child, const node_summary& new_child) {
         replace_entry(parent, old_child);
         if (storage.get_count(parent) < State::max_internal_entries()) {
             insert_entry(parent, new_child);
@@ -214,9 +224,8 @@ private:
         return false;
     }
 
-    /// Creates a new root from the two given child pointers.
-    template<typename NodePointer>
-    void make_root(NodePointer a, NodePointer b) {
+    /// Creates a new root from the two given child summaries.
+    void make_root(const node_summary& a, const node_summary& b) {
         internal_ptr root = storage.create_internal();
         insert_entry(root, a);
         insert_entry(root, b);
@@ -331,25 +340,22 @@ private:
     /// \param old_internal
     ///     The existing internal node (which must be full).
     /// \param extra
-    ///     The new leaf or internal node that should be inserted.
-    template<typename NodePointer>
-    internal_ptr split_and_insert(internal_ptr old_internal, NodePointer extra) {
-        const auto summary = summarize(extra);
-
-        std::vector<internal_entry> entries = get_entries(old_internal, extra, summary);
+    ///     The new leaf or internal node that should be inserted,
+    ///     represented by its summary.
+    internal_ptr split_and_insert(internal_ptr old_internal, const node_summary& extra) {
+        std::vector<internal_entry> entries = get_entries(old_internal, extra);
         std::vector<split_element> split;
         partition_type(state).partition(entries, State::min_internal_entries(), split);
         std::sort(split.begin(), split.end(), [&](const auto& a, const auto& b) {
             return a.old_index < b.old_index;
         });
 
-
         internal_ptr new_internal = storage.create_internal();
         apply_entry_split(old_internal, new_internal,
                           entries, split);
         apply_index_split(storage.index(old_internal),
                           storage.index(new_internal),
-                          summary, split);
+                          extra, split);
 
         return new_internal;
     }
@@ -383,9 +389,8 @@ private:
     }
 
     /// \pre split is sorted by old index.
-    template<typename Summary>
     void apply_index_split(index_ptr old_index, index_ptr new_index,
-                           const Summary& summary,
+                           const node_summary& extra,
                            const std::vector<split_element>& split)
     {
         std::vector<posting_type> result_left, result_right;
@@ -442,12 +447,11 @@ private:
         // The required entries can be calcuated by examining the already
         // existing summary.
         auto append_entries = [&](auto& index, entry_id_type id) {
-            index->total()->append(posting_type(id, summary.total));
-            // TODO: One map instead of 2.
-            for (auto pair : summary.labels) {
-                index->find_or_create(pair.first)
+            index->total()->append(posting_type(id, extra.total));
+            for (const label_summary& ls : extra.labels) {
+                index->find_or_create(ls.label)
                         ->postings_list()
-                        ->append(posting_type(id, pair.second));
+                        ->append(posting_type(id, ls.data));
             }
         };
 
@@ -483,13 +487,15 @@ private:
 
     /// Returns a vector that contains all (indexed) child entries of the given internal node
     /// and the extra node.
-    template<typename NodePointer, typename Summary>
-    std::vector<internal_entry> get_entries(internal_ptr internal, NodePointer extra, const Summary& summary)
+    std::vector<internal_entry> get_entries(internal_ptr internal, const node_summary& extra)
     {
+        using label_count = typename partition_type::label_count;
+
         const u32 count = storage.get_count(internal);
 
         std::vector<internal_entry> entries;
-        entries.resize(count + 1);
+        entries.reserve(count + 1);
+        repeat(count + 1, [&]{ entries.emplace_back(storage); });
 
         for (u32 i = 0; i < count; ++i) {
             internal_entry& e = entries[i];
@@ -506,7 +512,7 @@ private:
             auto total = index->total();
             for (const posting_type& p : *total) {
                 internal_entry& e = entries[p.node()];
-                e.total_units = p.count();
+                e.total = p.count();
             }
 
             // Gather the counts for the other labels.
@@ -518,7 +524,7 @@ private:
                 if (list->size() > 0) {
                     for (const posting_type& p : *list) {
                         internal_entry& e = entries[p.node()];
-                        e.label_units.insert(label, p.count());
+                        e.labels.append(label_count(label, p.count()));
                     }
                 }
             }
@@ -526,19 +532,19 @@ private:
 
         // Add the new entry as well.
         internal_entry& last = entries.back();
-        last.ptr = extra;
-        last.mbb = state.get_mbb(extra);
-        for (const auto& pair : summary.labels) {
-            last.label_units.insert(pair.first, pair.second.count());
+        last.ptr = extra.ptr;
+        last.mbb = extra.mbb;
+        for (const label_summary& ls : extra.labels) {
+            last.labels.append(label_count(ls.label, ls.data.count()));
         }
-        last.total_units = summary.total.count();
+        last.total = extra.total.count();
 
         return entries;
     }
 
     /// Summarizes a leaf node. This summary will become part of
     /// the new parent's inverted index.
-    leaf_node_summary summarize(leaf_ptr n) const {
+    node_summary summarize(leaf_ptr n) const {
         const u32 count = storage.get_count(n);
 
         list_summary_type total;
@@ -561,14 +567,16 @@ private:
             }
         }
 
-        leaf_node_summary summary;
+        node_summary summary(storage);
+        summary.ptr = n;
+        summary.mbb = state.get_mbb(n);
         summary.total.count(total.count);
         summary.total.id_set(total.trajectories);
         for (auto& pair : labels) {
-            posting_data_type pd;
-            pd.count(pair.second.count);
-            pd.id_set(pair.second.trajectories);
-            summary.labels.insert(pair.first, pd);
+            const label_type label = pair.first;
+            const u64 count = pair.second.count;
+            const id_set_type& ids = pair.second.trajectories;
+            summary.labels.append(label_summary(label, count, ids));
         }
         return summary;
     }
@@ -576,7 +584,7 @@ private:
     /// Summarizes an internal node by summing the entries of
     /// all postings lists in its inverted index.
     /// This summary will become part of the new parent's inverted index.
-    index_node_summary summarize(internal_ptr n) const {
+    node_summary summarize(internal_ptr n) const {
         auto index = storage.const_index(n);
 
         auto to_posting_data = [&](const auto& list) {
@@ -584,14 +592,17 @@ private:
             return posting_data_type(sum.count, sum.trajectories);
         };
 
-        index_node_summary summary(storage);
+        node_summary summary(storage);
+        summary.ptr = n;
+        summary.mbb = state.get_mbb(n);
         summary.total = to_posting_data(index->total());
         for (const auto& entry : *index) {
-            const label_type label = entry.label();
+            label_summary ls;
+            ls.label = entry.label();
+            ls.data = to_posting_data(entry.postings_list());
 
-            auto pd = to_posting_data(entry.postings_list());
-            if (pd.count() > 0) {
-                summary.labels.insert(label, pd);
+            if (ls.data.count()) {
+                summary.labels.append(ls);
             }
         }
         return summary;
@@ -611,15 +622,15 @@ private:
     /// The inverted index of `p` will be updated to reflect the insertion of `c`.
     ///
     /// \param p    The parent node.
-    /// \param c    The new child node (either a leaf or an internal node).
-    template<typename NodePointer>
-    void insert_entry(internal_ptr p, NodePointer c) {
+    /// \param c    The new child node (either a leaf or an internal node),
+    ///             represented by its summary.
+    void insert_entry(internal_ptr p, const node_summary& c) {
         const u32 i = storage.get_count(p);
         geodb_assert(i < State::max_internal_entries(), "internal node is full");
 
         storage.set_count(p, i + 1);
-        storage.set_mbb(p, i, state.get_mbb(c));
-        storage.set_child(p, i, c);
+        storage.set_mbb(p, i, c.mbb);
+        storage.set_child(p, i, c.ptr);
 
         index_ptr index = storage.index(p);
         insert_index(*index, i, c);
@@ -632,52 +643,31 @@ private:
     /// \param p    The parent node.
     /// \param c    The child node. The child must already be referenced by `p`.
     ///             Can be either a leaf or an internal node.
-    template<typename NodePointer>
-    void replace_entry(internal_ptr p, NodePointer c) {
-        const u32 i = state.index_of(p, c);
+    void replace_entry(internal_ptr p, const node_summary& c) {
+        const u32 i = state.index_of(p, c.ptr);
         index_ptr index = storage.index(p);
 
         clear_index(*index, i);
         insert_index(*index, i, c);
-        storage.set_mbb(p, i, state.get_mbb(c));
+        storage.set_mbb(p, i, c.mbb);
     }
 
-    /// Inserts the summarized index of `c` into the parent index.
-    void insert_index(index_type& parent_index, u32 i, internal_ptr c) {
-        auto get_posting = [&](list_type& list) {
-            auto list_sum = list.summarize();
-            return posting_type(i, list_sum.count, list_sum.trajectories);
-        };
-
-        index_ptr child_index = storage.index(c);
-
-        parent_index.total()->append(get_posting(*child_index->total()));
-        for (auto entry : *child_index) {
-            list_ptr parent_list = parent_index.find_or_create(entry.label())->postings_list();
-            list_ptr child_list = entry.postings_list();
-            posting_type list_entry = get_posting(*child_list);
-
-            if (list_entry.count() > 0) {
-                parent_list->append(list_entry);
-            }
-        }
-    }
-
-    /// Insert the summary of `c` into the parent index.
-    void insert_index(index_type& parent_index, u32 i, leaf_ptr c) {
-        const auto sum = summarize(c);
-
+    /// Insert the child node (represented by its summary)
+    /// into the inverted index of ìts new parent.
+    ///
+    /// \param parent_index     The parent's inverted index.
+    /// \param i                The index of `c` in its parent.
+    /// \param c                The summary of the new child.
+    void insert_index(index_type& parent_index, u32 i, const node_summary& c) {
         // Update the postings lists for all labels that occur in the summary.
-        for (auto&& pair : sum.labels) {
-            label_type label = pair.first;
-            const posting_data_type& data = pair.second;
-            if (data.count() > 0) {
-                parent_index.find_or_create(label)
+        for (const label_summary& ls : c.labels) {
+            if (ls.data.count() > 0) {
+                parent_index.find_or_create(ls.label)
                         ->postings_list()
-                        ->append(posting_type(i, data));
+                        ->append(posting_type(i, ls.data));
             }
         }
-        parent_index.total()->append(posting_type(i, sum.total));
+        parent_index.total()->append(posting_type(i, c.total));
     }
 
     /// Remove all references to the given child entry from the index.

@@ -26,6 +26,7 @@ set(HEADERS
     utility/id_allocator.hpp
     utility/external_sort.hpp
     utility/file_allocator.hpp
+    utility/function_utils.hpp
     utility/movable_adapter.hpp
     utility/range_utils.hpp
     utility/raw_stream.hpp

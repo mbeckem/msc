@@ -33,32 +33,56 @@ class tree_partition {
     template<typename Key, typename Value>
     using map_type = typename storage_type::template map_type<Key, Value>;
 
-    /// A label id and a count of trajectory units.
-    struct label_count {
-        label_type label;
-        u64 count;
-    };
+    template<typename Value>
+    using buffer_type = typename storage_type::template buffer_type<Value>;
 
 public:
+    /// Identifies to which node an entry has been assigned.
     enum which_t {
         left, right
     };
 
+    /// A label id and a count of trajectory units.
+    struct label_count {
+        label_type label = 0;
+        u64 count = 0;
+
+        label_count() = default;
+
+        label_count(label_type label, u64 count)
+            : label(label)
+            , count(count)
+        {}
+    };
+
+    /// Maps an old index to a new index within one of the nodes.
     struct split_element {
-        u32 old_index;
-        u32 new_index;
-        which_t which;
+        u32 old_index;  ///< Index into the old node.
+        u32 new_index;  ///< Index into the new node.
+        which_t which;  ///< Identifies the new node.
 
         split_element(u32 old_index, u32 new_index, which_t which)
             : old_index(old_index), new_index(new_index), which(which)
         {}
     };
 
+    /// Represents the subtree of an entry of an internal node.
     struct internal_entry {
+        /// Points to the child node.
         node_ptr ptr{};
+
+        /// The subtrees bounding box.
         bounding_box mbb;
-        map_type<label_type, u64> label_units;  // label -> unit count
-        u64 total_units = 0;
+
+        /// Total number of units in this subtree.
+        u64 total = 0;
+
+        /// Sorted by label.
+        buffer_type<label_count> labels;
+
+        internal_entry(storage_type& storage)
+            : labels(storage.template make_buffer<label_count>())
+        {}
     };
 
 private:
@@ -252,14 +276,12 @@ private:
     }
 
     u64 get_total_units(const internal_entries& o, u32 index) const {
-        return o.entries[index].total_units;
+        return o.entries[index].total;
     }
 
     auto get_labels(const internal_entries& o, u32 index) const {
-        auto transform = [](const auto& pair) {
-            return label_count{pair.first, pair.second};
-        };
-        return o.entries[index].label_units | transformed(transform);
+        auto& labels = o.entries[index].labels;
+        return boost::make_iterator_range(labels.begin(), labels.end());
     }
 
     u32 get_count(const internal_entries& o) const {
