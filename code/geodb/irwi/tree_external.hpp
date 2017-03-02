@@ -1,6 +1,7 @@
 #ifndef GEODB_IRWI_TREE_EXTERNAL_HPP
 #define GEODB_IRWI_TREE_EXTERNAL_HPP
 
+#include "geodb/hybrid_buffer.hpp"
 #include "geodb/hybrid_map.hpp"
 #include "geodb/irwi/base.hpp"
 #include "geodb/irwi/block_handle.hpp"
@@ -285,6 +286,14 @@ public:
     map_type<Key, Value> make_map() {
         // TODO: Could assign a special directory instead of global /tmp/
         return map_type<Key, Value>();
+    }
+
+    template<typename Value>
+    using buffer_type = hybrid_buffer<Value, block_size>;
+
+    template<typename Value>
+    buffer_type<Value> make_buffer() {
+        return buffer_type<Value>();
     }
 
 public:

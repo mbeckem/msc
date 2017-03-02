@@ -13,6 +13,7 @@ set(HEADERS
     date_time.hpp
     external_list.hpp
     filesystem.hpp
+    hybrid_buffer.hpp
     hybrid_map.hpp
     parser.hpp
     point.hpp

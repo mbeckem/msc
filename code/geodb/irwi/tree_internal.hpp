@@ -1,6 +1,7 @@
 #ifndef GEODB_IRWI_TREE_INTERNAL_HPP
 #define GEODB_IRWI_TREE_INTERNAL_HPP
 
+#include "geodb/hybrid_buffer.hpp"
 #include "geodb/hybrid_map.hpp"
 #include "geodb/irwi/base.hpp"
 #include "geodb/irwi/inverted_index.hpp"
@@ -199,6 +200,14 @@ public:
     template<typename Key, typename Value>
     map_type<Key, Value> make_map() {
         return map_type<Key, Value>();
+    }
+
+    template<typename Value>
+    using buffer_type = internal_buffer<Value>;
+
+    template<typename Value>
+    buffer_type<Value> make_buffer() {
+        return buffer_type<Value>();
     }
 
 public:

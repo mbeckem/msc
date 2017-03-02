@@ -212,12 +212,12 @@ public:
 
 private:
     temp_dir m_dir{"external_map"};
-    std::unique_ptr<tree_t> m_tree;
+    tpie::unique_ptr<tree_t> m_tree;
 
 public:
     /// Create an empty map.
     external_map()
-        : m_tree(std::make_unique<tree_t>((m_dir.path() / "map.tree").string()))
+        : m_tree(tpie::make_unique<tree_t>((m_dir.path() / "map.tree").string()))
     {}
 
     external_map(external_map&&) noexcept = default;
@@ -308,8 +308,6 @@ public:
         boost::forward_traversal_tag,
         value_type>
     {
-        using base = typename iterator::iterator_facade;
-
     private:
         iterator_t m_inner;
 
@@ -443,7 +441,7 @@ public:
         for (const auto& pair : internal) {
             external.insert(pair.first, pair.second);
         }
-        m_backend = std::move(external); // Invalidates reference `backend`.
+        m_backend = std::move(external); // Invalidates reference `internal`.
     }
 
     /// Returns true if the items in this map are located in memory.

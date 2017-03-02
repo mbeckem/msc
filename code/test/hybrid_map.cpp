@@ -140,7 +140,7 @@ TEST_CASE("hybrid map insert collions", "[hybrid-map") {
     }
 }
 
-TEST_CASE("larger dataset", "[hybrid-map]") {
+TEST_CASE("hybrid map larger dataset", "[hybrid-map]") {
     hybrid_map<int, int, 4096> map(1024);
 
     static constexpr int max = 64 * 1024;
