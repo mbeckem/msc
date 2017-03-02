@@ -79,7 +79,7 @@ class tree_insertion {
         posting_data_type total;
 
         /// A unit count & trajectory id set for every label
-        /// in this node. Ordered by label (ascending).
+        /// in this node's subtree. Ordered by label (ascending).
         buffer_type<label_summary> labels;
 
         node_summary(storage_type& storage)
@@ -171,8 +171,13 @@ private:
         node_summary new_summary = summarize(split_and_insert(old_leaf, v));
         node_summary old_summary = summarize(old_leaf);
 
-        // At this point, we have two nodes that need to be inserted
-        // into their parent.
+        // There are two nodes that have to be inserted (or updated)
+        // at the next level. 
+        // The content of the old node has changed (because it was split),
+        // thus its entry (including the index) within the parent must be replaced
+        // unconditionally.
+        // The new node might fit into the parent. In this case, insert an entry and return.
+        // Otherwise, the parent must be split.
         while (!path.empty()) {
             internal_ptr parent = back(path);
             replace_entry(parent, old_summary);
@@ -186,8 +191,8 @@ private:
             pop_back(path);
         }
 
-        // Two internal nodes remain but there is no parent in path:
-        // We need a new root.
+        // Two nodes remain but there is no parent in path.
+        // Create a new root and insert entries for both nodes.
         internal_ptr root = storage.create_internal();
         insert_entry(root, old_summary);
         insert_entry(root, new_summary);
