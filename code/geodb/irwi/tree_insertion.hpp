@@ -105,7 +105,7 @@ public:
     /// Updates the child entries of all internal nodes on the way
     /// to reflect the insertion of `v`.
     ///
-    /// \pre Thre tree is not empty.
+    /// \pre The tree is not empty.
     leaf_ptr traverse_tree(const value_type& v, std::vector<internal_ptr>& path) {
         geodb_assert(storage.get_height() > 0, "empty tree has no leaves");
 
@@ -171,22 +171,13 @@ private:
         node_summary new_summary = summarize(split_and_insert(old_leaf, v));
         node_summary old_summary = summarize(old_leaf);
 
-        if (path.empty()) {
-            // The root was a leaf and has been split.
-            make_root(old_summary, new_summary);
-            return;
-        }
-
-        // There was at least one internal node parent.
-        if (register_split(back(path), old_summary, new_summary)) {
-            return;
-        }
-
         // At this point, we have two nodes that need to be inserted
         // into their parent.
         while (!path.empty()) {
             internal_ptr parent = back(path);
-            if (register_split(parent, old_summary, new_summary)) {
+            replace_entry(parent, old_summary);
+            if (storage.get_count(parent) < State::max_internal_entries()) {
+                insert_entry(parent, new_summary);
                 return;
             }
 
@@ -197,38 +188,9 @@ private:
 
         // Two internal nodes remain but there is no parent in path:
         // We need a new root.
-        make_root(old_summary, new_summary);
-    }
-
-    /// Registers the fact that `old_child` has been split into `old_child` and `new_child`.
-    ///
-    /// The existing child entry for `old_child` will be updated (this includes its inverted
-    /// index entries).
-    ///
-    /// If `new_child` fits into the parent, it will be inserted and the function will return `true`.
-    /// Otherwise, `new_child` will not be inserted and remain dangling, in which case
-    /// the function returns `false`. The next parent will have be split in order to make space
-    /// for `new_child`.
-    ///
-    /// \param parent       The parent node.
-    /// \param old_child    The existing child node (that has been split).
-    /// \param new_child    The new child node (the result of the split operation).
-    ///
-    /// \return Returns true iff there was space for the insertion of `new_child`.
-    bool register_split(internal_ptr parent, const node_summary& old_child, const node_summary& new_child) {
-        replace_entry(parent, old_child);
-        if (storage.get_count(parent) < State::max_internal_entries()) {
-            insert_entry(parent, new_child);
-            return true;
-        }
-        return false;
-    }
-
-    /// Creates a new root from the two given child summaries.
-    void make_root(const node_summary& a, const node_summary& b) {
         internal_ptr root = storage.create_internal();
-        insert_entry(root, a);
-        insert_entry(root, b);
+        insert_entry(root, old_summary);
+        insert_entry(root, new_summary);
         storage.set_root(root);
         storage.set_height(storage.get_height() + 1);
     }
