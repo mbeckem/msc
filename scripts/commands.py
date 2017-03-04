@@ -4,18 +4,20 @@ import os
 from pathlib import Path
 
 
-def _make_path(str, check=False):
+def _make_dir(str, check=False):
     path = Path(str)
     if check and not path.exists():
         raise Exception("Path {} does not exist".format(str))
     path.mkdir(parents=True, exist_ok=True)
     return path
 
-BUILD_PATH = _make_path("build")
-DATA_PATH = _make_path("data")
-OUTPUT_PATH = _make_path("output")
-RESULT_PATH = _make_path("results")
-TMP_PATH = _make_path("tmp")
+BUILD_PATH = _make_dir("build")
+DATA_PATH = _make_dir("data")
+OUTPUT_PATH = _make_dir("output")
+RESULT_PATH = _make_dir("results")
+TMP_PATH = _make_dir("tmp")
+
+HILBERT_CURVE = BUILD_PATH / "hilbert_curve"
 
 if __name__ == "__main__":
     print(
