@@ -72,7 +72,7 @@ namespace detail {
 
         using event_type = interval_event<point_type>;
 
-        static_assert(is_specialization_of<interval_type, interval>::value,
+        static_assert(is_specialization_of<interval, interval_type>::value,
                       "nested ranges must contain intervals");
         static_assert(std::is_lvalue_reference<typename boost::range_reference<const Range>::type>::value,
                       "nested ranges must be lvalues (i.e. no temporaries).");

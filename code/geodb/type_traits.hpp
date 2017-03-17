@@ -14,16 +14,16 @@ template<class B1, class... Bn>
 struct conjunction<B1, Bn...>
     : std::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
 
-template <typename T, template <typename...> class Template>
+template <template <typename...> class Template, typename T>
 struct is_specialization_of;
 
 /// True iff `T` is a specialization of `Template`, i.e. `T == Template<Args...>`
 /// for some Args.
-template <typename T, template <typename...> class Template>
+template <template <typename...> class Template, typename T>
 struct is_specialization_of : std::false_type {};
 
 template <template <typename...> class Template, typename... Args>
-struct is_specialization_of<Template<Args...>, Template> : std::true_type {};
+struct is_specialization_of<Template, Template<Args...>> : std::true_type {};
 
 /// Evaluates to true if all types in `Args` are the same as `T`.
 template<typename T, typename... Args>

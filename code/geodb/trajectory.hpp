@@ -31,6 +31,13 @@ struct trajectory_unit {
     bounding_box get_bounding_box() const {
         return { point::min(start, end), point::max(start, end) };
     }
+
+    point center() const {
+        auto x = (start.x() + end.x()) / 2;
+        auto y = (start.y() + end.y()) / 2;
+        auto t = (start.t() + end.t()) / 2;
+        return point(x, y, t);
+    }
 };
 
 inline bool operator==(const trajectory_unit& a, const trajectory_unit& b) {

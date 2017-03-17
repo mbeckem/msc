@@ -38,6 +38,7 @@ set(HEADERS
     irwi/base.hpp
     irwi/block_handle.hpp
     irwi/bulk_load_common.hpp
+    irwi/bulk_load_hilbert.hpp
     irwi/bulk_load_str.hpp
     irwi/bulk_load_quickload.hpp
     irwi/query.hpp

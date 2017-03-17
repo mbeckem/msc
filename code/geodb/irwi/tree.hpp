@@ -449,8 +449,8 @@ private:
     storage_type& storage() { return state.storage(); }
     const storage_type& storage() const { return state.storage(); }
 
-    friend class str_loader<tree>;
-    friend class quick_loader<tree>;
+    template<typename Tree, typename Derived>
+    friend class bulk_load_common;
 
 private:
     state_type state;

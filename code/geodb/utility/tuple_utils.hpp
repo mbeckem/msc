@@ -37,7 +37,7 @@ void enumerate_impl(F&& f, std::index_sequence<I...>) {
 /// The provided function object `f` will be called for every element
 /// in the tuple, in sequential order.
 template <typename Tuple, typename F,
-          std::enable_if_t<is_specialization_of<Tuple, std::tuple>::value>* = nullptr>
+          std::enable_if_t<is_specialization_of<std::tuple, Tuple>::value>* = nullptr>
 void for_each(Tuple&& t, F&& f)
 {
     return detail::for_each_impl(

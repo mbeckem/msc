@@ -486,12 +486,12 @@ struct pseudo_leaf_entry {
 
 
 template<typename Tree>
-class quick_loader : private bulk_load_common<typename Tree::state_type> {
+class quick_loader : private bulk_load_common<Tree, quick_loader<Tree>> {
     using common_t = typename quick_loader::bulk_load_common;
 
-    using tree_type = Tree;
-    using state_type = typename Tree::state_type;
-    using storage_type = typename Tree::storage_type;
+    using typename common_t::tree_type;
+    using typename common_t::state_type;
+    using typename common_t::storage_type;
 
     using node_ptr = typename state_type::node_ptr;
     using internal_ptr = typename state_type::internal_ptr;
@@ -569,13 +569,13 @@ class quick_loader : private bulk_load_common<typename Tree::state_type> {
 
 public:
     quick_loader(Tree& tree, size_t max_leaves, tpie::file_stream<tree_entry>& input)
-        : m_tree(tree)
+        : common_t(tree)
         , m_max_leaves(max_leaves)
         , m_weight(tree.weight())
         , m_input(input)
         , m_input_size(input.size())
     {
-        geodb_assert(m_tree.empty(), "Non-empty trees not yet supported");
+        geodb_assert(tree.empty(), "Non-empty trees not yet supported");
         geodb_assert(m_max_leaves >= 2, "Invalid max_leaves value");
         geodb_assert(m_weight >= 0.f && m_weight <= 1.f, "Invalid weight value");
         geodb_assert(m_input.offset() == 0, "Input is not at start position");
@@ -622,12 +622,7 @@ private:
     node_ptr get_root(const level_files& last_level) {
         tpie::serialization_reader reader;
         reader.open(last_level.summary_file.string());
-
-        geodb_assert(reader.can_read(), "file must not be empty");
-
-        node_summary sum;
-        reader.unserialize(sum);
-        return sum.ptr;
+        return common_t::read_root_ptr(reader);
     }
 
     class level_creator_base {
@@ -955,13 +950,10 @@ private:
     }
 
 private:
-    state_type& state() { return m_tree.state; }
-    storage_type& storage() { return m_tree.storage(); }
+    using common_t::storage;
+    using common_t::state;
 
 private:
-    /// The external tree we are loading into.
-    tree_type& m_tree;
-
     /// The maximum number of leaves (for the lowest level).
     const size_t m_max_leaves;
 
@@ -973,9 +965,8 @@ private:
 };
 
 template<typename Tree>
-void bulk_load_quickload(Tree& tree, tpie::file_stream<tree_entry>& input, size_t max_leaves, tpie::progress_indicator_base& progress)
+void bulk_load_quickload(Tree& tree, tpie::file_stream<tree_entry>& input, size_t max_leaves)
 {
-    unused(progress); // TODO
     if (!tree.empty()) {
         throw std::invalid_argument("Tree must be empty");
     }

@@ -32,11 +32,8 @@ class posting;
 template<typename StorageSpec>
 class string_map;
 
-template<typename Tree>
-class str_loader;
-
-template<typename Tree>
-class quick_loader;
+template<typename State, typename Derived>
+class bulk_load_common;
 
 /// IRWI leaf entries represent trajectory units.
 struct tree_entry {
