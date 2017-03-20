@@ -41,15 +41,16 @@ set(HEADERS
     irwi/bulk_load_hilbert.hpp
     irwi/bulk_load_str.hpp
     irwi/bulk_load_quickload.hpp
-    irwi/query.hpp
     irwi/cursor.hpp
     irwi/inverted_index.hpp
     irwi/inverted_index_internal.hpp
     irwi/inverted_index_external.hpp
+    irwi/label_count.hpp
     irwi/posting.hpp
     irwi/postings_list.hpp
     irwi/postings_list_internal.hpp
     irwi/postings_list_external.hpp
+    irwi/query.hpp
     irwi/string_map.hpp
     irwi/string_map_bimap.hpp
     irwi/string_map_internal.hpp

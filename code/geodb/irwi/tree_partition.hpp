@@ -4,6 +4,7 @@
 #include "geodb/common.hpp"
 #include "geodb/bounding_box.hpp"
 #include "geodb/irwi/base.hpp"
+#include "geodb/irwi/label_count.hpp"
 #include "geodb/irwi/posting.hpp"
 #include "geodb/utility/range_utils.hpp"
 
@@ -40,19 +41,6 @@ public:
     /// Identifies to which node an entry has been assigned.
     enum which_t {
         left, right
-    };
-
-    /// A label id and a count of trajectory units.
-    struct label_count {
-        label_type label = 0;
-        u64 count = 0;
-
-        label_count() = default;
-
-        label_count(label_type label, u64 count)
-            : label(label)
-            , count(count)
-        {}
     };
 
     /// Maps an old index to a new index within one of the nodes.

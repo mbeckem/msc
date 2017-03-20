@@ -6,6 +6,7 @@
 #include "geodb/trajectory.hpp"
 #include "geodb/irwi/base.hpp"
 #include "geodb/irwi/cursor.hpp"
+#include "geodb/irwi/label_count.hpp"
 #include "geodb/irwi/posting.hpp"
 #include "geodb/irwi/query.hpp"
 #include "geodb/irwi/tree_insertion.hpp"
@@ -69,12 +70,6 @@ private:
         node_ptr ptr;
         bounding_box mbb;
         dynamic_id_set_type ids;
-    };
-
-    /// A label id and a count of trajectory units.
-    struct label_count {
-        label_type label;
-        u64 count;
     };
 
 public:

@@ -22,9 +22,17 @@ using trajectory_id_type = u64;
 struct trajectory_unit {
     // Fields are unordered (i.e. xbegin not necessarily < xend)
     // because they describe the temporal/spatial line.
-    point start;
-    point end;
-    label_type label;
+    point start{};
+    point end{};
+    label_type label = 0;
+
+    trajectory_unit() = default;
+
+    trajectory_unit(const point& start, const point& end, label_type label)
+        : start(start)
+        , end(end)
+        , label(label)
+    {}
 
     bool intersects(const bounding_box& b) const;
 

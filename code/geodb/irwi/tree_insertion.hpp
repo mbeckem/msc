@@ -6,6 +6,8 @@
 #include "geodb/hybrid_buffer.hpp"
 #include "geodb/hybrid_map.hpp"
 #include "geodb/trajectory.hpp"
+#include "geodb/irwi/base.hpp"
+#include "geodb/irwi/label_count.hpp"
 #include "geodb/irwi/tree_partition.hpp"
 #include "geodb/utility/function_utils.hpp"
 
@@ -44,6 +46,8 @@ class tree_insertion {
     using posting_type = typename State::posting_type;
     using posting_data_type = posting_data<State::lambda()>;
 
+    using trajectory_id_set_type = trajectory_id_set<State::lambda()>;
+
     using partition_type = tree_partition<State>;
     using which_t = typename partition_type::which_t;
     using split_element = typename partition_type::split_element;
@@ -55,6 +59,9 @@ class tree_insertion {
     template<typename Value>
     using buffer_type = typename storage_type::template buffer_type<Value>;
 
+    /// The summary of a single label within a subtree of some node.
+    /// Contains the label itself, the number of leaf entries with that label
+    /// and a set that contains the ids of trajectories with that label.
     struct label_summary {
         label_type label = 0;
         posting_data_type data;
@@ -85,6 +92,9 @@ class tree_insertion {
         node_summary(storage_type& storage)
             : labels(storage.template make_buffer<label_summary>())
         {}
+
+        node_summary(node_summary&&) noexcept = default;
+        node_summary& operator=(node_summary&&) noexcept = default;
     };
 
     using internal_count_vec = boost::container::static_vector<u64, State::max_internal_entries()>;
@@ -98,6 +108,12 @@ public:
     tree_insertion(State& state)
         : state(state), storage(state.storage())
     {}
+
+    /// Same as the other overload, but creates a new vector instance every time.
+    leaf_ptr traverse_tree(const value_type& v) {
+        std::vector<internal_ptr> path;
+        return traverse_tree(v, path);
+    }
 
     /// Finds the appropriate leaf node for the insertion of \p d.
     /// Stores the path of internal node parents in \p path.
@@ -136,6 +152,12 @@ public:
         unreachable("must have reached the leaf level");
     }
 
+    /// Same as the other overload, but creates a new vector instance every time.
+    void insert(const value_type& v) {
+        std::vector<internal_ptr> path;
+        return insert(v, path);
+    }
+
     /// Default insertion algorithm.
     /// Inserts the value `v` into the tree. `path` is used as a buffer
     /// to store the parents of the node where the insertion takes place.
@@ -162,17 +184,132 @@ public:
         insert_at_full(leaf, v, path);
     }
 
+    /// Insert a new leaf node at some appropriate place in the tree.
+    ///
+    /// This function is used by the bulk loading algorithms to insert
+    /// their result into an existing tree.
+    void insert_node(leaf_ptr leaf) {
+        insert_subtree(leaf, 1, storage.get_count(leaf));
+    }
+
+    /// Insert a subtree rooted at `internal` (with the given height and size)
+    /// at some appropriate place inside the tree.
+    /// The new subtree's structure must be compatible, i.e. it must look
+    /// like it was created by this class.
+    ///
+    /// This function is used by the bulk loading algorithms to insert
+    /// their result into an existing tree.
+    void insert_node(internal_ptr internal, size_t height, size_t size) {
+        geodb_assert(height > 1, "internal nodes have height > 1");
+        insert_subtree(internal, height, size);
+    }
+
+private:
+    /// Handles the simple edge cases of subtree insertion (e.g. the current tree
+    /// is empty or has the same height as the new subtree).
+    /// Dispatches all other cases to \ref insert_subtree_impl.
+    void insert_subtree(node_ptr node, size_t height, size_t size) {
+        storage.set_size(storage.get_size() + size);
+
+        // If the tree is empty, simply set the new root.
+        if (storage.get_height() == 0) {
+            storage.set_height(height);
+            storage.set_root(node);
+            return;
+        }
+
+        // If they have the same height, create a new root with two entries.
+        if (height == storage.get_height()) {
+            internal_ptr new_root = storage.create_internal();
+            insert_entry(new_root, summarize(storage.get_root(), height));
+            insert_entry(new_root, summarize(node, height));
+            storage.set_height(height + 1);
+            storage.set_root(new_root);
+            return;
+        }
+
+        // If the new subtree is higher than the current tree, swap them.
+        if (height > storage.get_height()) {
+            {
+                node_ptr tmp = storage.get_root();
+                storage.set_root(node);
+                node = tmp;
+            }
+            {
+                size_t tmp = storage.get_height();
+                storage.set_height(height);
+                height = tmp;
+            }
+        }
+
+        insert_subtree_impl(summarize(node, height), height);
+    }
+
+    /// Inserts a subtree of height `child_height` into the current tree with greater height.
+    /// At this point, the current tree's root is always an internal node.
+    /// Loops until the correct level for insertion is reached, always chosing
+    /// the path with the lowest cost.
+    void insert_subtree_impl(const node_summary& child, size_t child_height)
+    {
+        geodb_assert(child_height < storage.get_height(), "subtree must be smaller");
+        geodb_assert(storage.get_height() >= 1, "current root is always an internal node");
+
+        // Contains the parents of `node`.
+        // They will be revisited if a node split was necessary.
+        std::vector<internal_ptr> path;
+
+        // Descend into the tree until we are at the correct height to insert the new subtree.
+        internal_ptr node = storage.to_internal(storage.get_root());
+        size_t node_height = storage.get_height();
+        while (node_height != child_height + 1) {
+            path.push_back(node);
+
+            auto label_counts = child.labels | transformed([](const label_summary& ls) {
+                return label_count(ls.label, ls.data.count());
+            });
+
+            const u32 child_index = find_insertion_entry(node, child.mbb, label_counts, child.total.count());
+            update_parent(node, child_index, child);
+
+            node = storage.to_internal(storage.get_child(node, child_index));
+            --node_height;
+        }
+
+        // Insert the new subtree into parent.
+        if (storage.get_count(node) < State::max_internal_entries()) {
+            insert_entry(node, child);
+        } else {
+            insert_at_full(node, child, path);
+        }
+    }
+
 private:
     /// Inserts the new value at the given leaf, which must be full.
     /// Splits the leaf and its parents, if necessary.
-    /// If the root has to be split, a new root is created and the tree's height increases by one.
-    void insert_at_full(leaf_ptr old_leaf, const value_type& v, gsl::span<const internal_ptr> path) {
-        // The leaf is full. Split it and insert the new entry.
-        node_summary new_summary = summarize(split_and_insert(old_leaf, v));
-        node_summary old_summary = summarize(old_leaf);
+    void insert_at_full(leaf_ptr leaf, const value_type& v, gsl::span<const internal_ptr> path) {
+        geodb_assert(storage.get_count(leaf) == State::max_leaf_entries(), "leaf is not full");
+
+        return handle_split(leaf, split_and_insert(leaf, v), path);
+    }
+
+    /// Inserts a new subtree into the given internal node, which must be full.
+    /// Splits the node and its parents, if necessary.
+    void insert_at_full(internal_ptr internal, const node_summary& child, gsl::span<const internal_ptr> path) {
+        geodb_assert(storage.get_count(internal) == State::max_internal_entries(), "internal node is not full");
+
+        return handle_split(internal, split_and_insert(internal, child), path);
+    }
+
+    /// Takes the result of a split operation (either at internal or leaf level)
+    /// and updates the parents to reflect the change.
+    /// The tree grows if the root was split.
+    template<typename NodePointer>
+    void handle_split(NodePointer old_node, NodePointer new_node, gsl::span<const internal_ptr> path) {
+        node_summary old_summary = summarize(old_node);
+        node_summary new_summary = summarize(new_node);
 
         // There are two nodes that have to be inserted (or updated)
-        // at the next level. 
+        // at the next level.
         // The content of the old node has changed (because it was split),
         // thus its entry (including the index) within the parent must be replaced
         // unconditionally.
@@ -200,15 +337,15 @@ private:
         storage.set_height(storage.get_height() + 1);
     }
 
-    /// Update the parent node to reflect the insertion of `v`.
+    /// Update the parent node to reflect the insertion of `entry`.
     /// The bounding box for the given child and its inverted index entries will be expanded.
-    void update_parent(internal_ptr parent, u32 child_index, const value_type& v) {
+    void update_parent(internal_ptr parent, u32 child_index, const value_type& entry) {
         geodb_assert(child_index < storage.get_count(parent), "index out of bounds");
 
-        const trajectory_id_type tid = state.get_id(v);
-        const bounding_box mbb = state.get_mbb(v);
-        const auto label_counts = state.get_label_counts(v);
-        const u64 total_count = state.get_total_count(v);
+        const trajectory_id_type tid = state.get_id(entry);
+        const bounding_box mbb = state.get_mbb(entry);
+        const auto label_counts = state.get_label_counts(entry);
+        const u64 total_count = state.get_total_count(entry);
 
         index_ptr index = storage.index(parent);
         storage.set_mbb(parent, child_index, storage.get_mbb(parent, child_index).extend(mbb));
@@ -216,6 +353,22 @@ private:
         for (const auto& lc : label_counts) {
             list_ptr list = index->find_or_create(lc.label)->postings_list();
             increment_entry(*list, child_index, tid, lc.count);
+        }
+    }
+
+    /// Update the parent node to reflect the insertion of `entry` (which is a subtree)
+    /// at the child with the given `child_index`.
+    /// Updates the bounding box and the inverted index.
+    void update_parent(internal_ptr parent, u32 child_index, const node_summary& entry) {
+        geodb_assert(child_index < storage.get_count(parent), "index out of bounds");
+
+        storage.set_mbb(parent, child_index, storage.get_mbb(parent, child_index).extend(entry.mbb));
+
+        index_ptr index = storage.index(parent);
+        increment_entry(*index->total(), child_index, entry.total.id_set(), entry.total.count());
+        for (const label_summary& lc : entry.labels) {
+            list_ptr list = index->find_or_create(lc.label)->postings_list();
+            increment_entry(*list, child_index, lc.data.id_set(), lc.data.count());
         }
     }
 
@@ -238,17 +391,47 @@ private:
         }
     }
 
-    /// Given an internal node, and the mbb + label of a new entry,
+    /// Update the entry for `child` in the given list or insert a new one.
+    void increment_entry(list_type& list, entry_id_type child, const trajectory_id_set_type& tids, u64 count) {
+        auto pos = list.find(child);
+        if (pos == list.end()) {
+            // Insert a new entry.
+            list.append(posting_type(child, count, tids));
+        } else {
+            // Merge the new id set and count with the old content.
+            posting_type e = *pos;
+
+            auto set = e.id_set().union_with(tids);
+            e.id_set(set);
+            e.count(e.count() + count);
+
+            list.set(pos, e);
+        }
+    }
+
+    /// Simple case of `find_insertion_entry`: a single value.
+    u32 find_insertion_entry(internal_ptr n, const value_type& v) {
+        return find_insertion_entry(n, state.get_mbb(v), state.get_label_counts(v), state.get_total_count(v));
+    }
+
+    /// Given an internal node, and the mbb + labels of a new entry,
     /// find the best child entry within the internal node.
     /// This function respects the spatial cost (i.e. growing the bounding box)
     /// and the textual cost (introducing uncommon labels into a subtree).
-    u32 find_insertion_entry(internal_ptr n, const value_type& v) {
+    ///
+    /// This function is more generic because it can also handle subtrees.
+    template<typename LabelCounts>
+    u32 find_insertion_entry(internal_ptr n,
+                             const bounding_box& mbb,
+                             const LabelCounts& labels,
+                             u64 total_units)
+    {
         const u32 count = storage.get_count(n);
         geodb_assert(count > 0, "empty internal node");
 
         internal_cost_vec textual, spatial;
-        textual_insert_costs(n, v, textual);
-        spatial_insert_costs(n, v, spatial);
+        textual_insert_costs(n, labels, total_units, textual);
+        spatial_insert_costs(n, mbb, spatial);
 
         auto cost = [&](u32 i) {
             return state.cost(spatial[i], textual[i]);
@@ -456,8 +639,6 @@ private:
     /// and the extra node.
     std::vector<internal_entry> get_entries(internal_ptr internal, const node_summary& extra)
     {
-        using label_count = typename partition_type::label_count;
-
         const u32 count = storage.get_count(internal);
 
         std::vector<internal_entry> entries;
@@ -507,6 +688,13 @@ private:
         last.total = extra.total.count();
 
         return entries;
+    }
+
+    node_summary summarize(node_ptr n, size_t height) const {
+        geodb_assert(height >= 1, "invalid subtree height");
+        return height == 1
+                ? summarize(storage.to_leaf(n))
+                : summarize(storage.to_internal(n));
     }
 
     /// Summarizes a leaf node. This summary will become part of
@@ -575,7 +763,12 @@ private:
         return summary;
     }
 
-    /// Insert a data entry into a leaf. The leaf must not be full.
+public:
+    /// Insert a data entry into a leaf.
+    ///
+    /// The leaf must not be full.
+    ///
+    /// (Public for unit testing).
     void insert_entry(leaf_ptr leaf, const value_type& e) {
         const u32 count = storage.get_count(leaf);
         geodb_assert(count < State::max_leaf_entries(), "leaf node is full");
@@ -584,6 +777,17 @@ private:
         storage.set_count(leaf, count + 1);
     }
 
+    /// Inserts a new child into the given internal node.
+    ///
+    /// The node must not be full.
+    /// The child's height must satisfy the tree's invariants.
+    /// (Public for unit testing).
+    template<typename NodePointer>
+    void insert_entry(internal_ptr internal, NodePointer child) {
+        insert_entry(internal, summarize(child));
+    }
+
+private:
     /// Inserts a new entry into the internal node `p` that references the
     /// node `c`. `p` must not be full.
     /// The inverted index of `p` will be updated to reflect the insertion of `c`.
@@ -658,16 +862,19 @@ private:
     /// Calculates the textual insertion costs for every child entry of `internal`.
     /// \param internal
     ///     The current internal node.
-    /// \param v
-    ///     The new leaf entry.
+    /// \param value_label_counts
+    ///     A sorted range of <label_id, unit_count> pairs for the new entry.
+    /// \param value_total_count
+    ///     The total number of trajecotry units in the new entry.
     /// \param[out] result
     ///     Will contain the cost values.
-    void textual_insert_costs(internal_ptr internal, const value_type& v, internal_cost_vec& result) {
+    template<typename LabelCounts>
+    void textual_insert_costs(internal_ptr internal,
+                              const LabelCounts& value_label_counts,
+                              u64 value_total_count,
+                              internal_cost_vec& result) {
         const u32 count = storage.get_count(internal);
         const_index_ptr index = storage.const_index(internal);
-
-        const auto value_label_counts = state.get_label_counts(v);
-        const u64 value_total_count = state.get_total_count(v);
 
         internal_count_vec entry_total_counts, entry_label_counts;
         counts(*index->total(), count, entry_total_counts);
@@ -706,12 +913,11 @@ private:
     /// Calculates the spatial insertion cost for every child entry of `internal`.
     /// \param internal
     ///     The current internal node.
-    /// \param v
-    ///     The new leaf entry.
+    /// \param mbb
+    ///     The bounding box of the new entry.
     /// \param[out] cost
     ///     Will contain the cost values.
-    void spatial_insert_costs(internal_ptr internal, const value_type& v, internal_cost_vec& cost) {
-        const bounding_box mbb = state.get_mbb(v);
+    void spatial_insert_costs(internal_ptr internal, const bounding_box& mbb, internal_cost_vec& cost) {
         const u32 count = storage.get_count(internal);
         const float norm = state.inverse(state.max_enlargement(internal, mbb));
 

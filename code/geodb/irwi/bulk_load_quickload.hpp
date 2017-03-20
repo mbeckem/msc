@@ -5,6 +5,7 @@
 #include "geodb/external_list.hpp"
 #include "geodb/irwi/base.hpp"
 #include "geodb/irwi/bulk_load_common.hpp"
+#include "geodb/irwi/label_count.hpp"
 #include "geodb/irwi/tree_state.hpp"
 #include "geodb/irwi/tree_insertion.hpp"
 #include "geodb/irwi/tree_internal.hpp"
@@ -449,12 +450,6 @@ private:
     void open_bucket(file_stream& bucket, u64 id) {
         bucket.open(m_bucket_alloc.path(id).string());
     }
-};
-
-/// Represents one entry of a node's index summary.
-struct label_count {
-    label_type label;
-    u64 count;
 };
 
 /// An entry of this type represents a complete node of the lower levels,

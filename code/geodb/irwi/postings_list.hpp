@@ -231,6 +231,10 @@ public:
         return storage().get(index);
     }
 
+    posting_type get(size_t index) const {
+        return (*this)[index];
+    }
+
     /// Returns the number of entries in this list.
     size_t size() const {
         return storage().size();

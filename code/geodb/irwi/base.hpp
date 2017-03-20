@@ -37,10 +37,28 @@ class bulk_load_common;
 
 /// IRWI leaf entries represent trajectory units.
 struct tree_entry {
-    trajectory_id_type trajectory_id;   ///< Index of the trajectory this unit belongs to.
-    u32 unit_index;                     ///< Index of this unit within the trajectory.
+    trajectory_id_type trajectory_id = 0;   ///< Index of the trajectory this unit belongs to.
+    u32 unit_index = 0;                     ///< Index of this unit within the trajectory.
     trajectory_unit unit;
+
+    tree_entry() = default;
+
+    tree_entry(trajectory_id_type trajectory_id, u32 unit_index, const trajectory_unit& unit)
+        : trajectory_id(trajectory_id)
+        , unit_index(unit_index)
+        , unit(unit)
+    {}
 };
+
+inline bool operator==(const tree_entry& a, const tree_entry& b) {
+    return a.trajectory_id == b.trajectory_id
+            && a.unit_index == b.unit_index
+            && a.unit == b.unit;
+}
+
+inline bool operator!=(const tree_entry& a, const tree_entry& b) {
+    return !(a == b);
+}
 
 static_assert(std::is_trivially_copyable<tree_entry>::value, "Must be trivially copyable");
 

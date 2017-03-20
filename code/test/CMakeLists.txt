@@ -20,8 +20,10 @@ set(SOURCES
     shared_values.cpp
     string_map.cpp
     trajectory.cpp
+    tree_internals.cpp
     tuple_utils.cpp
 )
 
 add_executable("${PROJECT_NAME}-test" ${SOURCES})
+target_compile_options("${PROJECT_NAME}-test" PRIVATE "-Wno-parentheses")
 target_link_libraries("${PROJECT_NAME}-test" catch geodb)
