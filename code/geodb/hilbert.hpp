@@ -8,6 +8,17 @@
 
 namespace geodb {
 
+/// This class template implements the hilbert curve, or,
+/// more precisely, its nth approxmiation (n is the "precision" parameter).
+///
+/// The curve of Dimension `d` and Precision `p` visits all points
+/// with `d` coordinates, where each coordinate has `p` bits.
+/// In other words, every point in [0, ..., 2^p - 1]^d lies on the curve,
+/// making for a total of 2^(p * n) points.
+/// Every point can be mapped to its index on the hilbert curve (a bijective relation).
+///
+/// Coordinates are represented by a bitset (of p bits). Points are an array
+/// of `d` coordinates.
 template<u32 Dimension, u32 Precision>
 class hilbert_curve {
 public:
