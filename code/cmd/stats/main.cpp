@@ -54,7 +54,7 @@ double normalized_size(const bounding_box& operand, const bounding_box& all){
     return double(operand.size()) / all.size();
 }
 
-void analyse(typename external_tree::cursor& node, tree_stats& stats) {
+void analyze(typename external_tree::cursor& node, tree_stats& stats) {
     if (node.is_leaf()) {
         for (size_t i = 0; i < node.size(); ++i) {
             stats.entry_area += node.mbb(i).size();
@@ -66,20 +66,20 @@ void analyse(typename external_tree::cursor& node, tree_stats& stats) {
     } else {
         for (size_t i = 0; i < node.size(); ++i) {
             node.move_child(i);
-            analyse(node, stats);
+            analyze(node, stats);
             node.move_parent();
         }
     }
 }
 
-tree_stats analyse(const external_tree& tree) {
+tree_stats analyze(const external_tree& tree) {
     tree_stats stats;
 
     if (!tree.empty()) {
         auto root = tree.root();
         const bounding_box all = root.mbb();
 
-        analyse(root, stats);
+        analyze(root, stats);
 
         stats.entry_area /= all.size();
         stats.leaf_area /= all.size();
@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
 
         external_tree tree{external_storage(input)};
 
-        tree_stats stats = analyse(tree);
+        tree_stats stats = analyze(tree);
         if (stats.leaves != tree.leaf_node_count()) {
             throw std::logic_error("Invalid leaf count");
         }
