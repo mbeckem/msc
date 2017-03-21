@@ -64,6 +64,8 @@ void analyze(typename external_tree::cursor& node, tree_stats& stats) {
         stats.leaf_area += node.mbb().size();
         stats.leaves += 1;
     } else {
+
+
         for (size_t i = 0; i < node.size(); ++i) {
             node.move_child(i);
             analyze(node, stats);

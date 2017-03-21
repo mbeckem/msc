@@ -170,7 +170,7 @@ struct geolife_parser {
 
                 // l_pos->time <= a_pos->end && l_pos_time >= a->pos->begin,
                 // i.e. point is in range for activity.
-                elems.push_back(trajectory_element(point(l_pos->latitude, l_pos->longitude, seconds(l_pos->time)),
+                elems.push_back(trajectory_element(vector3(l_pos->latitude, l_pos->longitude, seconds(l_pos->time)),
                                                    a_pos->label));
             }
 

@@ -64,7 +64,7 @@ TEST_CASE("insert into empty tree", "[tree-internals]") {
 
     tree_entry entry{
         1, 2,
-        trajectory_unit{point(1, 2, 3), point(4, 5, 6), 1}
+        trajectory_unit{vector3(1, 2, 3), vector3(4, 5, 6), 1}
     };
 
     tree.insert(entry);
@@ -90,7 +90,7 @@ TEST_CASE("insert with leaf split", "[tree-internals]") {
 
     for (int i = 0; i < int(state_type::max_leaf_entries()); ++i) {
         tree_entry entry(
-            1, i, trajectory_unit(point(i, i, i), point(i + 1, i + 1, i +1), 1)
+            1, i, trajectory_unit(vector3(i, i, i), vector3(i + 1, i + 1, i +1), 1)
         );
         tree.insert(entry);
     }
@@ -98,7 +98,7 @@ TEST_CASE("insert with leaf split", "[tree-internals]") {
     REQUIRE(storage.get_height() == 1);
     REQUIRE(storage.get_size() == state_type::max_leaf_entries());
 
-    tree.insert(tree_entry{2, 0, trajectory_unit{point(), point(), 2}});
+    tree.insert(tree_entry{2, 0, trajectory_unit{vector3(), vector3(), 2}});
     REQUIRE(storage.get_height() == 2);
     REQUIRE(storage.get_size() == state_type::max_leaf_entries() + 1);
 
@@ -125,8 +125,8 @@ TEST_CASE("inserting a leaf node", "[tree-internals]") {
         storage.set_count(p, 2);
         storage.set_child(p, 0, a);
         storage.set_child(p, 1, b);
-        storage.set_mbb(p, 0, bounding_box(point(0, 0, 0), point(1, 1, 1)));
-        storage.set_mbb(p, 1, bounding_box(point(2, 2, 2), point(3, 3, 3)));
+        storage.set_mbb(p, 0, bounding_box(vector3(0, 0, 0), vector3(1, 1, 1)));
+        storage.set_mbb(p, 1, bounding_box(vector3(2, 2, 2), vector3(3, 3, 3)));
 
         index_ptr i = storage.index(p);
         i->total()->append(posting_type(0, 10, {1, 2, 3}));
@@ -148,10 +148,10 @@ TEST_CASE("inserting a leaf node", "[tree-internals]") {
     leaf_ptr leaf = storage.create_leaf();
     storage.set_count(leaf, 2);
     storage.set_data(leaf, 0, tree_entry(
-        1, 1, trajectory_unit(point(10, 10, 10), point(11, 11, 11), 10)
+        1, 1, trajectory_unit(vector3(10, 10, 10), vector3(11, 11, 11), 10)
     ));
     storage.set_data(leaf, 1, tree_entry(
-        1, 1, trajectory_unit(point(15, 15, 15), point(16, 16, 16), 10)
+        1, 1, trajectory_unit(vector3(15, 15, 15), vector3(16, 16, 16), 10)
     ));
 
     tree.insert_node(leaf);
@@ -162,7 +162,7 @@ TEST_CASE("inserting a leaf node", "[tree-internals]") {
     internal_ptr root = storage.to_internal(storage.get_root());
     REQUIRE(storage.get_count(root) == 3);
     REQUIRE(storage.get_child(root, 2) == leaf);
-    REQUIRE(storage.get_mbb(root, 2) == bounding_box(point(10, 10, 10), point(16, 16, 16)));
+    REQUIRE(storage.get_mbb(root, 2) == bounding_box(vector3(10, 10, 10), vector3(16, 16, 16)));
 
     index_ptr index = storage.index(root);
 
@@ -178,18 +178,18 @@ TEST_CASE("inserting a subtree with larger height", "[tree-internals]") {
     test_tree tree;
     storage_type& storage = tree.storage();
 
-    tree.insert(tree_entry(1, 0, trajectory_unit(point(0, 0, 0), point(5, 5, 5), 5)));
+    tree.insert(tree_entry(1, 0, trajectory_unit(vector3(0, 0, 0), vector3(5, 5, 5), 5)));
     const leaf_ptr old_root = storage.to_leaf(storage.get_root());
 
     const internal_ptr parent = storage.create_internal();
     {
         leaf_ptr leaf1 = storage.create_leaf();
-        tree.insert_entry(leaf1, tree_entry(2, 1, trajectory_unit(point(10, 10, 10), point(15, 15, 15), 10)));
+        tree.insert_entry(leaf1, tree_entry(2, 1, trajectory_unit(vector3(10, 10, 10), vector3(15, 15, 15), 10)));
         tree.insert_entry(parent, leaf1);
 
         leaf_ptr leaf2 = storage.create_leaf();
-        tree.insert_entry(leaf2, tree_entry(2, 2, trajectory_unit(point(16, 16, 16), point(20, 20, 20), 11)));
-        tree.insert_entry(leaf2, tree_entry(2, 2, trajectory_unit(point(20, 20, 20), point(17, 17, 17), 11)));
+        tree.insert_entry(leaf2, tree_entry(2, 2, trajectory_unit(vector3(16, 16, 16), vector3(20, 20, 20), 11)));
+        tree.insert_entry(leaf2, tree_entry(2, 2, trajectory_unit(vector3(20, 20, 20), vector3(17, 17, 17), 11)));
         tree.insert_entry(parent, leaf2);
     }
     tree.insert_node(parent, 2, 3);
@@ -214,11 +214,11 @@ TEST_CASE("inserting a small subtree into a large tree", "[tree-internals]") {
         internal_ptr p2 = storage.create_internal();
 
             leaf_ptr l1 = storage.create_leaf();
-            tree.insert_entry(l1, tree_entry(1, 1, trajectory_unit(point(0, 0, 0), point(1, 1, 1), 10)));
+            tree.insert_entry(l1, tree_entry(1, 1, trajectory_unit(vector3(0, 0, 0), vector3(1, 1, 1), 10)));
             tree.insert_entry(p2, l1);
 
             leaf_ptr l2 = storage.create_leaf();
-            tree.insert_entry(l2, tree_entry(1, 2, trajectory_unit(point(1, 1, 1), point(1, 1, 2), 10)));
+            tree.insert_entry(l2, tree_entry(1, 2, trajectory_unit(vector3(1, 1, 1), vector3(1, 1, 2), 10)));
             tree.insert_entry(p2, l2);
 
         tree.insert_entry(p1, p2);
@@ -226,11 +226,11 @@ TEST_CASE("inserting a small subtree into a large tree", "[tree-internals]") {
         internal_ptr p3 = storage.create_internal();
 
             leaf_ptr l3 = storage.create_leaf();
-            tree.insert_entry(l3, tree_entry(10, 1, trajectory_unit(point(100, 100, 100), point(105, 105, 105), 10)));
+            tree.insert_entry(l3, tree_entry(10, 1, trajectory_unit(vector3(100, 100, 100), vector3(105, 105, 105), 10)));
             tree.insert_entry(p3, l3);
 
             leaf_ptr l4 = storage.create_leaf();
-            tree.insert_entry(l4, tree_entry(10, 2, trajectory_unit(point(105, 105, 106), point(100, 110, 120), 10)));
+            tree.insert_entry(l4, tree_entry(10, 2, trajectory_unit(vector3(105, 105, 106), vector3(100, 110, 120), 10)));
             tree.insert_entry(p3, l4);
 
         tree.insert_entry(p1, p3);
@@ -241,25 +241,25 @@ TEST_CASE("inserting a small subtree into a large tree", "[tree-internals]") {
 
     // n1 should be inserted into p3 (the mbb needs the lowest enlargement).
     leaf_ptr n1 = storage.create_leaf();
-    tree.insert_entry(n1, tree_entry(50, 1, trajectory_unit(point(95, 103, 100), point(104, 109, 125), 10)));
+    tree.insert_entry(n1, tree_entry(50, 1, trajectory_unit(vector3(95, 103, 100), vector3(104, 109, 125), 10)));
     tree.insert_node(n1);
 
     REQUIRE(storage.get_height() == 3);
     REQUIRE(storage.get_size() == 5);
     REQUIRE(storage.get_count(p3) == 3);
     REQUIRE(storage.get_child(p3, 2) == n1);
-    REQUIRE(storage.get_mbb(p3, 2) == bounding_box(point(95, 103, 100), point(104, 109, 125)));
+    REQUIRE(storage.get_mbb(p3, 2) == bounding_box(vector3(95, 103, 100), vector3(104, 109, 125)));
 
     // n2 fits into p2.
     leaf_ptr n2 = storage.create_leaf();
-    tree.insert_entry(n2, tree_entry(51, 1, trajectory_unit(point(5, 4, 3), point(3, 4, 4), 10)));
-    tree.insert_entry(n2, tree_entry(51, 2, trajectory_unit(point(3, 4, 5), point(0, 0, 10), 10)));
+    tree.insert_entry(n2, tree_entry(51, 1, trajectory_unit(vector3(5, 4, 3), vector3(3, 4, 4), 10)));
+    tree.insert_entry(n2, tree_entry(51, 2, trajectory_unit(vector3(3, 4, 5), vector3(0, 0, 10), 10)));
     tree.insert_node(n2);
 
     REQUIRE(storage.get_height() == 3);
     REQUIRE(storage.get_size() == 7);
     REQUIRE(storage.get_count(p2) == 3);
     REQUIRE(storage.get_child(p2, 2) == n2);
-    REQUIRE(storage.get_mbb(p2, 2) == bounding_box(point(0, 0, 3), point(5, 4, 10)));
+    REQUIRE(storage.get_mbb(p2, 2) == bounding_box(vector3(0, 0, 3), vector3(5, 4, 10)));
 
 }

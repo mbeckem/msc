@@ -3,7 +3,7 @@
 
 #include "geodb/bounding_box.hpp"
 #include "geodb/common.hpp"
-#include "geodb/point.hpp"
+#include "geodb/vector.hpp"
 
 #include <tpie/serialization2.h>
 
@@ -22,13 +22,13 @@ using trajectory_id_type = u64;
 struct trajectory_unit {
     // Fields are unordered (i.e. xbegin not necessarily < xend)
     // because they describe the temporal/spatial line.
-    point start{};
-    point end{};
+    vector3 start{};
+    vector3 end{};
     label_type label = 0;
 
     trajectory_unit() = default;
 
-    trajectory_unit(const point& start, const point& end, label_type label)
+    trajectory_unit(const vector3& start, const vector3& end, label_type label)
         : start(start)
         , end(end)
         , label(label)
@@ -37,14 +37,14 @@ struct trajectory_unit {
     bool intersects(const bounding_box& b) const;
 
     bounding_box get_bounding_box() const {
-        return { point::min(start, end), point::max(start, end) };
+        return { vector3::min(start, end), vector3::max(start, end) };
     }
 
-    point center() const {
+    vector3 center() const {
         auto x = (start.x() + end.x()) / 2;
         auto y = (start.y() + end.y()) / 2;
         auto t = (start.t() + end.t()) / 2;
-        return point(x, y, t);
+        return vector3(x, y, t);
     }
 };
 
@@ -70,12 +70,12 @@ struct trajectory {
 
 struct trajectory_element {
 public:
-    point spatial;
+    vector3 spatial;
     label_type textual = 0;
 
     trajectory_element() {}
 
-    trajectory_element(point spatial, label_type textual)
+    trajectory_element(vector3 spatial, label_type textual)
         : spatial(spatial), textual(textual) {}
 
 private:

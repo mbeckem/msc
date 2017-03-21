@@ -17,11 +17,11 @@ set(HEADERS
     hybrid_buffer.hpp
     hybrid_map.hpp
     parser.hpp
-    point.hpp
     interval.hpp
     interval_set.hpp
     trajectory.hpp
     type_traits.hpp
+    vector.hpp
 
     utility/as_const.hpp
     utility/id_allocator.hpp

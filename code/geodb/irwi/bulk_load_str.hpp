@@ -38,7 +38,7 @@ class str_loader : private bulk_load_common<Tree, str_loader<Tree>> {
     using list_summary = typename common_t::list_summary;
     using label_summary = typename common_t::label_summary;
 
-    static point center(const tree_entry& e) {
+    static vector3 center(const tree_entry& e) {
         return e.unit.center();
     }
 

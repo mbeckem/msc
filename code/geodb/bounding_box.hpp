@@ -3,7 +3,7 @@
 
 #include "geodb/common.hpp"
 #include "geodb/interval.hpp"
-#include "geodb/point.hpp"
+#include "geodb/vector.hpp"
 
 namespace geodb {
 
@@ -15,29 +15,29 @@ public:
     bounding_box() = default;
 
     /// Construct a bounding box from a pair of points.
-    bounding_box(point min, point max)
+    bounding_box(vector3 min, vector3 max)
         : m_min(min)
         , m_max(max)
     {
-        geodb_assert(point::less_eq(min, max), "min is not less than max");
+        geodb_assert(vector3::less_eq(min, max), "min is not less than max");
     }
 
     /// Returns the minimum point of the bounding box.
-    const point& min() const { return m_min; }
+    const vector3& min() const { return m_min; }
 
     /// Returns the maximum point of the bounding box.
-    const point& max() const { return m_max; }
+    const vector3& max() const { return m_max; }
 
     /// Returns the center point of the bounding box.
-    point center() const {
-        point result;
+    vector3 center() const {
+        vector3 result;
         result.x() = (m_max.x() + m_min.x()) / 2;
         result.y() = (m_max.y() + m_min.y()) / 2;
         result.t() = (m_max.t() + m_min.t()) / 2;
         return result;
     }
 
-    point widths() const {
+    vector3 widths() const {
         return {
             m_max.x() - m_min.x(),
             m_max.y() - m_min.y(),
@@ -47,7 +47,7 @@ public:
 
     /// Returns true if this bounding box fully contains `other`.
     bool contains(const bounding_box& other) const {
-        return point::less_eq(m_min, other.m_min) && point::less_eq(other.m_max, m_max);
+        return vector3::less_eq(m_min, other.m_min) && vector3::less_eq(other.m_max, m_max);
     }
 
     /// Returns true if this bounding box has a non-empty intersection
@@ -61,12 +61,12 @@ public:
     /// Returns a minimum bounding box that contains
     /// both \p *this and \p other.
     bounding_box extend(const bounding_box& other) const {
-        return { point::min(m_min, other.m_min), point::max(m_max, other.m_max) };
+        return { vector3::min(m_min, other.m_min), vector3::max(m_max, other.m_max) };
     }
 
     /// Returns the size of this box.
     float size() const {
-        point vec = m_max - m_min;
+        vector3 vec = m_max - m_min;
         return float(vec.x()) * float(vec.y()) * float(vec.t());
     }
 
@@ -84,8 +84,8 @@ private:
     }
 
 private:
-    point m_min;
-    point m_max;
+    vector3 m_min;
+    vector3 m_max;
 };
 
 } // namespace geodb

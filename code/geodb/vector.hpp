@@ -1,5 +1,5 @@
-#ifndef GEODB_POINT_HPP
-#define GEODB_POINT_HPP
+#ifndef GEODB_VECTOR_HPP
+#define GEODB_VECTOR_HPP
 
 #include "geodb/common.hpp"
 #include "geodb/type_traits.hpp"
@@ -21,7 +21,7 @@ namespace detail {
 /// The derived class must implement the static functions
 /// `Derived::get_member(std::integral_constant<size_t, I>)` for all I in 0,...,Size-1 .
 template<typename Derived, size_t Size>
-class point_base {
+class vector_base {
 public:
     static constexpr size_t size() { return Size; }
 
@@ -147,16 +147,16 @@ using time_type = u32;
 /// and one temporal dimension (t).
 /// Note that the type used for time is distinct from the type of
 /// the spatial coordinates.
-class point : public detail::point_base<point, 3> {
+class vector3 : public detail::vector_base<vector3, 3> {
 public:
     using x_type = spatial_type;
     using y_type = spatial_type;
     using t_type = time_type;
 
 public:
-    point() = default;
+    vector3() = default;
 
-    point(x_type x, y_type y, t_type t)
+    vector3(x_type x, y_type y, t_type t)
         : m_t(t), m_y(y), m_x(x)
     {}
 
@@ -169,25 +169,25 @@ public:
     t_type& t() { return m_t; }
 
 private:
-    friend class point_base<point, 3>;
+    friend class vector_base<vector3, 3>;
 
     template<typename T>
-    static constexpr bool is_point() {
-        return std::is_same<std::decay_t<T>, point>::value;
+    static constexpr bool is_vector() {
+        return std::is_same<std::decay_t<T>, vector3>::value;
     }
 
-    template<typename Point>
-    static decltype(auto) get_member(Point&& p, std::integral_constant<size_t, 0>) { return p.x(); }
+    template<typename Vector>
+    static decltype(auto) get_member(Vector&& p, std::integral_constant<size_t, 0>) { return p.x(); }
 
-    template<typename Point>
-    static decltype(auto) get_member(Point&& p, std::integral_constant<size_t, 1>) { return p.y(); }
+    template<typename Vector>
+    static decltype(auto) get_member(Vector&& p, std::integral_constant<size_t, 1>) { return p.y(); }
 
-    template<typename Point>
-    static decltype(auto) get_member(Point&& p, std::integral_constant<size_t, 2>) { return p.t(); }
+    template<typename Vector>
+    static decltype(auto) get_member(Vector&& p, std::integral_constant<size_t, 2>) { return p.t(); }
 
 private:
     template<typename Dst>
-    friend void serialize(Dst& dst, const point& p) {
+    friend void serialize(Dst& dst, const vector3& p) {
         using tpie::serialize;
         serialize(dst, p.x());
         serialize(dst, p.y());
@@ -195,7 +195,7 @@ private:
     }
 
     template<typename Src>
-    friend void unserialize(Src& src, point& p) {
+    friend void unserialize(Src& src, vector3& p) {
         using tpie::unserialize;
         unserialize(src, p.x());
         unserialize(src, p.y());
@@ -212,4 +212,4 @@ private:
 
 } // namespace geodb
 
-#endif // GEODB_POINT_HPP
+#endif // GEODB_VECTOR_HPP

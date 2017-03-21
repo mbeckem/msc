@@ -2,7 +2,7 @@
 #define GEODB_IRWI_BASE_HPP
 
 #include "geodb/common.hpp"
-#include "geodb/point.hpp"
+#include "geodb/vector.hpp"
 #include "geodb/bounding_box.hpp"
 #include "geodb/trajectory.hpp"
 

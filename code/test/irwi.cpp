@@ -137,8 +137,8 @@ TEST_CASE("irwi tree insertion", "[irwi]") {
 
             for (int j = 0; j < 16; ++j) {
                 trajectory_unit u;
-                u.start = point(b1 + (j % 5), b2 + (j % 7), j);
-                u.end = u.start + point(1, 1, 1);
+                u.start = vector3(b1 + (j % 5), b2 + (j % 7), j);
+                u.end = u.start + vector3(1, 1, 1);
                 u.label = i / 4;
                 t.units.push_back(u);
             }
@@ -166,14 +166,14 @@ TEST_CASE("irwi tree query (simple)", "[irwi]") {
     tree_test([](auto&& tree) {
         trajectory t;
         t.id = 123;
-        t.units.push_back({point(55, 33, 100), point(66, 44, 105), 1});
-        t.units.push_back({point(66, 44, 106), point(62, 48, 115), 2});
-        t.units.push_back({point(62, 48, 116), point(62, 48, 130), 1});
-        t.units.push_back({point(62, 48, 131), point(55, 33, 140), 3});
+        t.units.push_back({vector3(55, 33, 100), vector3(66, 44, 105), 1});
+        t.units.push_back({vector3(66, 44, 106), vector3(62, 48, 115), 2});
+        t.units.push_back({vector3(62, 48, 116), vector3(62, 48, 130), 1});
+        t.units.push_back({vector3(62, 48, 131), vector3(55, 33, 140), 3});
         tree.insert(t);
 
         {
-            bounding_box rect(point(0, 0, 105), point(100, 100, 110));
+            bounding_box rect(vector3(0, 0, 105), vector3(100, 100, 110));
             sequenced_query q;
             q.queries.push_back(simple_query{rect, {2}});
 
@@ -185,7 +185,7 @@ TEST_CASE("irwi tree query (simple)", "[irwi]") {
         }
 
         {
-            bounding_box rect(point(67, 45, 0), point(68, 46, 200));
+            bounding_box rect(vector3(67, 45, 0), vector3(68, 46, 200));
             sequenced_query q;
             q.queries.push_back(simple_query{rect, {2}});
 
@@ -194,7 +194,7 @@ TEST_CASE("irwi tree query (simple)", "[irwi]") {
         }
 
         {
-            bounding_box rect(point(0, 0, 0), point(100, 100, 200));
+            bounding_box rect(vector3(0, 0, 0), vector3(100, 100, 200));
             sequenced_query q;
             q.queries.push_back(simple_query{rect, {4}});
 
@@ -203,7 +203,7 @@ TEST_CASE("irwi tree query (simple)", "[irwi]") {
         }
 
         {
-            bounding_box rect(point(60, 40, 100), point(100, 100, 110));
+            bounding_box rect(vector3(60, 40, 100), vector3(100, 100, 110));
             sequenced_query q;
             q.queries.push_back(simple_query{rect, {1}});
 
@@ -223,17 +223,17 @@ TEST_CASE("irwi tree query (complex)", "[irwi]") {
         return dist(engine);
     };
 
-    auto random_point = [&](const bounding_box& area) -> point {
-        point result;
+    auto random_point = [&](const bounding_box& area) -> vector3 {
+        vector3 result;
         result.x() = area.min().x() + random() * area.widths().x();
         result.y() = area.min().y() + random() * area.widths().y();
         result.t() = area.min().t() + random() * area.widths().t();
         return result;
     };
 
-    const bounding_box area1(point(0, 0, 0), point(50, 50, 50));
-    const bounding_box area2(point(1000, 1000, 30), point(1200, 1100, 300));
-    const bounding_box area3(point(400, 400, 100), point(500, 500, 1100));
+    const bounding_box area1(vector3(0, 0, 0), vector3(50, 50, 50));
+    const bounding_box area2(vector3(1000, 1000, 30), vector3(1200, 1100, 300));
+    const bounding_box area3(vector3(400, 400, 100), vector3(500, 500, 1100));
 
     tree_test([&](auto&& tree) {
         // Trajectories 0-9 in area 1.
@@ -335,7 +335,7 @@ TEST_CASE("opening resource more than once returns same handle", "[irwi]") {
         pt.id = 123;
         pt.description = "test";
         for (size_t i = 0; i < tree_t::max_leaf_entries() + 2; ++i) {
-            pt.entries.push_back(trajectory_element{point(1, 2, 3), 123});
+            pt.entries.push_back(trajectory_element{vector3(1, 2, 3), 123});
         }
         tree.insert(pt);
 

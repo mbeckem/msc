@@ -2,7 +2,7 @@
 #define GEODB_HILBERT_HPP
 
 #include "geodb/common.hpp"
-#include "geodb/point.hpp"
+#include "geodb/vector.hpp"
 
 #include <bitset>
 

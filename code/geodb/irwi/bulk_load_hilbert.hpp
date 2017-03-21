@@ -140,7 +140,7 @@ private:
             , t(total.min().t(), total.max().t())
         {}
 
-        curve_point operator()(const point& p) const {
+        curve_point operator()(const vector3& p) const {
             curve_point result{ x(p.x()), y(p.y()), t(p.t()) };
             return result;
         }
@@ -153,7 +153,7 @@ private:
         output.truncate(0);
         while (m_input.can_read()) {
             tree_entry entry = m_input.read();
-            point center = entry.unit.center();
+            vector3 center = entry.unit.center();
 
             hilbert_entry result;
             result.inner = entry;

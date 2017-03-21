@@ -30,15 +30,15 @@ int main(int argc, char** argv) {
         std::uniform_int_distribution<time_type> tstep(1, 5);
         std::uniform_int_distribution<label_type> labeldist(1, 50);
 
-        auto get_point = [&](const point& last) {
-            return point(last.x() + xstep(mt), last.y() + ystep(mt), last.t() + tstep(mt));
+        auto get_point = [&](const vector3& last) {
+            return vector3(last.x() + xstep(mt), last.y() + ystep(mt), last.t() + tstep(mt));
         };
 
         for (int i = 1; i <= 2500; ++i) {
             trajectory tr;
             tr.id = i;
 
-            point start(xdist(mt), ydist(mt), tdist(mt));
+            vector3 start(xdist(mt), ydist(mt), tdist(mt));
             for (int u = 0; u < 10; ++u) {
                 auto stop = get_point(start);
                 tr.units.push_back(trajectory_unit{start, stop, labeldist(mt)});

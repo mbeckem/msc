@@ -385,8 +385,8 @@ void TreeDisplay::refreshUp() {
 }
 
 static osg::Node* make_box(const geodb::bounding_box& mbb, const osg::Matrix& global, const QColor& c) {
-    geodb::point center = mbb.center();
-    geodb::point widths = mbb.max() - mbb.min();
+    geodb::vector3 center = mbb.center();
+    geodb::vector3 widths = mbb.max() - mbb.min();
 
     osg::Matrix m1 = osg::Matrix::scale(widths.x(), widths.y(), widths.t());
     osg::Matrix m2 = osg::Matrix::translate(center.x(), center.y(), center.t());
@@ -397,7 +397,7 @@ static osg::Node* make_box(const geodb::bounding_box& mbb, const osg::Matrix& gl
 
 static osg::Matrix global_transform(const geodb::bounding_box& root) {
     // Rescale everything to [0, 1000].
-    geodb::point width = root.max() - root.min();
+    geodb::vector3 width = root.max() - root.min();
     return osg::Matrix::scale(1000.0 / double(width.x()),
                               1000.0 / double(width.y()),
                               1000.0 / double(width.t()));

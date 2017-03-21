@@ -16,7 +16,7 @@ bool trajectory_unit::intersects(const bounding_box& b) const {
     using box_t = bg::model::box<point_t>;
 
     // Convert point to boost geometry type.
-    auto convert_point = [](const point& p) {
+    auto convert_point = [](const vector3& p) {
         return point_t(p.x(), p.y(), p.t());
     };
 

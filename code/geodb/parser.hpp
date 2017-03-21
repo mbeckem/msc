@@ -3,7 +3,7 @@
 
 #include "geodb/common.hpp"
 #include "geodb/date_time.hpp"
-#include "geodb/point.hpp"
+#include "geodb/vector.hpp"
 #include "geodb/trajectory.hpp"
 
 #include <istream>
