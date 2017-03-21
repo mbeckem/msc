@@ -40,7 +40,7 @@ TEST_CASE("bounding box contains", "[bounding box]") {
     REQUIRE(!bb.contains(disjoint));
 }
 
-TEST_CASE("bounding box intersection", "[bounding-box]") {
+TEST_CASE("bounding box intersection test", "[bounding box]") {
     struct test {
         bounding_box a;
         bounding_box b;
@@ -73,6 +73,42 @@ TEST_CASE("bounding box intersection", "[bounding-box]") {
         INFO("a = " << t.a);
         INFO("b = " << t.b);
 
+        CHECK(t.b.intersects(t.a) == t.expected);
         CHECK(t.a.intersects(t.b) == t.expected);
+    }
+}
+
+TEST_CASE("bounding box intersection", "[bounding box]") {
+    struct test {
+        bounding_box a;
+        bounding_box b;
+        bounding_box i;
+    };
+
+    test tests[] = {
+        {
+            bounding_box(vector3(0, 0, 0), vector3(1, 1, 1)),
+            bounding_box(vector3(2, 2, 2), vector3(3, 3, 3)),
+            bounding_box()
+        },
+        {
+            bounding_box(vector3(10, 11, 12), vector3(15, 16, 17)),
+            bounding_box(vector3(14, 14, 14), vector3(20, 20, 20)),
+            bounding_box(vector3(14, 14, 14), vector3(15, 16, 17))
+        },
+        {
+            bounding_box(vector3(5, 5, 5), vector3(15, 7, 8)),
+            bounding_box(vector3(9, 5, 5), vector3(10, 10, 10)),
+            bounding_box(vector3(9, 5, 5), vector3(10, 7, 8))
+        }
+    };
+
+    for (test& t : tests) {
+        INFO("a = " << t.a);
+        INFO("b = " << t.b);
+        INFO("expected = " << t.i);
+
+        CHECK(t.b.intersection(t.a) == t.i);
+        CHECK(t.a.intersection(t.b) == t.i);
     }
 }

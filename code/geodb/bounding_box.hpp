@@ -58,6 +58,17 @@ public:
                  && (min().t() <= other.max().t() && max().t() >= other.min().t());
     }
 
+    /// Returns the intersection of `*this` and `other`.
+    /// If the boxes do not intersect, an empty bounding box will be returned.
+    bounding_box intersection(const bounding_box& other) const {
+        if (!intersects(other)) {
+            return {};
+        }
+
+        // Pick the larger start value and the smaller end value in every coordinate.
+        return { vector3::max(min(), other.min()), vector3::min(max(), other.max()) };
+    }
+
     /// Returns a minimum bounding box that contains
     /// both \p *this and \p other.
     bounding_box extend(const bounding_box& other) const {
