@@ -37,6 +37,14 @@ public:
         return result;
     }
 
+    point widths() const {
+        return {
+            m_max.x() - m_min.x(),
+            m_max.y() - m_min.y(),
+            m_max.t() - m_min.t()
+        };
+    }
+
     /// Returns true if this bounding box fully contains `other`.
     bool contains(const bounding_box& other) const {
         return point::less_eq(m_min, other.m_min) && point::less_eq(other.m_max, m_max);

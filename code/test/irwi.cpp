@@ -6,6 +6,7 @@
 #include "geodb/utility/temp_dir.hpp"
 
 #include <map>
+#include <random>
 #include <set>
 #include <type_traits>
 
@@ -179,7 +180,8 @@ TEST_CASE("irwi tree query (simple)", "[irwi]") {
             auto result = tree.find(q);
             REQUIRE(result.size() == 1);
             REQUIRE(result[0].id == 123);
-            REQUIRE(result[0].units == std::vector<u32>{1});
+            REQUIRE(result[0].units.size() == 1);
+            REQUIRE(result[0].units[0].index == 1);
         }
 
         {
@@ -207,7 +209,120 @@ TEST_CASE("irwi tree query (simple)", "[irwi]") {
 
             auto result = tree.find(q);
             REQUIRE(result[0].id == 123);
-            REQUIRE(result[0].units == std::vector<u32>{0});
+            REQUIRE(result[0].units.size() == 1);
+            REQUIRE(result[0].units[0].index == 0);
+        }
+    });
+}
+
+TEST_CASE("irwi tree query (complex)", "[irwi]") {
+    auto random = [&]() -> double {
+        static std::mt19937 engine;   // no seed. this is deterministic.
+        static std::uniform_real_distribution<double> dist(0, 1);
+
+        return dist(engine);
+    };
+
+    auto random_point = [&](const bounding_box& area) -> point {
+        point result;
+        result.x() = area.min().x() + random() * area.widths().x();
+        result.y() = area.min().y() + random() * area.widths().y();
+        result.t() = area.min().t() + random() * area.widths().t();
+        return result;
+    };
+
+    const bounding_box area1(point(0, 0, 0), point(50, 50, 50));
+    const bounding_box area2(point(1000, 1000, 30), point(1200, 1100, 300));
+    const bounding_box area3(point(400, 400, 100), point(500, 500, 1100));
+
+    tree_test([&](auto&& tree) {
+        // Trajectories 0-9 in area 1.
+        for (trajectory_id_type id = 0; id < 10; ++id) {
+            // With 50 units each.
+            for (u32 unit_index = 100; unit_index < 125; ++unit_index) {
+                trajectory_unit unit(random_point(area1), random_point(area1), unit_index % 10);
+                tree.insert(tree_entry(id, unit_index, unit));
+            }
+        }
+        tree.insert(tree_entry(5000, 0, trajectory_unit(random_point(area1), random_point(area1), 11)));
+
+        // A whole lot of junk in area 2.
+        for (trajectory_id_type id = 9000; id < 9010; ++id) {
+            for (u32 unit_index = 123; unit_index < 144; ++unit_index) {
+                trajectory_unit unit(random_point(area2), random_point(area2), unit_index % 13);
+                tree.insert(tree_entry(id, unit_index, unit));
+            }
+        }
+
+        // Only few entries in area 3.
+        tree.insert(tree_entry(5000, 1, trajectory_unit(random_point(area3), random_point(area3), 1)));
+        tree.insert(tree_entry(5000, 2, trajectory_unit(random_point(area3), random_point(area3), 2)));
+        tree.insert(tree_entry(5000, 3, trajectory_unit(random_point(area3), random_point(area3), 1)));
+        tree.insert(tree_entry(5050, 1, trajectory_unit(random_point(area3), random_point(area3), 3)));
+
+        {
+            sequenced_query sq;
+            sq.queries.push_back(simple_query{area1, {0}});
+
+            std::vector<trajectory_match> matches = tree.find(sq);
+            REQUIRE(matches.size() == 10);
+
+            trajectory_id_type expected = 0;
+            for (const trajectory_match& match : matches) {
+                if (match.id != expected) {
+                    FAIL("expected trajectory " << expected << " but got " << match.id);
+                }
+
+                if (match.units.size() != 3) {
+                    FAIL("expected three matching units, got " << match.units.size());
+                }
+
+                u32 expected_unit = 100;
+                for (const unit_match& umatch : match.units) {
+                    if (umatch.index != expected_unit) {
+                        FAIL("expected unit index " << expected_unit << " but got " << umatch.index);
+                    }
+                    expected_unit += 10;
+                }
+                ++expected;
+            }
+        }
+
+        {
+            sequenced_query sq;
+            sq.queries.push_back(simple_query{area3, {1, 2}});
+
+            std::vector<trajectory_match> matches = tree.find(sq);
+
+            REQUIRE(matches.size() == 1);
+
+            const trajectory_match& match = matches.front();
+            REQUIRE(match.id == 5000);
+            REQUIRE(match.units.size() == 3);
+
+            REQUIRE(match.units[0].index == 1);
+            REQUIRE(match.units[1].index == 2);
+            REQUIRE(match.units[2].index == 3);
+        }
+
+        {
+            sequenced_query sq;
+            sq.queries.push_back(simple_query{area1, {11, 1, 2, 3, 4, 5}});
+            sq.queries.push_back(simple_query{area3, {2, 3}});
+
+            std::vector<trajectory_match> matches = tree.find(sq);
+
+            REQUIRE(matches.size() == 1);
+
+            const trajectory_match& match = matches.front();
+            REQUIRE(match.id == 5000);
+            REQUIRE(match.units.size() == 2);
+
+            // from area1
+            REQUIRE(match.units[0].index == 0);
+
+            // from area3
+            REQUIRE(match.units[1].index == 2);
         }
     });
 }

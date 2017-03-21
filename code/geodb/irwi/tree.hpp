@@ -133,6 +133,13 @@ public:
         return cursor(&state, storage().get_root());
     }
 
+    /// Inserts a single leaf entry into the tree.
+    void insert(const tree_entry& v) {
+        using insertion_type = tree_insertion<state_type>;
+
+        insertion_type(state).insert(v, path_buf);
+    }
+
     /// Inserts the new trajectory into the tree.
     /// The trajectory's id must be unique and it must
     /// not already have been inserted.
@@ -163,7 +170,7 @@ public:
     }
 
     /// Finds all trajectories that satisfy the given query.
-    std::vector<match> find(const sequenced_query& seq_query) const {
+    std::vector<trajectory_match> find(const sequenced_query& seq_query) const {
         if (empty()) {
             return {}; // no root.
         }
@@ -183,17 +190,11 @@ public:
             geodb_assert(!nodes[i].empty(), "node list must be non-empty");
             get_matching_units(seq_query.queries[i], nodes[i], units);
             candidates[i] = group_by_key(units, [](const tree_entry& e) { return e.trajectory_id; });
+            sort_groups(candidates[i]);
         }
 
         // Trajectories must satisfy every simple query and must do so in the correct order.
         return check_order(candidates);
-    }
-
-private:
-    using insertion_type = tree_insertion<state_type>;
-
-    void insert(const tree_entry& v) {
-        insertion_type(state).insert(v, path_buf);
     }
 
 private:
@@ -396,13 +397,13 @@ private:
     /// Takes a range of trajectory_id -> [units] maps (one map for each simple query).
     /// Returns a set of trajectories that have their matches correctly ordered in time.
     template<typename CandidateTractoriesRange>
-    std::vector<match> check_order(const CandidateTractoriesRange& candidates) const {
+    std::vector<trajectory_match> check_order(const CandidateTractoriesRange& candidates) const {
         geodb_assert(!boost::empty(candidates), "range must not be empty");
 
-        std::vector<match> result;
+        std::vector<trajectory_match> matches;
         for (trajectory_id_type id : *boost::begin(candidates) | boost::adaptors::map_keys) {
             u32 unit = 0;
-            std::vector<u32> indices;
+            std::vector<unit_match> unit_matches;
 
             for (const auto& map : candidates) {
                 auto iter = map.find(id);
@@ -414,10 +415,16 @@ private:
                 const std::vector<tree_entry>& entries = iter->second;
                 geodb_assert(entries.size() > 0, "no matching entries");
 
+                // Return the matching trajectory units to the user.
+                for (const tree_entry& e : entries) {
+                    unit_matches.emplace_back(e.unit_index, e.unit);
+                }
+
+                // Find the min & max unit index (for time ordering, later queries must
+                // have higher indices).
                 auto unit_indices = entries | transformed_member(&tree_entry::unit_index);
                 u32 min_unit = *boost::min_element(unit_indices);
                 u32 max_unit = *boost::max_element(unit_indices);
-                append(indices, unit_indices);
 
                 if (min_unit >= unit) {
                     unit = max_unit;
@@ -426,15 +433,27 @@ private:
                     goto skip;
                 }
             }
-            result.push_back({id, std::move(indices)});
+
+            // A trajectory only matches if there are matching units for every simple query.
+            // This code will be skipped (see the goto above) if that is not the case.
+            matches.push_back({id, std::move(unit_matches)});
 
         skip:
             continue;
         }
-        return result;
+        return matches;
     }
 
-private:
+    /// Sorts every tree_entry vector in the given map by unit index.
+    template<typename CandidateMap>
+    void sort_groups(CandidateMap& map) const {
+        for (auto& pair : map) {
+            std::vector<tree_entry>& entries = pair.second;
+            std::sort(entries.begin(), entries.end(), [&](const tree_entry& a, const tree_entry& b) {
+                return a.unit_index < b.unit_index;
+            });
+        }
+    }
 
 private:
     template<typename State>
