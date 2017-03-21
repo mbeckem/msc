@@ -46,9 +46,6 @@ public:
     {}
 
     void load() {
-        fmt::print("Starting sort\n");
-        sort();
-
         u64 count = 0;
 
         tpie::temp_file current;
@@ -102,6 +99,11 @@ private:
         return total;
     }
 
+    struct hilbert_entry {
+        u64 hilbert_index;
+        tree_entry inner;
+    };
+
     /// Maps a value in [min, max] to a value in [0, 2^precision - 1]
     /// which can be used as a coordinate for the hilbert curve.
     struct coordiante_mapper {
@@ -144,30 +146,40 @@ private:
         }
     };
 
-    /// Sort the input stream using the hilbert index of the trajectory units' center points.
-    void sort() {
+    void map_entries( tpie::file_stream<hilbert_entry>& output) {
         point_mapper mapper(get_total());
 
-        /// Consider an entry as "less than" another entry
-        /// if its hilbert index is lower.
-        /// We first map the trajecotry units center point
-        /// to a point on the hilbert curve and then compare the indices.
-        auto less = [&](const tree_entry& a, const tree_entry& b) {
-            curve_point pa = mapper(a.unit.center());
-            curve_point pb = mapper(b.unit.center());
-            u64 ia = curve::hilbert_index(pa);
-            u64 ib = curve::hilbert_index(pb);
-            return ia < ib;
-        };
+        m_input.seek(0);
+        output.truncate(0);
+        while (m_input.can_read()) {
+            tree_entry entry = m_input.read();
+            point center = entry.unit.center();
 
-        external_sort(m_input, less);
+            hilbert_entry result;
+            result.inner = entry;
+            result.hilbert_index = curve::hilbert_index(mapper(center));
+            output.write(result);
+        }
     }
 
     u64 create_leaves(tpie::serialization_writer& writer) {
-        u64 leaves = 0;
-        u64 remaining = m_input.size();
+        // Augment the entries with their hilbert index
+        // and sort them in ascending order.
+        tpie::file_stream<hilbert_entry> entries;
+        {
+            entries.open();
+            map_entries(entries);
+            external_sort(entries, [&](const hilbert_entry& a, const hilbert_entry& b) {
+                return a.hilbert_index < b.hilbert_index;
+            });
+        }
 
-        m_input.seek(0);
+        // Then, iterate the entries in linear order and group them as leaves.
+
+        u64 leaves = 0;
+        u64 remaining = entries.size();
+
+        entries.seek(0);
         while (remaining) {
             u32 count = std::min<u64>(remaining, m_threshold);
 
@@ -175,7 +187,7 @@ private:
 
             // Take at least count entries from the input.
             for (u32 i = 0; i < count; ++i) {
-                tree_entry entry = m_input.read();
+                tree_entry entry = entries.read().inner;
                 storage().set_data(leaf, i, entry);
             }
             storage().set_count(leaf, count);
@@ -186,13 +198,13 @@ private:
 
             // As long as there are more entries and there is space left in the leaf:
             while (count < remaining && count < state_type::max_leaf_entries()) {
-                tree_entry entry = m_input.peek();
+                tree_entry entry = entries.peek().inner;
                 bounding_box new_mbb = mbb.extend(entry.unit.get_bounding_box());
                 if (new_mbb.size() > max_size) {
                     break;
                 }
 
-                m_input.skip();
+                entries.skip();
                 mbb = new_mbb;
                 storage().set_data(leaf, count++, entry);
             }
