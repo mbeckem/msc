@@ -1,5 +1,6 @@
 set(SOURCES
     algorithm.cpp
+    bloom_filter.cpp
     bounding_box.cpp
     file_allocator.cpp
     hilbert.cpp

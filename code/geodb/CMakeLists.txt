@@ -1,4 +1,5 @@
 set(SOURCES
+    bloom_filter.cpp
     common.cpp
     parser.cpp
     trajectory.cpp
@@ -8,6 +9,7 @@ set(SOURCES
 
 set(HEADERS
     algorithm.hpp
+    bloom_filter.hpp
     bounding_box.hpp
     common.hpp
     date_time.hpp
