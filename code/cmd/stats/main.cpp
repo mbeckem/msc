@@ -50,10 +50,6 @@ struct tree_stats {
     u64 leaves = 0;
 };
 
-double normalized_size(const bounding_box& operand, const bounding_box& all){
-    return double(operand.size()) / all.size();
-}
-
 void analyze(typename external_tree::cursor& node, tree_stats& stats) {
     if (node.is_leaf()) {
         for (size_t i = 0; i < node.size(); ++i) {
