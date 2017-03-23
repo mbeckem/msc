@@ -231,41 +231,6 @@ namespace detail {
         return merge_positions(intervals, gaps);
     }
 
-    /// Takes an arbitrary range of intervals and returns their union in sorted order.
-    /// In other words, overlapping intervals are merged and intervals completely
-    /// contained in others are removed.
-    // TODO: Unneeded?
-//    template<typename Range>
-//    std::vector<interval> merge_overlapping(const Range& rng) {
-//        // Traverse intervals in sorted order (sorted by begin, ascending).
-//        std::vector<interval> intervals(boost::begin(rng), boost::end(rng));
-//        std::sort(intervals.begin(), intervals.end(), [](const auto& a, const auto& b) {
-//            return a.begin() < b.begin();
-//        });
-
-//        std::vector<interval> output;
-//        if (intervals.empty()) {
-//            return output;
-//        }
-
-//        // Keep track of the current active interval, which is the last interval
-//        // in the output vector.
-//        // If the next interval overlaps, grow the active interval.
-//        // Otherwise, add a new interval to the output vector.
-//        auto iter = intervals.begin();
-//        output.push_back(*iter++);
-//        for (const interval& i : boost::make_iterator_range(iter, intervals.end())) {
-//            interval& active = output.back();
-
-//            if (i.begin() <= active.end()) {
-//                active = interval(active.begin(), std::max(active.end(), i.end()));
-//            } else {
-//                output.push_back(i);
-//            }
-//        }
-//        return output;
-//    }
-
 } // namespace detail
 
 /// Represents a set of integers as intervals.
