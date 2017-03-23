@@ -51,6 +51,8 @@ endif()
 
 include_directories("${PROJECT_SOURCE_DIR}")
 
+add_definitions(-DGEODB_ID_SET_BLOOM)
+
 include(deps/Dependencies.cmake)
 add_subdirectory(geodb)
 add_subdirectory(cmd)

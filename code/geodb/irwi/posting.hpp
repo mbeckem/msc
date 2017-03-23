@@ -2,7 +2,7 @@
 #define GEODB_IRWI_POSTING_HPP
 
 #include "geodb/common.hpp"
-#include "geodb/interval_set.hpp"
+#include "geodb/id_set.hpp"
 #include "geodb/trajectory.hpp"
 
 namespace geodb {
@@ -10,23 +10,21 @@ namespace geodb {
 /// Identifies child entries of an internal node (by index).
 using entry_id_type = u32;
 
-template<u32 Lambda>
-using trajectory_id_set = static_interval_set<trajectory_id_type, Lambda>;
-
 /// Represents the data part of a postings list entry, i.e.
 /// a count and a set of trajectory ids.
 template<u32 Lambda>
 class posting_data {
 public:
-    using trajectory_id_set_type = trajectory_id_set<Lambda>;
+    using id_set_type = geodb::id_set<Lambda>;
 
-    using interval_type = typename trajectory_id_set_type::interval_type;
+private:
+    using id_set_binary_type = geodb::id_set_binary<Lambda>;
 
 public:
     /// Creates an empty instance (with a count of zero and an empty id set).
     posting_data() = default;
 
-    posting_data(u64 count, const trajectory_id_set_type& set) {
+    posting_data(u64 count, const id_set_type& set) {
         this->count(count);
         this->id_set(set);
     }
@@ -43,21 +41,20 @@ public:
     /// counted by this instance.
     /// This set can be used to quickly exclude some node froms being searched,
     /// e.g. if the associated subtree contains none of the required trajectory ids.
-    trajectory_id_set_type id_set() const {
-        return trajectory_id_set_type(m_intervals, m_intervals + m_intervals_count);
+    id_set_type id_set() const {
+        id_set_type set;
+        from_binary<Lambda>(set, m_binary_ids);
+        return set;
     }
 
     /// Updates the id_set of this instance.
-    void id_set(const trajectory_id_set_type& set) {
-        geodb_assert(set.size() <= Lambda, "size invariant");
-        m_intervals_count = set.size();
-        std::copy(set.begin(), set.end(), m_intervals);
+    void id_set(const id_set_type& set) {
+        to_binary<Lambda>(set, m_binary_ids);
     }
 
     friend bool operator==(const posting_data& a, const posting_data& b) {
         return a.m_count == b.m_count
-                && a.m_intervals_count == b.m_intervals_count
-                && std::equal(a.m_intervals, a.m_intervals + a.m_intervals_count, b.m_intervals);
+                && std::memcmp(&a.m_binary_ids, &b.m_binary_ids, sizeof(id_set_binary_type)) == 0;
     }
 
     friend bool operator!=(const posting_data& a, const posting_data& b) {
@@ -66,8 +63,7 @@ public:
 
 private:
     u64 m_count = 0;                    ///< The number of units with that label in this subtree.
-    u32 m_intervals_count = 0;          ///< Number of intervals in the set.
-    interval_type m_intervals[Lambda];  ///< Intervals representing the id set.
+    id_set_binary_type m_binary_ids;
 };
 
 /// Every posting `p` belongs to a postings list `pl` which in
@@ -79,12 +75,10 @@ class posting : public posting_data<Lambda> {
     using data_t = typename posting::posting_data;
 
 public:
-    using trajectory_id_set_type = trajectory_id_set<Lambda>;
-
-    using interval_type = typename trajectory_id_set_type::interval_type;
+    using typename posting::posting_data::id_set_type;
 
 public:
-    posting(entry_id_type node, u64 count, const trajectory_id_set_type& ids)
+    posting(entry_id_type node, u64 count, const id_set_type& ids)
         : m_node(node)
     {
         data_t::count(count);

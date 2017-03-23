@@ -46,6 +46,9 @@ public:
     /// Represents a single index on the hilbert curve.
     using index_t = u64;
 
+    /// Total number of unique coordiante values.
+    static constexpr index_t coordiantes_count = 1 << precision;
+
     /// The number of possible hilbert indicies with the chosen
     /// dimension and precision.
     /// All indices in [0, ..., index_count) represent valid points.

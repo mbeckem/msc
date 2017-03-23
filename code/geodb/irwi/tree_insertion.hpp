@@ -46,7 +46,7 @@ class tree_insertion {
     using posting_type = typename State::posting_type;
     using posting_data_type = posting_data<State::lambda()>;
 
-    using trajectory_id_set_type = trajectory_id_set<State::lambda()>;
+    using trajectory_id_set_type = typename posting_data_type::id_set_type;
 
     using partition_type = tree_partition<State>;
     using which_t = typename partition_type::which_t;

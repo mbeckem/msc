@@ -34,7 +34,7 @@ void test_internal_external(Func&& f) {
 }
 
 const posting<Lambda> p0(0, 123, {3, 4, 5});
-const posting<Lambda> p1(1, 33, {{3, 10}, 15, {18, 33}});
+const posting<Lambda> p1(1, 33, {3, 15, 18});
 const posting<Lambda> p2(2, 5, {9});
 const posting<Lambda> p3(3, 9, {9, 999});
 

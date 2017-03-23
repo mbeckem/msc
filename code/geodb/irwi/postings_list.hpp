@@ -81,14 +81,14 @@ private:
 /// A summary of the entries of a single postings_list.
 template<u32 Lambda>
 struct postings_list_summary {
-    using trajectory_id_set_type = trajectory_id_set<Lambda>;
+    using id_set_type = typename posting_data<Lambda>::id_set_type;
 
     u64 count = 0;
-    trajectory_id_set_type trajectories;
+    id_set_type trajectories;
 
     postings_list_summary() {}
 
-    postings_list_summary(u64 count, trajectory_id_set_type trajectories)
+    postings_list_summary(u64 count, id_set_type trajectories)
         : count(count)
         , trajectories(std::move(trajectories))
     {}
@@ -190,7 +190,7 @@ public:
     /// The summary contains the total number of units and a set
     /// storing (an approximation of) the trajectory ids of those units.
     summary_type summarize() const {
-        using id_set_t = typename posting_type::trajectory_id_set_type;
+        using id_set_t = typename posting_type::id_set_type;
 
         summary_type result;
         std::vector<id_set_t> sets;

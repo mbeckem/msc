@@ -20,7 +20,7 @@ TEST_CASE("insert", "[bloom filter]") {
 
     bloom_filter_t bloom;
     for (u64 num : numbers) {
-        bloom.insert(num);
+        bloom.add(num);
     }
 
     for (u64 num : numbers) {
@@ -57,11 +57,11 @@ TEST_CASE("intersection and union", "[bloom filter]") {
 
     bloom_filter_t filter_a, filter_b;
     for (u64 a : numbers_a) {
-        filter_a.insert(a);
+        filter_a.add(a);
     }
 
     for (u64 b : numbers_b) {
-        filter_b.insert(b);
+        filter_b.add(b);
     }
 
     bloom_filter_t filter_intersection = filter_a.intersection_with(filter_b);

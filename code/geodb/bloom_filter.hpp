@@ -25,7 +25,7 @@ std::array<u64, 2> murmur3(const T& value) {
 ///
 /// This class is trivially copyable and thus serializable by the TPIE IO classes.
 /// It takes approximately `ceil(bits / 8)` bytes of storage.
-template<typename T, u32 bits>
+template<typename T, u32 Bits>
 class bloom_filter {
     static_assert(std::is_trivially_copyable<T>::value,
                   "The type must be trivially copyable, since its raw data "
@@ -35,7 +35,7 @@ private:
     /// Returns the number of uint64_t fields required to store the
     /// requested number of bits (they are 64 bits each).
     static constexpr u32 fields() {
-        return (bits + 63) / 64;
+        return (Bits + 63) / 64;
     }
 
     /// The number of different hash values computed
@@ -51,13 +51,15 @@ private:
 public:
     using value_type = T;
 
+    static constexpr u32 bits() { return Bits; }
+
 public:
     /// Returns the approximate error rate when inserting the given number of elements
     /// into a bloom filter with the current number of bits.
     static double error_rate(u64 elements) {
         double k = hashes();
         double n = elements;
-        double m = bits;
+        double m = Bits;
         return std::pow(1.0 - std::pow(1.0 - 1.0/m, k * n), k);
     }
 
@@ -105,12 +107,49 @@ public:
 public:
     bloom_filter() = default;
 
+    bloom_filter(std::initializer_list<T> items)
+        : bloom_filter(items.begin(), items.end())
+    {}
+
+    template<typename Iter>
+    bloom_filter(Iter first, Iter last) {
+        for (; first != last; ++first) {
+            add(*first);
+        }
+    }
+
     /// Inserts the value into the bloom filter.
     /// \post `contains(value) == true`.
-    void insert(const value_type& value) {
+    void add(const value_type& value) {
         for (u64 hash : compute_hashes(value)) {
             set(index(hash));
         }
+    }
+
+    /// Clears the instance and adds all values in the given iterator range.
+    template<typename Iter>
+    void assign(Iter first, Iter last) {
+        clear();
+        for (; first != last; ++first) {
+            add(*first);
+        }
+    }
+
+    /// Resets the instance.
+    /// \post `empty() == true`.
+    void clear() {
+        m_data = data_t{};
+    }
+
+    /// Returns true if this bloom filter is empty,
+    /// i.e. true iff all bits are zero.
+    bool empty() const {
+        for (u64 v : m_data) {
+            if (v != 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /// Returns true if the value is stored in this instance.
@@ -148,7 +187,7 @@ public:
 private:
     /// Returns the bit index for the given hash.
     u32 index(u64 hash) const {
-        return hash % bits;
+        return hash % Bits;
     }
 
     /// Computes the hashes for the given value by computing the 128 bit murmur hash.
@@ -169,7 +208,7 @@ private:
 
     /// Sets the bit with the given index to "1".
     void set(u32 index) {
-        geodb_assert(index < bits, "bit index out of bounds");
+        geodb_assert(index < Bits, "bit index out of bounds");
 
         u32 element_index = index / 64;
         u32 bit_index = index % 64;
@@ -178,7 +217,7 @@ private:
 
     /// Returns true if the bit with the given index is set.
     bool test(u32 index) const {
-        geodb_assert(index < bits, "bit index out of bounds");
+        geodb_assert(index < Bits, "bit index out of bounds");
 
         u32 element_index = index / 64;
         u32 bit_index = index % 64;
@@ -205,7 +244,7 @@ private:
     }
 
     friend std::ostream& operator<<(std::ostream& o, const bloom_filter& filter) {
-        for (u32 i = 0; i < bits; ++i) {
+        for (u32 i = 0; i < Bits; ++i) {
             o << (filter.test(i) ? '1' : '0');
         }
         return o;

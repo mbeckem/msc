@@ -19,6 +19,7 @@ set(HEADERS
     hybrid_buffer.hpp
     hybrid_map.hpp
     parser.hpp
+    id_set.hpp
     interval.hpp
     interval_set.hpp
     trajectory.hpp

@@ -55,9 +55,7 @@ public:
     using posting_type = typename list_type::posting_type;
 
 private:
-    using id_set_type = typename posting_type::trajectory_id_set_type;
-
-    using dynamic_id_set_type = interval_set<trajectory_id_type>;
+    using id_set_type = typename posting_type::id_set_type;
 
     using node_id_type = typename state_type::node_id;
     using node_ptr = typename state_type::node_ptr;
@@ -69,7 +67,7 @@ private:
     struct candidate_entry {
         node_ptr ptr;
         bounding_box mbb;
-        dynamic_id_set_type ids;
+        id_set_type ids;
     };
 
 public:
@@ -217,7 +215,7 @@ private:
             std::vector<node_ptr> nodes;                // set of remaining nodes
             std::vector<candidate_entry> candidates;    // children of these nodes
             interval<time_type> time_window;            // time interval containing the candidates
-            dynamic_id_set_type ids;                    // union of ids in candidates
+            id_set_type ids;                    // union of ids in candidates
         };
 
         std::vector<state_t> states(boost::begin(queries), boost::end(queries));
@@ -239,7 +237,7 @@ private:
                 state.ids = get_ids(state.candidates);
             }
 
-            auto shared_ids = dynamic_id_set_type::set_intersection(
+            auto shared_ids = id_set_type::set_intersection(
                         states | transformed_member(&state_t::ids));
             if (shared_ids.empty()) {
                 return {}; // No common ids.
@@ -287,7 +285,7 @@ private:
 
             // Retrieve all child entries from the inverted index that contain
             // any of the labels in "q.labels".
-            std::unordered_map<entry_id_type, dynamic_id_set_type> matches;
+            std::unordered_map<entry_id_type, id_set_type> matches;
             index->matching_children(q.labels, matches);
 
             // Test the resulting matches against the query rectangle (which includes the time dimension).
@@ -320,8 +318,8 @@ private:
 
     /// Returns the union of all id sets in `entries`.
     template<typename CandidateEntryRange>
-    dynamic_id_set_type get_ids(const CandidateEntryRange& entries) const {
-        return dynamic_id_set_type::set_union(entries | transformed_member(&candidate_entry::ids));
+    id_set_type get_ids(const CandidateEntryRange& entries) const {
+        return id_set_type::set_union(entries | transformed_member(&candidate_entry::ids));
     }
 
     /// Trims the time windows by discarding impossible-to-fulfill situations.
