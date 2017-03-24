@@ -11,7 +11,7 @@ import subprocess
 from commands import HILBERT_LEAVES, RESULT_PATH
 
 
-def get_leaves(points, leaf_size, skewed=False, seed=None):
+def get_leaves(points, leaf_size, skewed=False, seed=None, heuristic=False):
     fn_args = locals()
 
     args = [
@@ -21,6 +21,8 @@ def get_leaves(points, leaf_size, skewed=False, seed=None):
     ]
     if skewed:
         args.append("--skewed")
+    if heuristic:
+        args.append("--heuristic")
     if seed is not None:
         args.extend(["--seed", str(seed)])
 
@@ -46,9 +48,11 @@ def draw_leaves(ax, leaves):
                                height=height, fill=False))
 
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
 draw_leaves(ax1, get_leaves(1000, 16, seed=1380799046))
 draw_leaves(ax2, get_leaves(1000, 16, skewed=True, seed=4161942469))
+draw_leaves(ax3, get_leaves(1000, 16, skewed=True,
+                            seed=4161942469, heuristic=True))
 
 
 fig.savefig(str(RESULT_PATH / "hilbert_leaves.pdf"), bbox_inches="tight")

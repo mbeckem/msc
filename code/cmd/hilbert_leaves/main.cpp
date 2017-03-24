@@ -22,6 +22,7 @@ static u32 seed;
 static u32 num_points;
 static u32 leaf_size;
 static bool skewed;
+static bool heuristic;
 
 struct vec2 {
     double x = 0, y = 0;
@@ -94,6 +95,8 @@ void parse_options(int argc, char** argv) {
              "The number of generated points.")
             ("leaf-size,l", po::value(&leaf_size)->default_value(64),
              "The number of entries per leaf.")
+            ("heuristic", po::bool_switch(&heuristic),
+             "Enable the leaf size heuristic.")
             ("skewed,s", po::bool_switch(&skewed)->default_value(false),
              "If false, generates uniformly distributed points in [0, 1]x[0, 1}. "
              "If true, the point set will be skewed instead.")
@@ -181,20 +184,22 @@ std::vector<vec2> create_skewed_points(size_t count) {
     return points;
 }
 
+/// Get the bounding box for a set of points.
+/// There must be at least one point.
+template<typename Iter>
+box2 get_bounding_box(Iter first, Iter last) {
+    geodb_assert(first != last, "cannot create the bounding box for an empty range");
+
+    box2 box(*first, *first);
+    ++first;
+    for (; first != last; ++first) {
+        box = box.extend(*first);
+    }
+    return box;
+}
+
 std::vector<leaf> create_leaves(const std::vector<vec2>& points, size_t leaf_size) {
     geodb_assert(leaf_size > 1, "invalid leaf size");
-
-    // Computes the minimum bounding box for the given list of points.
-    auto get_box = [](auto first, auto last) {
-        geodb_assert(first != last, "cannot create the bounding box for an empty range");
-
-        box2 box(*first, *first);
-        ++first;
-        for (; first != last; ++first) {
-            box = box.extend(*first);
-        }
-        return box;
-    };
 
     std::vector<leaf> leaves;
 
@@ -204,12 +209,50 @@ std::vector<leaf> create_leaves(const std::vector<vec2>& points, size_t leaf_siz
         size_t count = std::min(leaf_size, size_t(end - pos));
 
         leaf l;
-        l.mbb = get_box(pos, pos + count);
+        l.mbb = get_bounding_box(pos, pos + count);
         l.points.assign(pos, pos + count);
         leaves.push_back(std::move(l));
 
         pos += count;
     }
+    return leaves;
+}
+
+std::vector<leaf> create_leaf_heuristic(const std::vector<vec2>& points, size_t leaf_size) {
+    geodb_assert(leaf_size > 1, "invalid leaf size");
+
+    static constexpr double max_grow = 1.2;
+
+    std::vector<leaf> leaves;
+
+    auto pos = points.begin();
+    auto end = points.end();
+    while (pos != end) {
+        size_t count = std::min(leaf_size / 2, size_t(end - pos));
+
+        leaf l;
+
+        // Take the first "count" points.
+        l.points.assign(pos, pos + count);
+        l.mbb = get_bounding_box(l.points.begin(), l.points.end());
+
+        // Take points while the box does not grow too large.
+        const double max_size = l.mbb.size() * max_grow;
+        while (pos != end) {
+            const vec2& p = *pos;
+            box2 new_mbb = l.mbb.extend(p);
+            if (new_mbb.size() > max_size) {
+                break;
+            }
+
+            l.points.push_back(p);
+            l.mbb = new_mbb;
+            ++pos;
+        }
+
+        leaves.push_back(std::move(l));
+    }
+
     return leaves;
 }
 
@@ -229,7 +272,9 @@ int main(int argc, char** argv) {
         });
 
         // Iterate over the sorted points and create leaf nodes.
-        std::vector<leaf> leaves = create_leaves(points, leaf_size);
+        std::vector<leaf> leaves = heuristic
+                ? create_leaf_heuristic(points, leaf_size)
+                : create_leaves(points, leaf_size);
 
         json result = {
             {"leaves", leaves},
