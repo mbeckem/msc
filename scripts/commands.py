@@ -18,6 +18,7 @@ RESULT_PATH = _make_dir("results")
 TMP_PATH = _make_dir("tmp")
 
 HILBERT_CURVE = BUILD_PATH / "hilbert_curve"
+HILBERT_LEAVES = BUILD_PATH / "hilbert_leaves"
 
 if __name__ == "__main__":
     print(

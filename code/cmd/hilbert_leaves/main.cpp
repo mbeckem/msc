@@ -15,6 +15,13 @@ using namespace geodb;
 
 using std::cout;
 using std::cerr;
+using std::endl;
+using std::flush;
+
+static u32 seed;
+static u32 num_points;
+static u32 leaf_size;
+static bool skewed;
 
 struct vec2 {
     double x = 0, y = 0;
@@ -22,6 +29,13 @@ struct vec2 {
     vec2() = default;
     vec2(double x, double y): x(x), y(y) {}
 };
+
+void to_json(json& j, const vec2& vec) {
+    j = {
+        {"x", vec.x},
+        {"y", vec.y}
+    };
+}
 
 std::ostream& operator<<(std::ostream& o, const vec2& v) {
     return o << "(" << v.x << ", " << v.y << ")";
@@ -50,6 +64,25 @@ struct box2 {
     }
 };
 
+void to_json(json&j , const box2& box) {
+    j = {
+        {"min", box.min},
+        {"max", box.max},
+    };
+}
+
+struct leaf {
+    box2 mbb;
+    std::vector<vec2> points;
+};
+
+void to_json(json& j, const leaf& l) {
+    j = {
+        {"mbb", l.mbb},
+        {"points", l.points},
+    };
+}
+
 std::ostream& operator<<(std::ostream& o, const box2& b) {
     return o << "{" << b.min << ", " << b.max << "}";
 }
@@ -57,6 +90,15 @@ std::ostream& operator<<(std::ostream& o, const box2& b) {
 void parse_options(int argc, char** argv) {
     po::options_description options("Options");
     options.add_options()
+            ("points,p", po::value(&num_points)->default_value(1000),
+             "The number of generated points.")
+            ("leaf-size,l", po::value(&leaf_size)->default_value(64),
+             "The number of entries per leaf.")
+            ("skewed,s", po::bool_switch(&skewed)->default_value(false),
+             "If false, generates uniformly distributed points in [0, 1]x[0, 1}. "
+             "If true, the point set will be skewed instead.")
+            ("seed", po::value(&seed),
+             "The seed used by the random number generator. Defaults to a truly random seed.")
             ("help,h", "Show this message.");
 
     po::variables_map vm;
@@ -76,6 +118,10 @@ void parse_options(int argc, char** argv) {
             throw exit_main(0);
         }
 
+        if (!vm.count("seed")) {
+            seed = std::random_device{}();
+        }
+
         po::notify(vm);
     } catch (const po::error& e) {
         fmt::print(cerr, "Failed to parse arguments: {}.\n", e.what());
@@ -89,7 +135,7 @@ u64 index(const vec2& p) {
     geodb_assert(p.y >= 0 && p.y <= 1, "invalid y coordinate");
 
     static constexpr u32 dimension = 2;
-    static constexpr u32 precision = 8;
+    static constexpr u32 precision = 16;
     static constexpr u32 max_coordiante = (1 << precision) - 1;
 
     using curve = hilbert_curve<dimension, precision>;
@@ -102,25 +148,40 @@ u64 index(const vec2& p) {
     return curve::hilbert_index(point);
 }
 
+/// Returns a random value in [0, 1].
+double get_random() {
+    static std::mt19937 rng(seed);
+    static std::uniform_real_distribution<double> dist(0, std::nextafter(1.0, std::numeric_limits<double>::max()));
+    return dist(rng);
+}
+
+/// Generates uniformly distributed points in [0, 1]^2.
 std::vector<vec2> create_points(size_t count) {
-    static std::mt19937 rng(std::random_device{}());
-
-    std::uniform_real_distribution<double> dist(0, std::nextafter(1.0, std::numeric_limits<double>::max()));
-
-    // Create uniformly distributed points in 0..1 x 0..1
     std::vector<vec2> points(count);
     for (auto& p : points) {
-        p = vec2(dist(rng), dist(rng));
+        p = vec2(get_random(), get_random());
     }
-
-    // Sort them by their hilbert value.
-    std::sort(points.begin(), points.end(), [](const vec2& a, const vec2& b) {
-        return index(a) < index(b);
-    });
     return points;
 }
 
-std::vector<box2> create_leaves(const std::vector<vec2>& points, size_t leaf_size) {
+/// Generates a skewed set of points in [0, 1]^2.
+std::vector<vec2> create_skewed_points(size_t count) {
+    std::vector<vec2> points(count);
+
+    for (auto& p : points) {
+        double x = get_random();
+        double y = get_random();
+
+        double w = 0.5 - std::fabs(0.5 - y);
+        x = x * w + 0.5 - w / 2;
+        x += std::fabs(y - 0.5);
+
+        p = vec2(x, y);
+    }
+    return points;
+}
+
+std::vector<leaf> create_leaves(const std::vector<vec2>& points, size_t leaf_size) {
     geodb_assert(leaf_size > 1, "invalid leaf size");
 
     // Computes the minimum bounding box for the given list of points.
@@ -135,13 +196,17 @@ std::vector<box2> create_leaves(const std::vector<vec2>& points, size_t leaf_siz
         return box;
     };
 
-    std::vector<box2> leaves;
+    std::vector<leaf> leaves;
 
     auto pos = points.begin();
     auto end = points.end();
     while (pos != end) {
         size_t count = std::min(leaf_size, size_t(end - pos));
-        leaves.push_back(get_box(pos, pos + count));
+
+        leaf l;
+        l.mbb = get_box(pos, pos + count);
+        l.points.assign(pos, pos + count);
+        leaves.push_back(std::move(l));
 
         pos += count;
     }
@@ -153,15 +218,25 @@ int main(int argc, char** argv) {
     return tpie_main([&]{
         parse_options(argc, argv);
 
-        std::vector<vec2> points = create_points(10000);
-        std::vector<box2> leaves = create_leaves(points, 64);
+        // Generate a set of random points.
+        std::vector<vec2> points = skewed
+                ? create_skewed_points(num_points)
+                : create_points(num_points);
 
-        for (const auto& l : leaves) {
-            fmt::print("{}\n", l);
-        }
+        // Sort them by their hilbert value.
+        std::sort(points.begin(), points.end(), [](const vec2& a, const vec2& b) {
+            return index(a) < index(b);
+        });
 
-        // TODO Export as json.
+        // Iterate over the sorted points and create leaf nodes.
+        std::vector<leaf> leaves = create_leaves(points, leaf_size);
 
+        json result = {
+            {"leaves", leaves},
+            {"seed", seed},
+        };
+
+        cout << result.dump(4) << endl;
         return 0;
     });
 }
