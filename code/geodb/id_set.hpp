@@ -7,10 +7,6 @@
 
 namespace geodb {
 
-#if !(defined(GEODB_ID_SET_INTERVALS) || defined(GEODB_ID_SET_BLOOM))
-    #define GEODB_ID_SET_INTERVALS
-#endif
-
 #if defined(GEODB_ID_SET_INTERVALS)
 
 template<u32 Lambda>
@@ -19,7 +15,7 @@ using id_set = static_interval_set<u64, Lambda>;
 template<u32 Lambda>
 struct id_set_binary {
     size_t size;
-    interval<u64> intervals;
+    interval<u64> intervals[Lambda];
 };
 
 template<u32 Lambda>
@@ -29,7 +25,7 @@ void to_binary(const id_set<Lambda>& set, id_set_binary<Lambda>& binary) {
 }
 
 template<u32 Lambda>
-void from_binary(id_set<Lambda>& set, const id_set_binary<Lamda>& binary) {
+void from_binary(id_set<Lambda>& set, const id_set_binary<Lambda>& binary) {
     set.assign(binary.intervals, binary.intervals + binary.size);
 }
 
@@ -51,6 +47,8 @@ void from_binary(id_set<Lambda>& set, const id_set_binary<Lambda>& binary) {
     set = binary;
 }
 
+#else
+    #error Unsupported id set type.
 #endif
 
 } // namespace geodb

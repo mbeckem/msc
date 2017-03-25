@@ -6,6 +6,7 @@ include(Functions)
 include(Profile)
 
 option(SANITIZE_UNDEFINED "Enable undefined behaviour sanitizer (gnu and clang only)" OFF)
+option(USE_BLOOM "Use bloom filters instead of interval sets in the inverted index" OFF)
 
 # Release build by default.
 if(NOT CMAKE_BUILD_TYPE)
@@ -51,7 +52,11 @@ endif()
 
 include_directories("${PROJECT_SOURCE_DIR}")
 
-add_definitions(-DGEODB_ID_SET_BLOOM)
+if (USE_BLOOM)
+    add_definitions(-DGEODB_ID_SET_BLOOM)
+else()
+    add_definitions(-DGEODB_ID_SET_INTERVALS)
+endif()
 
 include(deps/Dependencies.cmake)
 add_subdirectory(geodb)
