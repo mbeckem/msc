@@ -41,7 +41,7 @@ private:
     /// The number of different hash values computed
     /// for every value.
     static constexpr u32 hashes() {
-        return 5; // TODO
+        return 5;
     }
 
     using data_t = std::array<u64, fields()>;
