@@ -326,6 +326,8 @@ private:
     /// References to buckets that still have to be handled will be saved into `todo`.
     template<typename NextLevel>
     void run(file_stream& source, NextLevel&& target, tpie::queue<u64>& todo) {
+        source.seek(0);
+
         while (source.can_read() && m_tree->leaf_node_count() < m_max_leaves) {
             m_tree->insert(source.read());
         }
@@ -570,13 +572,18 @@ class quick_loader : public bulk_load_common<Tree, quick_loader<Tree>> {
     };
 
 public:
+    /// Creates a new instance from the given tree and the specified maximum number of nodes.
+    ///
+    /// \param tree         The target of the bulk loading operation.
+    /// \param max_leaves   The maximum number of leaf nodes the small in-memory tree is allowed to have.
     explicit quick_loader(Tree& tree, size_t max_leaves)
         : common_t(tree)
         , m_max_leaves(max_leaves)
         , m_weight(tree.weight())
     {
-        geodb_assert(m_max_leaves >= 2, "Invalid max_leaves value");
-        geodb_assert(m_weight >= 0.f && m_weight <= 1.f, "Invalid weight value");
+        if (m_max_leaves < 2) {
+            throw std::invalid_argument("Invalid max_leaves value");
+        }
     }
 
 private:

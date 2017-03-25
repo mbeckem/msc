@@ -103,6 +103,7 @@ public:
             return;
         }
 
+        entries.seek(0);
         subtree_result result = derived()->load_impl(entries);
         geodb_assert(result.size == size, "must have loaded entire entry set");
 
