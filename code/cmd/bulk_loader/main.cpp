@@ -51,9 +51,10 @@ int main(int argc, char** argv) {
         fmt::print(cout, "Opening tree at {} with beta {}.\n", tree_path, beta);
 
         external_tree tree{external_storage(tree_path), beta};
+        fmt::print(cout, "Inserting items into a tree of size {}.\n", tree.size());
+
 
         auto loader = get_algorithm();
-
         if (!fs::exists(trajectories_path)) {
             fmt::print(cerr, "File does not exist: {}\n", trajectories_path);
             return 1;
@@ -149,19 +150,24 @@ algorithm_type get_algorithm() {
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
             size_t limit = memory * 1024 * 1024;
             tpie::get_memory_manager().set_limit(limit);
-            bulk_load_str(tree, input);
+
+            str_loader<external_tree> loader(tree);
+            loader.load(input);
         };
     } else if (algorithm == "hilbert") {
         fmt::print(cout, "Using hilbert loading with memory limit {} MB.\n", memory);
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
             size_t limit = memory * 1024 * 1024;
             tpie::get_memory_manager().set_limit(limit);
-            bulk_load_hilbert(tree, input);
+
+            hilbert_loader<external_tree> loader(tree);
+            loader.load(input);
         };
     } else if (algorithm == "quickload") {
         fmt::print(cout, "Using Quickload with leaf limit {}.\n", max_leaves);
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
-            bulk_load_quickload(tree, input, max_leaves);
+            quick_loader<external_tree> loader(tree, max_leaves);
+            loader.load(input);
         };
     } else {
         fmt::print(cerr, "Invalid algorithm: {}.\n", algorithm);

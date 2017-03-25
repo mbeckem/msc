@@ -479,14 +479,21 @@ struct pseudo_leaf_entry {
     bounding_box mbb;
 };
 
-
+/// The quick load algorithm loads a set of leaf entries by creating small trees in memory
+/// (their max size is specified using a constructor parameter).
+/// The small tree is used for distributing all entries into buckets, which are in processed
+/// using recursion.
+///
+/// If a bucket receives fewer items than the fanout of the tree, it becomes a node of the
+/// tree on disk. This is done for every level of the tree, until only one node remains.
 template<typename Tree>
-class quick_loader : private bulk_load_common<Tree, quick_loader<Tree>> {
+class quick_loader : public bulk_load_common<Tree, quick_loader<Tree>> {
     using common_t = typename quick_loader::bulk_load_common;
 
     using typename common_t::tree_type;
     using typename common_t::state_type;
     using typename common_t::storage_type;
+    using typename common_t::subtree_result;
 
     using node_ptr = typename state_type::node_ptr;
     using internal_ptr = typename state_type::internal_ptr;
@@ -563,24 +570,22 @@ class quick_loader : private bulk_load_common<Tree, quick_loader<Tree>> {
     };
 
 public:
-    quick_loader(Tree& tree, size_t max_leaves, tpie::file_stream<tree_entry>& input)
+    explicit quick_loader(Tree& tree, size_t max_leaves)
         : common_t(tree)
         , m_max_leaves(max_leaves)
         , m_weight(tree.weight())
-        , m_input(input)
-        , m_input_size(input.size())
     {
-        geodb_assert(tree.empty(), "Non-empty trees not yet supported");
         geodb_assert(m_max_leaves >= 2, "Invalid max_leaves value");
         geodb_assert(m_weight >= 0.f && m_weight <= 1.f, "Invalid weight value");
-        geodb_assert(m_input.offset() == 0, "Input is not at start position");
-        geodb_assert(m_input_size > 0, "Input file is empty");
     }
+
+private:
+    friend common_t;
 
     /// Runs the quickload algorithm on the given set of leaf entries.
     /// Creates the tree bottom-up and invokes the quick_load_pass class
     /// for every individual level.
-    void build() {
+    subtree_result load_impl(tpie::file_stream<tree_entry>& input) {
         auto make_next_files = [pass = 0]() mutable {
             return level_files(pass++);
         };
@@ -590,7 +595,7 @@ public:
 
         u64 count = 0;
         {
-            count = create_leaves(m_input, files);
+            count = create_leaves(input, files);
             geodb_assert(count > 0, "invalid node count");
         }
 
@@ -607,10 +612,7 @@ public:
             ++height;
         }
 
-        storage().set_size(m_input_size);
-        storage().set_root(get_root(files));
-        storage().set_height(height);
-        return;
+        return subtree_result(get_root(files), height, input.size());
     }
 
 private:
@@ -954,28 +956,7 @@ private:
 
     /// beta
     const float m_weight;
-
-    tpie::file_stream<tree_entry>& m_input;
-    const tpie::stream_size_type m_input_size;
 };
-
-template<typename Tree>
-void bulk_load_quickload(Tree& tree, tpie::file_stream<tree_entry>& input, size_t max_leaves)
-{
-    if (!tree.empty()) {
-        throw std::invalid_argument("Tree must be empty");
-    }
-    if (max_leaves < 2) {
-        throw std::invalid_argument("max_leaves must be >= 2");
-    }
-
-    if (input.size() == 0) {
-        return;
-    }
-    input.seek(0);
-    quick_loader<Tree> loader(tree, max_leaves, input);
-    loader.build();
-}
 
 } // namespace geodb
 

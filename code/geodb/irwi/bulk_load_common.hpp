@@ -28,6 +28,23 @@ protected:
 
     using list_summary = typename state_type::list_type::summary_type;
 
+    /// Represents a complete subtree assembled by the bulk loading algorithm.
+    /// This subtree will be inserted into the existing tree at the appropriate level.
+    struct subtree_result {
+        node_ptr root;
+        size_t height;
+        size_t size;
+
+        subtree_result(node_ptr root, size_t height, size_t size)
+            : root(root)
+            , height(height)
+            , size(size)
+        {
+            geodb_assert(height > 0, "invalid height");
+            geodb_assert(size > 0, "empty subtree");
+        }
+    };
+
     /// The precomputed summary of a lower-level node.
     struct node_summary {
         node_ptr ptr{};
@@ -74,6 +91,26 @@ protected:
         }
     };
 
+public:
+    /// Loads the given stream of leaf entries into the tree referenced by this loader.
+    ///
+    /// This is the main bulk loading function and should be called by the user.
+    /// The implementation depends on the concrete subclass.
+    void load(tpie::file_stream<tree_entry>& entries) {
+        const u64 size = entries.size();
+
+        if (size == 0) {
+            return;
+        }
+
+        subtree_result result = derived()->load_impl(entries);
+        geodb_assert(result.size == size, "must have loaded entire entry set");
+
+        tree_insertion<state_type> inserter{state()};
+        inserter.insert_node(result.root, result.height, size);
+    }
+
+protected:
     /// Writes the node summary of `leaf` to the given output file.
     void write_summary(tpie::serialization_writer& summaries, leaf_ptr leaf) {
         // Keep summaries for single leaves in memory.
@@ -173,6 +210,8 @@ private:
         out.count = units;
         out.trajectories.assign(ids.begin(), ids.end());
     }
+
+    Derived* derived() { return static_cast<Derived*>(this); }
 
 protected:
     explicit bulk_load_common(tree_type& tree)

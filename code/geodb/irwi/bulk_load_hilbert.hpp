@@ -14,7 +14,7 @@
 namespace geodb {
 
 template<typename Tree>
-class hilbert_loader : private bulk_load_common<Tree, hilbert_loader<Tree>> {
+class hilbert_loader : public bulk_load_common<Tree, hilbert_loader<Tree>> {
     using common_t = typename hilbert_loader::bulk_load_common;
 
     using typename common_t::state_type;
@@ -23,6 +23,8 @@ class hilbert_loader : private bulk_load_common<Tree, hilbert_loader<Tree>> {
     using typename common_t::node_summary;
     using typename common_t::list_summary;
     using typename common_t::label_summary;
+
+    using typename common_t::subtree_result;
 
     using leaf_ptr = typename state_type::leaf_ptr;
     using internal_ptr = typename state_type::internal_ptr;
@@ -40,12 +42,16 @@ class hilbert_loader : private bulk_load_common<Tree, hilbert_loader<Tree>> {
     using curve_point = typename curve::point_t;
 
 public:
-    hilbert_loader(Tree& tree, tpie::file_stream<tree_entry>& entries)
+    explicit hilbert_loader(Tree& tree)
         : common_t(tree)
-        , m_input(entries)
     {}
 
-    void load() {
+private:
+    friend common_t;
+
+    subtree_result load_impl(tpie::file_stream<tree_entry>& entries) {
+        geodb_assert(entries.size() > 0, "entry file must not be empty");
+
         u64 count = 0;
 
         tpie::temp_file current;
@@ -54,7 +60,7 @@ public:
             writer.open(current.path());
 
             fmt::print("Creating leaves\n");
-            count = create_leaves(writer);
+            count = create_leaves(entries, writer);
         }
 
         size_t height = 1;
@@ -78,22 +84,20 @@ public:
 
         tpie::serialization_reader reader;
         reader.open(current);
-        storage().set_height(height);
-        storage().set_size(m_input.size());
-        storage().set_root(common_t::read_root_ptr(reader));
+        return subtree_result(common_t::read_root_ptr(reader), height, entries.size());
     }
 
 private:
     /// Compute the minimum bounding box that contains all entries in the input set.
     /// This is necessary to scale the points into the space mapped by the hilbert curve.
-    bounding_box get_total() {
-        geodb_assert(m_input.size() != 0, "Input must not be empty");
+    bounding_box get_total(tpie::file_stream<tree_entry>& entries) {
+        geodb_assert(entries.size() != 0, "Input must not be empty");
 
-        m_input.seek(0);
-        tree_entry current = m_input.read();
+        entries.seek(0);
+        tree_entry current = entries.read();
         bounding_box total = current.unit.get_bounding_box();
-        while (m_input.can_read()) {
-            current = m_input.read();
+        while (entries.can_read()) {
+            current = entries.read();
             total = total.extend(current.unit.get_bounding_box());
         }
         return total;
@@ -146,13 +150,14 @@ private:
         }
     };
 
-    void map_entries( tpie::file_stream<hilbert_entry>& output) {
-        point_mapper mapper(get_total());
+    void map_entries(tpie::file_stream<tree_entry>& input, tpie::file_stream<hilbert_entry>& output) {
+        point_mapper mapper(get_total(input));
 
-        m_input.seek(0);
-        output.truncate(0);
-        while (m_input.can_read()) {
-            tree_entry entry = m_input.read();
+        input.seek(0);
+        output.truncate(input.size());
+        output.seek(0);
+        while (input.can_read()) {
+            tree_entry entry = input.read();
             vector3 center = entry.unit.center();
 
             hilbert_entry result;
@@ -162,13 +167,13 @@ private:
         }
     }
 
-    u64 create_leaves(tpie::serialization_writer& writer) {
+    u64 create_leaves(tpie::file_stream<tree_entry>& input, tpie::serialization_writer& writer) {
         // Augment the entries with their hilbert index
         // and sort them in ascending order.
         tpie::file_stream<hilbert_entry> entries;
         {
             entries.open();
-            map_entries(entries);
+            map_entries(input, entries);
             external_sort(entries, [&](const hilbert_entry& a, const hilbert_entry& b) {
                 return a.hilbert_index < b.hilbert_index;
             });
@@ -266,8 +271,6 @@ private:
     using common_t::storage;
 
 private:
-    tpie::file_stream<tree_entry>& m_input;
-
     /// Threshold after which the heuristic becomes active at the leaf level.
     /// When this many items are already within the current leaf,
     /// new items will only be accepted under certain conditions.
@@ -278,19 +281,6 @@ private:
     /// grow by more than this factor.
     const double m_max_growth = 1.2;
 };
-
-template<typename Tree>
-void bulk_load_hilbert(Tree& tree, tpie::file_stream<tree_entry>& entries) {
-    if (!tree.empty()) {
-        throw std::invalid_argument("Tree must be empty"); // TODO
-    }
-    if (entries.size() == 0) {
-        return;
-    }
-
-    hilbert_loader<Tree> loader(tree, entries);
-    loader.load();
-}
 
 } // namespace geodb
 

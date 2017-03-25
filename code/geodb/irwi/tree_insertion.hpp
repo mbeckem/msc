@@ -204,6 +204,14 @@ public:
         insert_subtree(internal, height, size);
     }
 
+    /// Inserts a subtree rooted at the given node, with the specified height
+    /// and size.
+    void insert_node(node_ptr node, size_t height, size_t size) {
+        geodb_assert(height >= 1, "subtree must have positive height");
+        geodb_assert(size > 0, "subtree must not be empty");
+        insert_subtree(node, height, size);
+    }
+
 private:
     /// Handles the simple edge cases of subtree insertion (e.g. the current tree
     /// is empty or has the same height as the new subtree).

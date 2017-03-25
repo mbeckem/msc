@@ -2,6 +2,7 @@
 #define GEODB_IRWI_BULK_LOAD_STR
 
 #include "geodb/common.hpp"
+#include "geodb/irwi/base.hpp"
 #include "geodb/irwi/bulk_load_common.hpp"
 #include "geodb/irwi/tree.hpp"
 #include "geodb/irwi/tree_external.hpp"
@@ -18,9 +19,15 @@
 
 namespace geodb {
 
+/// This class implements the STR bulk loading algorithm.
+/// Leaf records are tiled by sorting them by different criteria
+/// (label, x, y, t). They are then grouped into leaf nodes,
+/// which are in turn grouped into internal nodes, until only one
+/// node remains.
+///
 /// FIXME: Consistently use size_t or tpie::stream_size_type
 template<typename Tree>
-class str_loader : private bulk_load_common<Tree, str_loader<Tree>> {
+class str_loader : public bulk_load_common<Tree, str_loader<Tree>> {
     using common_t = typename str_loader::bulk_load_common;
 
     using typename common_t::state_type;
@@ -34,9 +41,10 @@ class str_loader : private bulk_load_common<Tree, str_loader<Tree>> {
     using index_ptr = typename Tree::index_ptr;
     using list_ptr = typename state_type::list_ptr;
 
-    using node_summary = typename common_t::node_summary;
-    using list_summary = typename common_t::list_summary;
-    using label_summary = typename common_t::label_summary;
+    using typename common_t::node_summary;
+    using typename common_t::list_summary;
+    using typename common_t::label_summary;
+    using typename common_t::subtree_result;
 
     static vector3 center(const tree_entry& e) {
         return e.unit.center();
@@ -67,26 +75,25 @@ class str_loader : private bulk_load_common<Tree, str_loader<Tree>> {
     };
 
 public:
-    str_loader(Tree& tree, tpie::file_stream<tree_entry>& input)
+    explicit str_loader(Tree& tree)
         : common_t(tree)
-        , m_input(input)
-        , m_items(input.size())
         , m_min_size(std::min(tree.max_leaf_entries(), tree.max_internal_entries())) // FIXME is this the right thing to do?
         , m_leaf_size(m_min_size)
         , m_internal_size(m_min_size)
-    {
-        geodb_assert(input.size() != 0, "Must not be empty");
-    }
+    {}
 
-    void build() {
-        sort();
+private:
+    friend common_t;
+
+    subtree_result load_impl(tpie::file_stream<tree_entry>& input) {
+        sort(input);
 
         tpie::temp_file tmp;
         u64 count = 0;
         {
             tpie::serialization_writer next_level;
             next_level.open(tmp);
-            count = create_leaves(next_level);
+            count = create_leaves(input, next_level);
         }
 
         size_t height = 1;
@@ -109,34 +116,32 @@ public:
         tpie::serialization_reader reader;
         reader.open(tmp.path());
 
-        storage().set_height(height);
-        storage().set_size(m_items);
-        storage().set_root(common_t::read_root_ptr(reader));
+        return subtree_result(common_t::read_root_ptr(reader), height, input.size());
     }
 
-private:
     // Create leaf-sized chunks by sorting the input
     // using the different dimension: label, x, y, t.
-    void sort() {
-        sort_recursive(0, m_items,
-                       // The ordering here defines the order of the dimension in STR.
+    void sort(tpie::file_stream<tree_entry>& input) {
+        sort_recursive(input, 0, input.size(),
+                       // The ordering here defines the order of recursive sort calls.
                        cmp_label(), cmp_x(), cmp_y(), cmp_t());
     }
 
     // Base case for template recursion to make the compiler happy.
-    void sort_recursive(tpie::stream_size_type offset, tpie::stream_size_type size) {
-        unused(offset, size);
+    void sort_recursive(tpie::file_stream<tree_entry>& input, tpie::stream_size_type offset, tpie::stream_size_type size) {
+        unused(input, offset, size);
     }
 
     /// Recursively sort the input file using the given comparators.
     template<typename Comp, typename... Comps>
-    void sort_recursive(const tpie::stream_size_type offset,
+    void sort_recursive(tpie::file_stream<tree_entry>& input,
+                        const tpie::stream_size_type offset,
                         const tpie::stream_size_type size,
                         Comp&& comp, Comps&&... comps) {
         constexpr size_t dimension = sizeof...(Comps) + 1;
 
         // Sort the input file using the current comp.
-        external_sort(m_input, offset, size, comp);
+        external_sort(input, offset, size, comp);
 
         if (dimension > 1) {
             // Divide the input file into slabs and sort those.
@@ -153,7 +158,7 @@ private:
                 const size_t count = std::min(remaining, slab_size);
 
                 // Recursive sort.
-                sort_recursive(slab_start, count, comps...);
+                sort_recursive(input, slab_start, count, comps...);
 
                 remaining -= count;
                 slab_start += count;
@@ -165,18 +170,18 @@ private:
     /// Takes chunks of size `m_leaf_size` items and packs them into leaf nodes.
     /// References to these nodes (and their summary) are written to `refs`.
     /// Returns the number of leaves.
-    tpie::stream_size_type create_leaves(tpie::serialization_writer& refs) {
+    tpie::stream_size_type create_leaves(tpie::file_stream<tree_entry>& input, tpie::serialization_writer& refs) {
         tpie::stream_size_type leaves = 0;
-        tpie::stream_size_type items_remaining = m_items;
+        tpie::stream_size_type items_remaining = input.size();
 
-        m_input.seek(0);
+        input.seek(0);
         while (items_remaining) {
             const u32 count = std::min(items_remaining, m_leaf_size);
 
             // Fill the new leaf and remember the trajectory ids & labels.
             leaf_ptr leaf = storage().create_leaf();
             for (u32 i = 0; i < count; ++i) {
-                tree_entry entry = m_input.read();
+                tree_entry entry = input.read();
                 storage().set_data(leaf, i, entry);
             }
             storage().set_count(leaf, count);
@@ -238,11 +243,7 @@ private:
     using common_t::state;
 
 private:
-    tpie::file_stream<tree_entry>& m_input;
-
-    /// Number of leaf items we are loading.
-    const tpie::stream_size_type m_items;
-
+    /// min(leaf_fanout, internal_fanout).
     const size_t m_min_size;
 
     /// Number of entries we are going to fill in every leaf node.
@@ -251,23 +252,6 @@ private:
     /// Number of entries we are going to fill in every internal node.
     const size_t m_internal_size;
 };
-
-/// Bulk loads an IRWI-Tree from a list of trajectory units using
-/// the STR (Sort Tile Recursive) Algorithm.
-/// Currently the tree has to be empty.
-template<typename Tree>
-void bulk_load_str(Tree& tree, tpie::file_stream<tree_entry>& entries) {
-    if (!tree.empty()) {
-        throw std::invalid_argument("Tree must be empty");
-    }
-
-    if (entries.size() == 0) {
-        return;
-    }
-
-    str_loader<Tree> loader(tree, entries);
-    loader.build();
-}
 
 } // namespace geodb
 
