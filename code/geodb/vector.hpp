@@ -171,11 +171,6 @@ public:
 private:
     friend class vector_base<vector3, 3>;
 
-    template<typename T>
-    static constexpr bool is_vector() {
-        return std::is_same<std::decay_t<T>, vector3>::value;
-    }
-
     template<typename Vector>
     static decltype(auto) get_member(Vector&& p, std::integral_constant<size_t, 0>) { return p.x(); }
 
