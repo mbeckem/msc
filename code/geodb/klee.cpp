@@ -92,6 +92,10 @@ public:
     }
 
 private:
+    /// Recursive build function.
+    /// Both begin and end are valid iterators, i.e. its an inclusive range.
+    /// All intervals [p1, p2] where p1, p2 are in the original input sequence
+    /// will be represented by leaf nodes.
     template<typename Iter>
     void build(node& n, Iter begin, Iter end) {
         geodb_assert(begin != end, "Range is empty");
@@ -236,20 +240,6 @@ struct event3d {
             return type < other.type;
         }
         return x < other.x;
-    }
-};
-
-class rect2d_hasher {
-    size_t operator()(const rect2d& r) const {
-        size_t hash = 0;
-
-        boost::hash_combine(hash, r.min().x());
-        boost::hash_combine(hash, r.min().y());
-
-        boost::hash_combine(hash, r.max().x());
-        boost::hash_combine(hash, r.max().y());
-
-        return hash;
     }
 };
 
