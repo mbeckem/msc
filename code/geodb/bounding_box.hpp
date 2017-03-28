@@ -3,30 +3,16 @@
 
 #include "geodb/common.hpp"
 #include "geodb/interval.hpp"
+#include "geodb/rectangle.hpp"
 #include "geodb/vector.hpp"
 
 namespace geodb {
 
 /// A 3-dimensional rectangle that encompasses spatio-temporal objects.
 /// Represented by two points (min, max).
-struct bounding_box {
+class bounding_box : public rect_base<vector3, bounding_box> {
 public:
-    /// Construct an empty bounding box.
-    bounding_box() = default;
-
-    /// Construct a bounding box from a pair of points.
-    bounding_box(vector3 min, vector3 max)
-        : m_min(min)
-        , m_max(max)
-    {
-        geodb_assert(vector3::less_eq(min, max), "min is not less than max");
-    }
-
-    /// Returns the minimum point of the bounding box.
-    const vector3& min() const { return m_min; }
-
-    /// Returns the maximum point of the bounding box.
-    const vector3& max() const { return m_max; }
+    using rect_base::rect_base;
 
     /// Returns the center point of the bounding box.
     vector3 center() const {
@@ -75,23 +61,8 @@ public:
         return { vector3::min(m_min, other.m_min), vector3::max(m_max, other.m_max) };
     }
 
-    /// Returns the size of this box.
     float size() const {
-        vector3 vec = m_max - m_min;
-        return float(vec.x()) * float(vec.y()) * float(vec.t());
-    }
-
-private:
-    friend bool operator==(const bounding_box& a, const bounding_box& b) {
-        return a.m_min == b.m_min && a.m_max == b.m_max;
-    }
-
-    friend bool operator!=(const bounding_box& a, const bounding_box& b) {
-        return a.m_min != b.m_min || a.m_max != b.m_max;
-    }
-
-    friend std::ostream& operator<<(std::ostream& o, const bounding_box& b) {
-        return o << "{min: " << b.m_min << ", max: " << b.m_max << "}";
+        return float(rect_base::size());
     }
 
 private:

@@ -107,6 +107,11 @@ auto transformed_member(MemberPointer ptr) {
     return transformed(map_member(ptr));
 }
 
+template<typename Iter>
+auto iterate(Iter begin, Iter end) {
+    return boost::make_iterator_range(begin, end);
+}
+
 } // namespace geodb
 
 #endif // GEODB_UTILITY_RANGE_UTILS_HPP

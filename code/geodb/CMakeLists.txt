@@ -1,6 +1,7 @@
 set(SOURCES
     bloom_filter.cpp
     common.cpp
+    klee.cpp
     parser.cpp
     trajectory.cpp
 
@@ -21,7 +22,9 @@ set(HEADERS
     id_set.hpp
     interval.hpp
     interval_set.hpp
+    klee.hpp
     parser.hpp
+    rectangle.hpp
     trajectory.hpp
     type_traits.hpp
     vector.hpp

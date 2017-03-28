@@ -11,6 +11,7 @@ set(SOURCES
     interval_set.cpp
     inverted_index.cpp
     irwi.cpp
+    klee.cpp
     main.cpp
     movable_adapter.cpp
     parser.cpp

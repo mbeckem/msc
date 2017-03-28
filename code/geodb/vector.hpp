@@ -205,6 +205,102 @@ private:
     x_type m_x = 0;
 };
 
+/// A two-dimensional vector. All coordiantes are represented as doubles.
+class vector2d : public detail::vector_base<vector2d, 2> {
+public:
+    vector2d() = default;
+
+    vector2d(double x, double y)
+        : m_x(x), m_y(y)
+    {}
+
+    const double& x() const { return m_x; }
+    const double& y() const { return m_y; }
+
+    double& x() { return m_x; }
+    double& y() { return m_y; }
+
+private:
+    friend class vector_base<vector2d, 2>;
+
+    template<typename Vector>
+    static decltype(auto) get_member(Vector&& p, std::integral_constant<size_t, 0>) { return p.x(); }
+
+    template<typename Vector>
+    static decltype(auto) get_member(Vector&& p, std::integral_constant<size_t, 1>) { return p.y(); }
+
+private:
+    template<typename Dst>
+    friend void serialize(Dst& dst, const vector2d& p) {
+        using tpie::serialize;
+        serialize(dst, p.x());
+        serialize(dst, p.y());
+    }
+
+    template<typename Src>
+    friend void unserialize(Src& src, vector2d& p) {
+        using tpie::unserialize;
+        unserialize(src, p.x());
+        unserialize(src, p.y());
+    }
+
+private:
+    double m_x = 0;
+    double m_y = 0;
+};
+
+/// A three-dimensional vector. All coordiantes are represented as doubles.
+class vector3d : public detail::vector_base<vector3d, 3> {
+public:
+    vector3d() = default;
+
+    vector3d(double x, double y, double z)
+        : m_x(x), m_y(y), m_z(z)
+    {}
+
+    const double& x() const { return m_x; }
+    const double& y() const { return m_y; }
+    const double& z() const { return m_z; }
+
+    double& x() { return m_x; }
+    double& y() { return m_y; }
+    double& z() { return m_z; }
+
+private:
+    friend class vector_base<vector3d, 3>;
+
+    template<typename Vector>
+    static decltype(auto) get_member(Vector&& p, std::integral_constant<size_t, 0>) { return p.x(); }
+
+    template<typename Vector>
+    static decltype(auto) get_member(Vector&& p, std::integral_constant<size_t, 1>) { return p.y(); }
+
+    template<typename Vector>
+    static decltype(auto) get_member(Vector&& p, std::integral_constant<size_t, 2>) { return p.z(); }
+
+private:
+    template<typename Dst>
+    friend void serialize(Dst& dst, const vector3d& p) {
+        using tpie::serialize;
+        serialize(dst, p.x());
+        serialize(dst, p.y());
+        serialize(dst, p.z());
+    }
+
+    template<typename Src>
+    friend void unserialize(Src& src, vector3d& p) {
+        using tpie::unserialize;
+        unserialize(src, p.x());
+        unserialize(src, p.y());
+        unserialize(src, p.z());
+    }
+
+private:
+    double m_x = 0;
+    double m_y = 0;
+    double m_z = 0;
+};
+
 } // namespace geodb
 
 #endif // GEODB_VECTOR_HPP
