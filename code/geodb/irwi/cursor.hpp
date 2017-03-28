@@ -5,6 +5,7 @@
 #include "geodb/bounding_box.hpp"
 #include "geodb/type_traits.hpp"
 #include "geodb/irwi/base.hpp"
+#include "geodb/utility/range_utils.hpp"
 
 #include <boost/range/iterator_range.hpp>
 
@@ -65,6 +66,14 @@ public:
     /// True if the current node is the root.
     bool is_root() const {
         return !has_parent();
+    }
+
+    /// Returns a range of node ids (the path of this node),
+    /// from the root to the node itself.
+    auto path() const {
+        return m_path | transformed([&](node_ptr ptr) {
+            return storage().get_id(ptr);
+        });
     }
 
     /// Returns the index of the this node within its parent.
