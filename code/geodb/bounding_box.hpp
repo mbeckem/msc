@@ -17,23 +17,23 @@ public:
     /// Returns the center point of the bounding box.
     vector3 center() const {
         vector3 result;
-        result.x() = (m_max.x() + m_min.x()) / 2;
-        result.y() = (m_max.y() + m_min.y()) / 2;
-        result.t() = (m_max.t() + m_min.t()) / 2;
+        result.x() = (max().x() + min().x()) / 2;
+        result.y() = (max().y() + min().y()) / 2;
+        result.t() = (max().t() + min().t()) / 2;
         return result;
     }
 
     vector3 widths() const {
         return {
-            m_max.x() - m_min.x(),
-            m_max.y() - m_min.y(),
-            m_max.t() - m_min.t()
+            max().x() - min().x(),
+            max().y() - min().y(),
+            max().t() - min().t()
         };
     }
 
     /// Returns true if this bounding box fully contains `other`.
     bool contains(const bounding_box& other) const {
-        return vector3::less_eq(m_min, other.m_min) && vector3::less_eq(other.m_max, m_max);
+        return vector3::less_eq(min(), other.min()) && vector3::less_eq(other.max(), max());
     }
 
     /// Returns true if this bounding box has a non-empty intersection
@@ -58,16 +58,12 @@ public:
     /// Returns a minimum bounding box that contains
     /// both \p *this and \p other.
     bounding_box extend(const bounding_box& other) const {
-        return { vector3::min(m_min, other.m_min), vector3::max(m_max, other.m_max) };
+        return { vector3::min(min(), other.min()), vector3::max(max(), other.max()) };
     }
 
     float size() const {
         return float(rect_base::size());
     }
-
-private:
-    vector3 m_min;
-    vector3 m_max;
 };
 
 } // namespace geodb
