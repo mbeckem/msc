@@ -169,17 +169,35 @@ std::vector<vec2> create_points(size_t count) {
 
 /// Generates a skewed set of points in [0, 1]^2.
 std::vector<vec2> create_skewed_points(size_t count) {
+    vec2 center_a(0.3, 0.7);
+    vec2 center_b(0.5, 0.2);
+    vec2 center_c(0.7, 0.5);
+
+    double radius_a = 0.30;
+    double radius_b = 0.15;
+    double radius_c = 0.20;
+
     std::vector<vec2> points(count);
 
+    auto gen_circle = [&](const vec2& center, double radius) {
+        double v = get_random() * 2 * M_PI;
+        double r = get_random() * radius;
+
+        vec2 p;
+        p.x = r * std::cos(v) + center.x;
+        p.y = r * std::sin(v) + center.y;
+        return p;
+    };
+
     for (auto& p : points) {
-        double x = get_random();
-        double y = get_random();
-
-        double w = 0.5 - std::fabs(0.5 - y);
-        x = x * w + 0.5 - w / 2;
-        x += std::fabs(y - 0.5);
-
-        p = vec2(x, y);
+        double which = get_random();
+        if (which < 0.5) {
+            p = gen_circle(center_a, radius_a);
+        } else if (which < 0.75) {
+            p = gen_circle(center_b, radius_b);
+        } else {
+            p = gen_circle(center_c, radius_c);
+        }
     }
     return points;
 }
@@ -235,11 +253,13 @@ std::vector<leaf> create_leaf_heuristic(const std::vector<vec2>& points, size_t 
         // Take the first "count" points.
         l.points.assign(pos, pos + count);
         l.mbb = get_bounding_box(l.points.begin(), l.points.end());
+        pos += count;
 
         // Take points while the box does not grow too large.
-        const double max_size = l.mbb.size() * max_grow;
-        while (pos != end) {
+        double max_size = l.mbb.size() * max_grow;
+        while (pos != end && l.points.size() < leaf_size) {
             const vec2& p = *pos;
+
             box2 new_mbb = l.mbb.extend(p);
             if (new_mbb.size() > max_size) {
                 break;

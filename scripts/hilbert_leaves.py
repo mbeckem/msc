@@ -48,11 +48,13 @@ def draw_leaves(ax, leaves):
                                height=height, fill=False))
 
 
+# 4161942469
+
 fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
 draw_leaves(ax1, get_leaves(1000, 16, seed=1380799046))
-draw_leaves(ax2, get_leaves(1000, 16, skewed=True, seed=4161942469))
+draw_leaves(ax2, get_leaves(1000, 16, skewed=True, seed=1821311943))
 draw_leaves(ax3, get_leaves(1000, 16, skewed=True,
-                            seed=4161942469, heuristic=True))
+                            seed=1821311943, heuristic=True))
 
 
 fig.savefig(str(RESULT_PATH / "hilbert_leaves.pdf"), bbox_inches="tight")
