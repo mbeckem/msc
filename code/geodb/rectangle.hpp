@@ -41,8 +41,8 @@ public:
         return size;
     }
 
-    /// Returns true if this rectangle is empty,
-    /// i.e. when coordinates are equal in at least one dimension.
+    /// Returns true if this rectangle has an empty volume,
+    /// i.e. when at least one of the min & max coordinates are equal.
     bool empty() const {
         vector_type diff = max() - min();
         bool equal = false;
