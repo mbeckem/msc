@@ -15,17 +15,37 @@ namespace po = boost::program_options;
 
 static std::string input;
 
+struct averager {
+private:
+    double m_value = 0;
+    u64 m_count = 0;
+
+public:
+    void push(double value) {
+        m_value += value;
+        m_count += 1;
+    }
+
+    u64 count() const {
+        return m_count;
+    }
+
+    double average() const {
+        return m_count != 0 ? m_value / double(m_count) : 0;
+    }
+};
+
 struct tree_stats {
+    averager entry_area;
+    averager leaf_area;
+    std::map<size_t, averager> internal_volume_ratio;
+};
+
+struct analyze_result {
     bounding_box mbb;
-
-    double entry_area = 0.0;
-    u64 entries = 0.0;
-
-    double leaf_area = 0.0;
-    u64 leaves = 0;
-
-    double internal_union_area_ratio = 0.0;
-    u64 internals = 0;
+    double entry_area = 0;
+    double leaf_area = 0;
+    std::vector<double> internal_volume_ratio;
 };
 
 static void parse_options(int argc, char** argv) {
@@ -66,15 +86,15 @@ std::string to_string(const T& t) {
 }
 
 /// Returns the path of the given node, as a string.
-//static std::string path(const external_tree::cursor& node) {
-//    std::string result;
-//    for (auto id : node.path()) {
-//        if (!result.empty())
-//            result += "/";
-//        result += std::to_string(id);
-//    }
-//    return result;
-//}
+static std::string path(const external_tree::cursor& node) {
+    std::string result;
+    for (auto id : node.path()) {
+        if (!result.empty())
+            result += "/";
+        result += std::to_string(id);
+    }
+    return result;
+}
 
 /// a / b except when b is very close to 0 in which case it returns 0.
 double div0(double a, double b) {
@@ -133,15 +153,15 @@ static double volume_ratio(external_tree::cursor& node) {
 static void analyze(external_tree::cursor& node, tree_stats& stats) {
     if (node.is_leaf()) {
         for (size_t i = 0; i < node.size(); ++i) {
-            stats.entry_area += node.mbb(i).size();
-            stats.entries += 1;
+            stats.entry_area.push(node.mbb(i).size());
         }
 
-        stats.leaf_area += node.mbb().size();
-        stats.leaves += 1;
+        stats.leaf_area.push(node.mbb().size());
     } else {
-        stats.internal_union_area_ratio += volume_ratio(node);
-        stats.internals += 1;
+        double ratio = volume_ratio(node);
+        fmt::print("node {:30} has ratio {:16}\n", path(node), ratio);
+
+        stats.internal_volume_ratio[node.level()].push(ratio);
 
         for (size_t i = 0; i < node.size(); ++i) {
             node.move_child(i);
@@ -151,19 +171,25 @@ static void analyze(external_tree::cursor& node, tree_stats& stats) {
     }
 }
 
-static tree_stats analyze(const external_tree& tree) {
-    tree_stats stats;
+static analyze_result analyze(const external_tree& tree) {
+    analyze_result result;
 
     if (!tree.empty()) {
+        tree_stats stats;
+
         auto root = tree.root();
-        stats.mbb = root.mbb();
         analyze(root, stats);
 
-        stats.entry_area /= stats.mbb.size();
-        stats.leaf_area /= stats.mbb.size();
+        result.mbb = root.mbb();
+        result.entry_area = stats.entry_area.average() / result.mbb.size();
+        result.leaf_area = stats.leaf_area.average() / result.mbb.size();
+
+        for (const auto& pair : stats.internal_volume_ratio) {
+            result.internal_volume_ratio.push_back(pair.second.average());
+        }
     }
 
-    return stats;
+    return result;
 }
 
 int main(int argc, char** argv) {
@@ -172,13 +198,7 @@ int main(int argc, char** argv) {
 
         external_tree tree{external_storage(input)};
 
-        tree_stats stats = analyze(tree);
-        if (stats.leaves != tree.leaf_node_count()) {
-            throw std::logic_error("Invalid leaf count");
-        }
-        if (stats.entries != tree.size()) {
-            throw std::logic_error("Invalid entry count");
-        }
+        analyze_result stats = analyze(tree);
 
         json result = json::object();
         result["lambda"] = tree.lambda();
@@ -187,14 +207,14 @@ int main(int argc, char** argv) {
         result["mbb"] = to_string(stats.mbb);
 
         result["entry_count"] = tree.size();
-        result["entry_area"] = div0(stats.entry_area, stats.entries);
+        result["entry_area"] = div0(stats.entry_area, tree.size());
 
         result["leaf_nodes"] = tree.leaf_node_count();
         result["leaf_utilization"] = div0(tree.size(), tree.leaf_node_count() * tree.max_leaf_entries());
-        result["leaf_area"] = div0(stats.leaf_area, stats.leaves);
+        result["leaf_area"] = div0(stats.leaf_area, tree.leaf_node_count());
 
         result["internal_nodes"] = tree.internal_node_count();
-        result["internal_area_ratio"] = div0(stats.internal_union_area_ratio, stats.internals);
+        result["internal_area_ratio"] = stats.internal_volume_ratio;
 
         std::cout << result.dump(4) << std::endl;
         return 0;
