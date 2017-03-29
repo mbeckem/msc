@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
             create_entries(trajectories_path, max_entries, entries, create_progress);
             create_progress.done();
 
-            fmt::print(cout, "Loading the tree structure...\n");
+            fmt::print(cout, "Inserting leaf entries.\n");
             loader(tree, entries);
             fmt::print(cout, "Done.\n");
         });
@@ -100,7 +100,11 @@ void parse_options(int argc, char** argv) {
             ("help,h", "Show this message.")
             ("algorithm", po::value(&algorithm)->value_name("ALG")->required(),
              "Uses the specified algorithm for bulk loading.\n"
-             "Possible values are \"str\", \"hilbert\" and \"quickload\".")
+             "Possible values are \"obo\", \"str\", \"hilbert\" and \"quickload\":\n"
+             "  obo        \tOne by one insertion (constant resource usage, very slow).\n"
+             "  hilbert    \tSort entries by hilbert values and pack them into leaf nodes.\n"
+             "  str        \tTile entries using the Sort-Tile-Recursive algorithm and pack them into leaf nodes.\n"
+             "  quickload  \tUse the quickload algorithm to pack entries into nodes on every level of the tree.\n")
             ("trajectories", po::value(&trajectories_path)->value_name("PATH")->required(),
              "Path to prepared trajectory file.")
             ("tree", po::value(&tree_path)->value_name("PATH")->required(),
@@ -109,7 +113,7 @@ void parse_options(int argc, char** argv) {
              "Weight factor between 0 and 1 for spatial and textual cost (1.0 is a normal rtree).")
             ("max-memory", po::value(&memory)->value_name("MB")->default_value(32),
              "Memory limit in megabytes. Used by the str and hilbert algorithms.")
-            ("max-leaves", po::value(&max_leaves)->value_name("LEAVES")->default_value(8192),
+            ("max-leaves", po::value(&max_leaves)->value_name("N")->default_value(8192),
              "Leaf limit. Used by the quickload algorithm.")
             ("stats", po::value(&stats_file)->value_name("FILE"),
              "Output path for stats in json format.")
@@ -125,7 +129,7 @@ void parse_options(int argc, char** argv) {
         if (vm.count("help")) {
             fmt::print(cerr, "Usage: {0} OPTION...\n"
                              "\n"
-                             "Bulk load a tree from a list of trajectories.\n"
+                             "Load a tree from a list of trajectories.\n"
                              "The algorithm and the resource limits can be chosen below.\n"
                              "\n"
                              "{1}",
@@ -168,6 +172,21 @@ algorithm_type get_algorithm() {
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
             quick_loader<external_tree> loader(tree, max_leaves);
             loader.load(input);
+        };
+    } else if (algorithm == "obo") {
+        fmt::print(cout, "Using One-by-One insertion.\n");
+        return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
+            tpie::progress_indicator_arrow progress("Inserting", 100);
+            progress.set_indicator_length(60);
+
+            progress.init(input.size());
+
+            input.seek(0);
+            while (input.can_read()) {
+                tree.insert(input.read());
+                progress.step();
+            }
+            progress.done();
         };
     } else {
         fmt::print(cerr, "Invalid algorithm: {}.\n", algorithm);
