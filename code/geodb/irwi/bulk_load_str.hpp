@@ -75,8 +75,15 @@ class str_loader : public bulk_load_common<Tree, str_loader<Tree>> {
     };
 
 public:
-    explicit str_loader(Tree& tree)
+    enum class sort_mode {
+        label_first,
+        label_last,
+    };
+
+public:
+    explicit str_loader(Tree& tree, sort_mode mode = sort_mode::label_first)
         : common_t(tree)
+        , m_mode(mode)
         , m_min_size(std::min(tree.max_leaf_entries(), tree.max_internal_entries())) // FIXME is this the right thing to do?
         , m_leaf_size(m_min_size)
         , m_internal_size(m_min_size)
@@ -122,9 +129,17 @@ private:
     // Create leaf-sized chunks by sorting the input
     // using the different dimension: label, x, y, t.
     void sort(tpie::file_stream<tree_entry>& input) {
-        sort_recursive(input, 0, input.size(),
-                       // The ordering here defines the order of recursive sort calls.
-                       cmp_label(), cmp_x(), cmp_y(), cmp_t());
+        // The order of the comparison object defines the tiling order.
+        switch (m_mode) {
+        case sort_mode::label_first:
+            sort_recursive(input, 0, input.size(),
+                           cmp_label(), cmp_x(), cmp_y(), cmp_t());
+            break;
+        case sort_mode::label_last:
+            sort_recursive(input, 0, input.size(),
+                           cmp_x(), cmp_y(), cmp_t(), cmp_label());
+            break;
+        }
     }
 
     // Base case for template recursion to make the compiler happy.
@@ -243,6 +258,8 @@ private:
     using common_t::state;
 
 private:
+    const sort_mode m_mode;
+
     /// min(leaf_fanout, internal_fanout).
     const size_t m_min_size;
 

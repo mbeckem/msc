@@ -100,10 +100,11 @@ void parse_options(int argc, char** argv) {
             ("help,h", "Show this message.")
             ("algorithm", po::value(&algorithm)->value_name("ALG")->required(),
              "Uses the specified algorithm for bulk loading.\n"
-             "Possible values are \"obo\", \"str\", \"hilbert\" and \"quickload\":\n"
+             "Possible algorithm choices are:\n"
              "  obo        \tOne by one insertion (constant resource usage, very slow).\n"
              "  hilbert    \tSort entries by hilbert values and pack them into leaf nodes.\n"
              "  str        \tTile entries using the Sort-Tile-Recursive algorithm and pack them into leaf nodes.\n"
+             "  str2       \tTile like in str, but sort by label last.\n"
              "  quickload  \tUse the quickload algorithm to pack entries into nodes on every level of the tree.\n")
             ("trajectories", po::value(&trajectories_path)->value_name("PATH")->required(),
              "Path to prepared trajectory file.")
@@ -150,12 +151,23 @@ void parse_options(int argc, char** argv) {
 
 algorithm_type get_algorithm() {
     if (algorithm == "str") {
-        fmt::print(cout, "Using STR with memory limit {} MB.\n", memory);
+        fmt::print(cout, "Using str loading with memory limit {} MB.\n", memory);
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
             size_t limit = memory * 1024 * 1024;
             tpie::get_memory_manager().set_limit(limit);
 
-            str_loader<external_tree> loader(tree);
+            using loader_t = str_loader<external_tree>;
+            loader_t loader(tree, loader_t::sort_mode::label_first);
+            loader.load(input);
+        };
+    } else if (algorithm == "str2") {
+        fmt::print(cout, "Using str2 loading with memory limit {} MB.\n", memory);
+        return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
+            size_t limit = memory * 1024 * 1024;
+            tpie::get_memory_manager().set_limit(limit);
+
+            using loader_t = str_loader<external_tree>;
+            loader_t loader(tree, loader_t::sort_mode::label_last);
             loader.load(input);
         };
     } else if (algorithm == "hilbert") {
@@ -168,13 +180,13 @@ algorithm_type get_algorithm() {
             loader.load(input);
         };
     } else if (algorithm == "quickload") {
-        fmt::print(cout, "Using Quickload with leaf limit {}.\n", max_leaves);
+        fmt::print(cout, "Using quickload with leaf limit {}.\n", max_leaves);
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
             quick_loader<external_tree> loader(tree, max_leaves);
             loader.load(input);
         };
     } else if (algorithm == "obo") {
-        fmt::print(cout, "Using One-by-One insertion.\n");
+        fmt::print(cout, "Using one-by-one insertion.\n");
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
             tpie::progress_indicator_arrow progress("Inserting", 100);
             progress.set_indicator_length(60);
