@@ -29,6 +29,7 @@ using algorithm_type = std::function<void(external_tree&, tpie::file_stream<tree
 
 static string algorithm;
 static string trajectories_path;
+static string entries_path;
 static string tree_path;
 static size_t memory;
 static size_t max_leaves;
@@ -53,30 +54,34 @@ int main(int argc, char** argv) {
         external_tree tree{external_storage(tree_path), beta};
         fmt::print(cout, "Inserting items into a tree of size {}.\n", tree.size());
 
-
         auto loader = get_algorithm();
-        if (!fs::exists(trajectories_path)) {
-            fmt::print(cerr, "File does not exist: {}\n", trajectories_path);
-            return 1;
-        }
 
-        tpie::temp_file tmp;
         tpie::file_stream<tree_entry> entries;
-        entries.open(tmp);
-        entries.truncate(0);
+        if (!trajectories_path.empty()) {
+            fmt::print(cout, "Creating leaf entries from trajectory file \"{}\".\n", trajectories_path);
 
-        if (limit) {
-            fmt::print("Limiting to {} entries.\n", *limit);
-        }
-        const u64 max_entries = limit.get_value_or(std::numeric_limits<u64>::max());
+            entries.open();
+            entries.truncate(0);
 
-        const measure_t stats = measure_call([&]{
+            if (limit) {
+                fmt::print("Limiting to {} entries.\n", *limit);
+            }
+            const u64 max_entries = limit.get_value_or(std::numeric_limits<u64>::max());
+
             tpie::progress_indicator_arrow create_progress("Creating leaf entries", 100);
             create_progress.set_indicator_length(60);
             create_entries(trajectories_path, max_entries, entries, create_progress);
             create_progress.done();
+        } else if (!entries_path.empty()) {
+            fmt::print(cout, "Using existing entry file \"{}\".\n", entries_path);
+            entries.open(entries_path);
+        } else {
+            fmt::print(cerr, "No input file specified.\n");
+            throw exit_main(1);
+        }
 
-            fmt::print(cout, "Inserting leaf entries.\n");
+        const measure_t stats = measure_call([&]{
+            fmt::print(cout, "\n");
             loader(tree, entries);
             fmt::print(cout, "Done.\n");
         });
@@ -106,8 +111,10 @@ void parse_options(int argc, char** argv) {
              "  str        \tTile entries using the Sort-Tile-Recursive algorithm and pack them into leaf nodes.\n"
              "  str2       \tTile like in str, but sort by label last.\n"
              "  quickload  \tUse the quickload algorithm to pack entries into nodes on every level of the tree.\n")
-            ("trajectories", po::value(&trajectories_path)->value_name("PATH")->required(),
+            ("trajectories", po::value(&trajectories_path)->value_name("PATH"),
              "Path to prepared trajectory file.")
+            ("entries", po::value(&entries_path)->value_name("PATH"),
+             "Path to a file that already contains leaf entries.")
             ("tree", po::value(&tree_path)->value_name("PATH")->required(),
              "Path to irwi tree directory. Will be created if it doesn't exist.")
             ("beta", po::value(&beta)->value_name("BETA")->default_value(0.5f),

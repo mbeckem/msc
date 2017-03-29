@@ -59,7 +59,7 @@ private:
             tpie::serialization_writer writer;
             writer.open(current.path());
 
-            fmt::print("Creating leaves\n");
+            fmt::print("Creating leaves...\n");
             count = create_leaves(entries, writer);
         }
 
@@ -74,7 +74,7 @@ private:
                 last_level.open(current.path());
                 next_level.open(output.path());
 
-                fmt::print("Creating internal nodes at height {}\n", height);
+                fmt::print("Creating internal nodes at height {}...\n", height + 1);
                 count = create_internals(last_level, count, next_level);
             }
             current = output;
