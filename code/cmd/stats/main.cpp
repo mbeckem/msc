@@ -15,7 +15,20 @@ namespace po = boost::program_options;
 
 static std::string input;
 
-void parse_options(int argc, char** argv) {
+struct tree_stats {
+    bounding_box mbb;
+
+    double entry_area = 0.0;
+    u64 entries = 0.0;
+
+    double leaf_area = 0.0;
+    u64 leaves = 0;
+
+    double internal_union_area_ratio = 0.0;
+    u64 internals = 0;
+};
+
+static void parse_options(int argc, char** argv) {
     po::options_description options;
     options.add_options()
             ("help,h", "Show this message.")
@@ -45,30 +58,34 @@ void parse_options(int argc, char** argv) {
     }
 }
 
-std::string path(const typename external_tree::cursor& node) {
-    std::string result;
-    for (auto id : node.path()) {
-        if (!result.empty())
-            result += "/";
-        result += std::to_string(id);
-    }
-    return result;
+template<typename T>
+std::string to_string(const T& t) {
+    std::stringstream ss;
+    ss << t;
+    return ss.str();
 }
 
-struct tree_stats {
-    bounding_box mbb;
+/// Returns the path of the given node, as a string.
+//static std::string path(const external_tree::cursor& node) {
+//    std::string result;
+//    for (auto id : node.path()) {
+//        if (!result.empty())
+//            result += "/";
+//        result += std::to_string(id);
+//    }
+//    return result;
+//}
 
-    double entry_area = 0.0;
-    u64 entries = 0.0;
+/// a / b except when b is very close to 0 in which case it returns 0.
+double div0(double a, double b) {
+    if (std::fabs(b) < std::numeric_limits<double>::epsilon())
+        return 0;
+    return a / b;
+}
 
-    double leaf_area = 0.0;
-    u64 leaves = 0;
-
-    double internal_union_area_ratio = 0.0;
-    u64 internals = 0;
-};
-
-double volume_ratio(typename external_tree::cursor& node) {
+/// Returns the bounding boxes of the given internal node's entries
+/// as a vector of rect3d.
+static std::vector<rect3d> get_rectangles(external_tree::cursor& node) {
     geodb_assert(node.is_internal(), "must be an internal node");
     geodb_assert(node.size() > 0, "nodes cannot be empty");
 
@@ -76,22 +93,44 @@ double volume_ratio(typename external_tree::cursor& node) {
 
     std::vector<rect3d> rects;
     rects.reserve(size);
-
-    double sum_area = 0.0;
     for (size_t i = 0; i < size; ++i) {
         const bounding_box mbb = node.mbb(i);
         rect3d rect(vector3d(mbb.min().x(), mbb.min().y(), mbb.min().t()),
                     vector3d(mbb.max().x(), mbb.max().y(), mbb.max().t()));
 
-        sum_area += rect.size();
         rects.push_back(rect);
     }
-    double union_area = geodb::union_area(rects);
-
-    return sum_area == 0 ? 0 : union_area / sum_area;
+    return rects;
 }
 
-void analyze(typename external_tree::cursor& node, tree_stats& stats) {
+static double volume_ratio(external_tree::cursor& node) {
+    const std::vector<rect3d> rects = get_rectangles(node);
+
+    double sum = 0.0;
+    double max = 0.0;
+    double usum = union_area(rects);
+
+    for (const rect3d& r : rects) {
+        const double vol = r.size();
+
+        sum += vol;
+        max = std::max(max, vol);
+    }
+
+    geodb_assert(usum >= max && usum <= sum,
+                 "union volume must be in range");
+
+    usum -= max;
+    sum -= max;
+
+    // 1.   Sum of volumes equals maximum volume, thus
+    //      usum must be 0 or very small too.
+    // 2.   Default case.
+    return sum <= std::numeric_limits<double>::epsilon()
+            ? 1 : usum / sum;
+}
+
+static void analyze(external_tree::cursor& node, tree_stats& stats) {
     if (node.is_leaf()) {
         for (size_t i = 0; i < node.size(); ++i) {
             stats.entry_area += node.mbb(i).size();
@@ -112,7 +151,7 @@ void analyze(typename external_tree::cursor& node, tree_stats& stats) {
     }
 }
 
-tree_stats analyze(const external_tree& tree) {
+static tree_stats analyze(const external_tree& tree) {
     tree_stats stats;
 
     if (!tree.empty()) {
@@ -125,20 +164,6 @@ tree_stats analyze(const external_tree& tree) {
     }
 
     return stats;
-}
-
-template<typename T>
-std::string to_string(const T& t) {
-    std::stringstream ss;
-    ss << t;
-    return ss.str();
-}
-
-/// a / b except when b is very close to 0 in which case it returns 0.
-double div0(double a, double b) {
-    if (std::fabs(b) < std::numeric_limits<double>::epsilon())
-        return 0;
-    return a / b;
 }
 
 int main(int argc, char** argv) {
