@@ -19,9 +19,12 @@ target_include_directories(catch INTERFACE "${DEPS_SOURCE_DIR}/catch")
 
 ### fmt
 ExternalProject_Add(project_fmt
-    SOURCE_DIR "${DEPS_SOURCE_DIR}/fmt-3.0.0"
-    PREFIX     "${DEPS_BINARY_DIR}/fmt-3.0.0"
-    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR> -DFMT_DOC=0 -DFMT_TEST=0
+    SOURCE_DIR  "${DEPS_SOURCE_DIR}/fmt-3.0.0"
+    PREFIX      "${DEPS_BINARY_DIR}/fmt-3.0.0"
+    CMAKE_ARGS  -DCMAKE_BUILD_TYPE=Release
+                -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+                -DFMT_DOC=0
+                -DFMT_TEST=0
 )
 
 ExternalProject_Get_Property(project_fmt INSTALL_DIR)
@@ -38,7 +41,9 @@ target_include_directories(json INTERFACE "${DEPS_SOURCE_DIR}/json")
 ExternalProject_add(project_tpie
     SOURCE_DIR "${DEPS_SOURCE_DIR}/tpie"
     PREFIX     "${DEPS_BINARY_DIR}/tpie"
-    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR> -DCOMPILE_TEST=0
+    CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
+                -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+                -DCOMPILE_TEST=0
 )
 
 ExternalProject_Get_Property(project_tpie INSTALL_DIR)
