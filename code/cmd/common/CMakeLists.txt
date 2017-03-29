@@ -7,4 +7,4 @@ set(SOURCES
 )
 
 add_library(common ${SOURCES} ${HEADERS})
-target_link_libraries(common PUBLIC geodb json)
+target_link_libraries(common PUBLIC tpie geodb json)

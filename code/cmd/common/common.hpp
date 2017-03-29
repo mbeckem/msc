@@ -31,7 +31,10 @@ public:
 constexpr const size_t block_size = 4096;
 constexpr const size_t lambda = 40;
 
+extern template class geodb::tree_external<block_size>;
 using external_storage = geodb::tree_external<block_size>;
+
+extern template class geodb::tree<external_storage, lambda>;
 using external_tree = geodb::tree<external_storage, lambda>;
 
 /// Initializes the tpie library, calls the function f and deinitializes tpie.
