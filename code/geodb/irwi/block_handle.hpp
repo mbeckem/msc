@@ -19,14 +19,14 @@ private:
     u64 m_index = 0;
 
 public:
-    block_handle() {}
+    constexpr block_handle() {}
 
     /// Construct a handle from a raw block index.
-    block_handle(u64 index): m_index(index) {}
+    constexpr block_handle(u64 index): m_index(index) {}
 
     /// Block handle must refer to a block of size `block_size`
     /// and a valid position divisible by `block_size`.
-    block_handle(tpie::blocks::block_handle h)
+    constexpr block_handle(tpie::blocks::block_handle h)
         : m_index(h.position / block_size)
     {
         geodb_assert(h.position % block_size == 0,
@@ -34,23 +34,39 @@ public:
         geodb_assert(h.size == block_size, "block must have the correct size");
     }
 
-    u64 index() const {
+    constexpr u64 index() const {
         return m_index;
     }
 
-    bool operator==(const block_handle& other) const {
+    constexpr bool operator==(const block_handle& other) const {
         return m_index == other.m_index;
     }
 
-    bool operator!=(const block_handle& other) const {
+    constexpr bool operator!=(const block_handle& other) const {
         return m_index != other.m_index;
     }
 
     operator tpie::blocks::block_handle() const {
         return { m_index * block_size, block_size };
     }
+
+    // for boost::hash.
+    friend size_t hash_value(const block_handle& handle) {
+        return std::hash<u64>()(handle.index());
+    }
 };
 
 } // namespace geodb
+
+namespace std {
+
+template<size_t block_size>
+struct hash<geodb::block_handle<block_size>> {
+    size_t operator()(const geodb::block_handle<block_size>& handle) const {
+        return std::hash<geodb::u64>()(handle.index());
+    }
+};
+
+} // namespace std
 
 #endif // GEODB_IRWI_BLOCK_HANDLE_HPP

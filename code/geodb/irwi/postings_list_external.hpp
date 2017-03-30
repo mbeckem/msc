@@ -5,9 +5,10 @@
 #include "geodb/filesystem.hpp"
 #include "geodb/irwi/base.hpp"
 #include "geodb/utility/movable_adapter.hpp"
+#include "geodb/utility/file_stream_iterator.hpp"
 
 #include <boost/noncopyable.hpp>
-#include <tpie/uncompressed_stream.h>
+#include <tpie/file_stream.h>
 
 namespace geodb {
 
@@ -43,16 +44,26 @@ private:
 template<typename Posting>
 class postings_list_external_impl : boost::noncopyable {
 public:
+    using posting_type = Posting;
+
+    using iterator = file_stream_iterator<posting_type>;
+
+public:
     postings_list_external_impl(const fs::path& path)
-        : m_accessor()
-        , m_entries(1.0, &m_accessor)
+        : m_entries()
     {
          m_entries.open(path.string());
     }
 
     postings_list_external_impl(postings_list_external_impl&&) = delete;
 
-    using posting_type = Posting;
+    iterator begin() const {
+        return iterator(m_entries, 0);
+    }
+
+    iterator end() const {
+        return iterator(m_entries, size());
+    }
 
     void push_back(const posting_type& value) {
         seek(size());
@@ -68,16 +79,10 @@ public:
         m_entries.truncate(0);
     }
 
-    void set(size_t index, const posting_type& value) {
-        geodb_assert(index < size(), "index must be in range");
-        seek(index);
+    void set(const iterator& pos, const posting_type& value) {
+        geodb_assert(pos.offset() < size(), "index must be in range");
+        seek(pos.offset());
         write(value);
-    }
-
-    posting_type get(size_t index) const {
-        geodb_assert(index < size(), "index must be in range");
-        seek(index);
-        return read();
     }
 
     size_t size() const {
@@ -100,9 +105,7 @@ private:
     }
 
 private:
-    // Using our own instance avoids a memory leak in tpie::file_base_crtp.
-    tpie::default_file_accessor m_accessor;
-    mutable tpie::uncompressed_stream<posting_type> m_entries;
+    mutable tpie::file_stream<posting_type> m_entries;
 };
 
 } // namespace geodb

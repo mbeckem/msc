@@ -20,9 +20,12 @@ void test_internal_external(Func&& f) {
         f(i);
     }
     {
+        tpie::temp_file tmp;
+        block_collection<4096> blocks(tmp.path(), 32);
+
         INFO("external");
         temp_dir dir;
-        inverted_index<external, Lambda> i(external(dir.path()));
+        inverted_index<external, Lambda> i(external(dir.path(), blocks));
         f(i);
     }
 }

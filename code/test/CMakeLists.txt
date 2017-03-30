@@ -3,6 +3,7 @@ set(SOURCES
     bloom_filter.cpp
     bounding_box.cpp
     file_allocator.cpp
+    file_stream_iterator.cpp
     hilbert.cpp
     hybrid_buffer.cpp
     hybrid_map.cpp

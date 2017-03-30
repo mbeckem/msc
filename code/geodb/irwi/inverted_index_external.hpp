@@ -2,9 +2,10 @@
 #define GEODB_IRWI_INVERTED_INDEX_EXTERNAL_HPP
 
 #include "geodb/common.hpp"
+#include "geodb/irwi/block_collection.hpp"
 #include "geodb/irwi/inverted_index.hpp"
 #include "geodb/irwi/postings_list.hpp"
-#include "geodb/irwi/postings_list_external.hpp"
+#include "geodb/irwi/postings_list_blocks.hpp"
 #include "geodb/utility/as_const.hpp"
 #include "geodb/utility/raw_stream.hpp"
 #include "geodb/utility/shared_values.hpp"
@@ -26,12 +27,14 @@ template<size_t block_size>
 class inverted_index_external {
 private:
     fs::path directory;
+    block_collection<block_size>& list_blocks;
 
 public:
     /// \param directory
     ///     Path to the directory on disk.
-    inverted_index_external(fs::path directory)
+    inverted_index_external(fs::path directory, block_collection<block_size>& list_blocks)
         : directory(std::move(directory))
+        , list_blocks(list_blocks)
     {}
 
 private:
@@ -44,7 +47,7 @@ private:
     template<u32 Lambda>
     movable_adapter<implementation<Lambda>>
     construct() const {
-        return { in_place_t(), directory };
+        return { in_place_t(), directory, list_blocks };
     }
 };
 
@@ -53,14 +56,11 @@ private:
 /// A file allocator is used to allocate a file for each individual label.
 template<size_t block_size, u32 Lambda>
 class inverted_index_external_impl : boost::noncopyable {
-
-    using list_id_type = u64;
-
-    using file_allocator_type = file_allocator<list_id_type>;
+    using list_handle = block_handle<block_size>;
 
     struct value_type {
-        label_type      label_id;   // unique label identifier
-        list_id_type    file;       // points to postings file on disk
+        label_type  label_id;   // unique label identifier
+        list_handle handle;     // points to postings list in the shared storage.
     };
 
     struct key_extract {
@@ -75,13 +75,13 @@ class inverted_index_external_impl : boost::noncopyable {
         tpie::btree_key<key_extract>
     >;
 
-    using list_storage_type = postings_list_external;
+    using list_storage_type = postings_list_blocks<block_size>;
 
 public:
     using list_type = postings_list<list_storage_type, Lambda>;
 
 private:
-    using list_instances_type = shared_instances<list_id_type, list_type>;
+    using list_instances_type = shared_instances<list_handle, list_type>;
 
 public:
     // ----------------------------------------
@@ -109,19 +109,19 @@ public:
 
     iterator_type create(label_type label) {
         // Insert does not return an iterator..
-        list_id_type list = m_alloc.alloc();
-        m_btree.insert(value_type{label, list});
+        list_handle handle = create_list();
+        m_btree.insert(value_type{label, handle});
         return m_btree.find(label);
     }
 
     list_ptr list(iterator_type iter) {
         geodb_assert(iter != m_btree.end(), "dereferencing invalid iterator");
-        return open_list(iter->file);
+        return open_list(iter->handle);
     }
 
     const_list_ptr const_list(iterator_type iter) const {
         geodb_assert(iter != m_btree.end(), "dereferencing invalid iterator");
-        return open_list(iter->file);
+        return open_list(iter->handle);
     }
 
     list_ptr total_list() {
@@ -137,10 +137,10 @@ public:
     }
 
 public:
-    inverted_index_external_impl(const fs::path& directory)
+    inverted_index_external_impl(const fs::path& directory, block_collection<block_size>& list_blocks)
         : m_directory(directory)
+        , m_list_blocks(list_blocks)
         , m_btree((directory / "index.btree").string())
-        , m_alloc(ensure_directory(directory / "postings_lists"))
     {
         // Restore the pointer to the `total` postings list or
         // create it if it didn't exist.
@@ -148,7 +148,7 @@ public:
         if (rf.try_open(state_path())) {
             rf.read(m_total);
         } else {
-            m_total = m_alloc.alloc();
+            m_total = create_list();
         }
     }
 
@@ -163,30 +163,38 @@ private:
         return m_directory / "index.state";
     }
 
-    const_list_ptr open_list(list_id_type id) const {
-        return m_lists.open(id, [&]{
-            fs::path p = m_alloc.path(id);
-            return list_type(list_storage_type(std::move(p)));
+    list_handle create_list() {
+        list_handle handle = m_list_blocks.get_free_block();
+        // Create a new list instance the initialize the base page.
+        list_type(list_storage_type(m_list_blocks, handle, true));
+        return handle;
+    }
+
+    const_list_ptr open_list(list_handle handle) const {
+        return m_lists.open(handle, [&]{
+            // False: restore previous instance.
+            return list_type(list_storage_type(m_list_blocks, handle, false));
         });
     }
 
-    list_ptr open_list(list_id_type id) {
-        return m_lists.convert(as_const(this)->open_list(id));
+    list_ptr open_list(list_handle handle) {
+        return m_lists.convert(as_const(this)->open_list(handle));
     }
 
 private:
     /// Path to the inverted index directory on disk.
     fs::path m_directory;
 
+    /// Block collection for postings list, shared between all nodes.
+    /// The btree of this index maps labels to their lists' base blocks.
+    block_collection<block_size>& m_list_blocks;
+
     /// The btree maps labels to their postings list.
     map_type m_btree;
 
-    /// Used to allocate new postings lists.
-    file_allocator_type m_alloc;
-
     /// Pointer to the postings list that contains index information
     /// about all units (i.e. independent of their label).
-    list_id_type m_total = 0;
+    list_handle m_total = 0;
 
     /// Collection of opened posting lists.
     mutable list_instances_type m_lists;

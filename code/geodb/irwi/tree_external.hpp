@@ -1,9 +1,11 @@
 #ifndef GEODB_IRWI_TREE_EXTERNAL_HPP
 #define GEODB_IRWI_TREE_EXTERNAL_HPP
 
+#include "geodb/common.hpp"
 #include "geodb/hybrid_buffer.hpp"
 #include "geodb/hybrid_map.hpp"
 #include "geodb/irwi/base.hpp"
+#include "geodb/irwi/block_collection.hpp"
 #include "geodb/irwi/block_handle.hpp"
 #include "geodb/irwi/inverted_index.hpp"
 #include "geodb/irwi/inverted_index_external.hpp"
@@ -314,7 +316,8 @@ public:
     tree_external_impl(const fs::path& directory)
         : m_directory(directory)
         , m_index_alloc(ensure_directory(directory / "inverted_index"))
-        , m_blocks((directory / "tree.blocks").string(), block_size, 32, true)
+        , m_blocks((directory / "tree.blocks").string(), 32)
+        , m_lists_blocks((directory / "postings.blocks").string(), 32)
     {
         raw_stream rf;
         if (rf.try_open(state_path())) {
@@ -393,7 +396,7 @@ private:
     const_index_ptr open_index(index_id_type id) const {
         return m_indexes.open(id, [&]{
             fs::path p = m_index_alloc.path(id);
-            return index_type(index_storage(std::move(p)));
+            return index_type(index_storage(std::move(p), m_lists_blocks));
         });
     }
 
@@ -423,8 +426,11 @@ private:
     /// Allocator for inverted-index directories.
     mutable directory_allocator_type m_index_alloc;
 
-    /// Block cache for rtree nodes.
-    mutable tpie::blocks::block_collection_cache m_blocks;
+    /// Block collection for rtree nodes.
+    mutable block_collection<block_size> m_blocks;
+
+    /// Block collection for postings lists.
+    mutable block_collection<block_size> m_lists_blocks;
 
     /// Collection of opened index instances.
     mutable index_instances_type m_indexes;

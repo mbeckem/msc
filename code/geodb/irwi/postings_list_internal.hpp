@@ -36,6 +36,12 @@ class postings_list_internal_impl {
 public:
     using posting_type = Posting;
 
+    using iterator = typename std::vector<posting_type>::const_iterator;
+
+    iterator begin() const { return m_entries.begin(); }
+
+    iterator end() const { return m_entries.end(); }
+
     void push_back(const posting_type& value) {
         m_entries.push_back(value);
     }
@@ -49,14 +55,10 @@ public:
         m_entries.clear();
     }
 
-    void set(size_t index, const posting_type& value) {
-        geodb_assert(index < size(), "index must be in range");
+    void set(const iterator& pos, const posting_type& value) {
+        geodb_assert(pos != end(), "writing to the end iterator");
+        size_t index = pos - begin();
         m_entries[index] = value;
-    }
-
-    posting_type get(size_t index) const {
-        geodb_assert(index < size(), "index must be in range");
-        return m_entries[index];
     }
 
     size_t size() const {

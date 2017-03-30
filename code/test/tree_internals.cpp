@@ -171,7 +171,7 @@ TEST_CASE("inserting a leaf node", "[tree-internals]") {
 
     auto list = iter->postings_list();
     REQUIRE(list->size() == 1);
-    REQUIRE(list->get(0).count() == 2);
+    REQUIRE(list->begin()->count() == 2);
 }
 
 TEST_CASE("inserting a subtree with larger height", "[tree-internals]") {

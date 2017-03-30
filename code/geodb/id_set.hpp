@@ -14,7 +14,7 @@ using id_set = static_interval_set<u64, Lambda>;
 
 template<u32 Lambda>
 struct id_set_binary {
-    size_t size;
+    size_t size = 0;
     interval<u64> intervals[Lambda];
 };
 
