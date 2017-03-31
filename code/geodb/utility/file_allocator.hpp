@@ -7,6 +7,9 @@
 
 #include <boost/noncopyable.hpp>
 
+/// \file
+/// A class that allocates free file ids on disk.
+
 namespace geodb {
 
 /// An allocator for files in a user provided directory.

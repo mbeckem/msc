@@ -190,6 +190,10 @@ std::vector<vec2> create_skewed_points(size_t count) {
 
     std::vector<vec2> points(count);
 
+    // A point on the circle determined by a random radius
+    // and a random arc.
+    // Thus, the density of points will be hightest at the center
+    // and will become lower with increasing distance.
     auto gen_circle = [&](const vec2& center, double radius) {
         double v = get_random() * 2 * M_PI;
         double r = get_random() * radius;

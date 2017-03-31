@@ -18,6 +18,9 @@
 #include <unordered_map>
 #include <vector>
 
+/// \file
+/// Insertion algorithms for IRWI Trees.
+
 namespace geodb {
 
 /// Implements the generic insertion algorithm for IRWI Trees.

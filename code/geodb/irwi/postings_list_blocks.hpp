@@ -9,6 +9,9 @@
 
 #include <boost/noncopyable.hpp>
 
+/// \file
+/// Postings list backend for shared block storage.
+
 namespace geodb {
 
 template<size_t block_size>

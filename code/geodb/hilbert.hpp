@@ -6,6 +6,9 @@
 
 #include <bitset>
 
+/// \file
+/// Contains an implementation of hilbert indices.
+
 namespace geodb {
 
 /// This class template implements the hilbert curve, or,

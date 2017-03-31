@@ -7,6 +7,9 @@
 
 #include <type_traits>
 
+/// \file
+/// Wrapper class that makes non-movable objects movable.
+
 namespace geodb {
 
 template<typename T, typename Enable = void>

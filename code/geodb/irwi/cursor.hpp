@@ -11,6 +11,9 @@
 
 #include <vector>
 
+/// \file
+/// A cursor can be used to visit the nodes of a tree.
+
 namespace geodb {
 
 /// A class used for navigation through the structure of a tree.

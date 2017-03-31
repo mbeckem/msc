@@ -11,6 +11,9 @@
 #include <boost/noncopyable.hpp>
 #include <tpie/stack.h>
 
+/// \file
+/// An allocator that hands out free ids.
+
 namespace geodb {
 
 /// An allocator for unique numeric IDs.

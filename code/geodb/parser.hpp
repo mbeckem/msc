@@ -11,6 +11,9 @@
 #include <stdexcept>
 #include <vector>
 
+/// \file
+/// Contains a parser for the GeoLife dataset.
+
 namespace geodb {
 
 class parse_error : public std::runtime_error {

@@ -5,6 +5,9 @@
 
 #include <type_traits>
 
+/// \file
+/// Contains some extended type traits.
+
 namespace geodb {
 
 // http://en.cppreference.com/w/cpp/types/conjunction
@@ -14,11 +17,11 @@ template<class B1, class... Bn>
 struct conjunction<B1, Bn...>
     : std::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
 
+/// True iff `T` is a specialization of `Template`, i.e. `T == Template<Args...>`
+/// for some Args.
 template <template <typename...> class Template, typename T>
 struct is_specialization_of;
 
-/// True iff `T` is a specialization of `Template`, i.e. `T == Template<Args...>`
-/// for some Args.
 template <template <typename...> class Template, typename T>
 struct is_specialization_of : std::false_type {};
 

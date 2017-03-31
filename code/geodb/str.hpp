@@ -11,6 +11,9 @@
 #include <cmath>
 #include <tuple>
 
+/// \file
+/// Contains the implementation of the Sort-Tile-Recursive algorithm.
+
 namespace geodb {
 
 /// Implements the Sort Tile Recursive algorithm for

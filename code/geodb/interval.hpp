@@ -9,6 +9,9 @@
 #include <algorithm>
 #include <ostream>
 
+/// \file
+/// Contains a basic interval type.
+
 namespace geodb {
 
 /// An interval `[begin, end]` of integers.

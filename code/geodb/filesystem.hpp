@@ -5,6 +5,9 @@
 
 #include <boost/filesystem.hpp>
 
+/// \file
+/// Contains file system functionality.
+
 namespace geodb {
 
 namespace fs = boost::filesystem;

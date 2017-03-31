@@ -14,6 +14,10 @@
 #include <map>
 #include <unordered_set>
 
+/// \file
+/// The node splitting algorithm used by the IRWI Tree (when inserting
+/// elements one-by-one).
+
 namespace geodb {
 
 /// Implements the generic node splitting algorithm for IRWI trees.

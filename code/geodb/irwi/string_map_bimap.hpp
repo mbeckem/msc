@@ -8,6 +8,10 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
 
+/// \file
+/// Contains the definition of the internal data structure
+/// used by \ref string_map.
+
 namespace geodb {
 
 namespace string_map_bimap_ {

@@ -11,6 +11,9 @@
 #include <tpie/serialization2.h>
 #include <tpie/serialization_stream.h>
 
+/// \file
+/// Common definitions used by different bulk loading strategies.
+
 namespace geodb {
 
 template<typename Tree, typename Derived>

@@ -6,6 +6,9 @@
 
 #include <ostream>
 
+/// \file
+/// Contains the definition of a basic rectangle type.
+
 namespace geodb {
 
 /// Vector should be some subclass of vector_base from vector.hpp.
@@ -15,8 +18,18 @@ public:
     using vector_type = Vector;
 
 public:
+    /// Constructs an empty rectangle by default constructing
+    /// its minimum and maximum corner.
     rect_base() = default;
 
+    /// Constructs a rectangle from the given corner points.
+    ///
+    /// \param min
+    ///     The min corner ("bottom left").
+    /// \param max
+    ///     The max corner ("bottom right").
+    ///
+    /// \pre `min <= max` for all coordinates.
     rect_base(const vector_type& min, const vector_type& max)
         : m_min(min)
         , m_max(max)

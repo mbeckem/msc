@@ -13,6 +13,9 @@
 #include <tpie/btree.h>
 #include <tpie/memory.h>
 
+/// \file
+/// External backend for the inverted index.
+
 namespace geodb {
 
 template<size_t block_size>

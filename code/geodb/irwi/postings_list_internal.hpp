@@ -6,6 +6,9 @@
 
 #include <vector>
 
+/// \file
+/// Stores postings list in internal storage.
+
 namespace geodb {
 
 class postings_list_internal;

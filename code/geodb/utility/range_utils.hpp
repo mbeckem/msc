@@ -9,6 +9,9 @@
 
 #include <type_traits>
 
+/// \file
+/// Utilities for working with ranges.
+
 namespace geodb {
 
 /// Returns a function that, when given an instance of type T,

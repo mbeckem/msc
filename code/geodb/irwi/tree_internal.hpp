@@ -7,6 +7,10 @@
 #include "geodb/irwi/inverted_index.hpp"
 #include "geodb/irwi/inverted_index_internal.hpp"
 
+/// \file
+/// Internal storage backend for IRWI Trees.
+/// Everything is kept in RAM.
+
 namespace geodb {
 
 template<u32 fanout_leaf, u32 fanout_internal = fanout_leaf>

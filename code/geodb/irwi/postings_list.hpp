@@ -11,6 +11,9 @@
 
 #include <vector>
 
+/// \file
+/// Postings lists are a part of the inverted index of every internal node.
+
 namespace geodb {
 
 /// A summary of the entries of a single postings_list.

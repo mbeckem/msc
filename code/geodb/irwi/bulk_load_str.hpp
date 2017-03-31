@@ -18,6 +18,9 @@
 #include <tpie/serialization_stream.h>
 #include <tpie/uncompressed_stream.h>
 
+/// \file
+/// Bulk loading based on the STR algorithm.
+
 namespace geodb {
 
 /// This class implements the STR bulk loading algorithm.

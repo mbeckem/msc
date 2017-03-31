@@ -11,6 +11,9 @@
 #include <map>
 #include <vector>
 
+/// \file
+/// Some generic algorithms.
+
 namespace geodb {
 
 /// Invokes the function `f` for every token in `r`.

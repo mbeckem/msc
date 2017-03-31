@@ -10,6 +10,9 @@
 #include <gsl/span>
 #include <tpie/blocks/block_collection_cache.h>
 
+/// \file
+/// A generic append-only list in external storage.
+
 namespace geodb {
 
 /// A list of `Value` objects in external storage.

@@ -4,6 +4,9 @@
 #include "geodb/common.hpp"
 #include "geodb/type_traits.hpp"
 
+/// \file
+/// Const casting utilities.
+
 namespace geodb {
 
 template<typename T>

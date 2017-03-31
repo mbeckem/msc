@@ -6,6 +6,9 @@
 #include "geodb/rectangle.hpp"
 #include "geodb/vector.hpp"
 
+/// \file
+/// Contains the implementation of a bounding box for IRWI trees.
+
 namespace geodb {
 
 /// A 3-dimensional rectangle that encompasses spatio-temporal objects.

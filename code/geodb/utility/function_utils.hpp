@@ -3,6 +3,9 @@
 
 #include "geodb/common.hpp"
 
+/// \file
+/// Contains generic functional utilities.
+
 namespace geodb {
 
 /// Calls a function a given number of times.

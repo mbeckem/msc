@@ -4,6 +4,9 @@
 #include "geodb/common.hpp"
 #include "geodb/trajectory.hpp"
 
+/// \file
+/// Label / Count pairs are used all over the place.
+
 namespace geodb {
 
 /// A label id and a count of trajectory units.

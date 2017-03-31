@@ -6,6 +6,10 @@
 
 #include <vector>
 
+/// \file
+/// Contains the implementation of Bentley's Algorithm,
+/// which computes the area of the union of a set of rectangles.
+
 namespace geodb {
 
 /// Computes the area of the union of all given 2d rectangles.

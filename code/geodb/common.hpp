@@ -4,6 +4,9 @@
 #include <climits>
 #include <cstdint>
 
+/// \file
+/// Common typedefs and functoins used by this project.
+
 namespace geodb {
 
 static_assert(CHAR_BIT == 8, "Byte width sanity check.");

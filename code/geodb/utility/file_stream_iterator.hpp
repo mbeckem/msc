@@ -6,6 +6,9 @@
 #include <boost/iterator/iterator_facade.hpp>
 #include <tpie/file_stream.h>
 
+/// \file
+/// An iterator for visiting the content of a file stream.
+
 namespace geodb {
 
 /// A random-access iterator over a file stream.

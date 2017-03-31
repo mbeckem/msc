@@ -5,6 +5,9 @@
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 
+/// \file
+/// Date and time utilities.
+
 namespace geodb {
 
 namespace time = boost::posix_time;

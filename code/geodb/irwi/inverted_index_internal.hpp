@@ -6,6 +6,9 @@
 #include "geodb/irwi/postings_list.hpp"
 #include "geodb/irwi/postings_list_internal.hpp"
 
+/// \file
+/// Internal storage backend for the inverted index.
+
 namespace geodb {
 
 class inverted_index_internal_storage;

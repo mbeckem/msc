@@ -8,6 +8,9 @@
 #include <tpie/progress_indicator_base.h>
 #include <tpie/progress_indicator_null.h>
 
+/// \file
+/// Sorting algorithms for external storage. Uses the TPIE library.
+
 namespace geodb {
 
 namespace detail {

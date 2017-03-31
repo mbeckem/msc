@@ -6,12 +6,15 @@
 
 #include <tpie/file_accessor/file_accessor.h>
 
+/// \file
+/// A raw byte stream in external storage.
+
 namespace geodb {
 
-/**
- * A raw file stream.
- * Essentially wraps TPIE's raw file accessor.
- */
+
+/// A raw file stream.
+/// Essentially wraps TPIE's raw file accessor with the added benefit
+/// that it supports the serialization api.
 class raw_stream {
     using stream_size_type = tpie::stream_size_type;
 

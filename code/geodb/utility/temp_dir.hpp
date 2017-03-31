@@ -8,6 +8,9 @@
 
 #include <memory>
 
+/// \file
+/// Temporory files on disk.
+
 namespace geodb {
 
 /// A temporary directory on disk.

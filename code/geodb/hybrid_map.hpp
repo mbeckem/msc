@@ -13,9 +13,12 @@
 #include <map>
 #include <memory>
 
+/// \file
+/// Contains a map that lives either in external or internal storage.
+
 namespace geodb {
 
-namespace map_detail {
+namespace hybrid_map_ {
 
 // Returns a mutable iterator when given a mutable reference to the
 // map and a const iterator.
@@ -25,7 +28,7 @@ mutable_iter(Map& map, typename Map::const_iterator pos) {
     return map.erase(pos, pos);
 }
 
-} // namespace map_detail
+} // namespace hybrid_map_
 
 /// A simple map in internal memory.
 /// Exposes the same interface as \ref external_map and \ref hybrid_map.
@@ -123,7 +126,7 @@ public:
     /// Replaces the value at the given iterator.
     /// The key remains the same.
     void replace(iterator pos, const Value& value) {
-        map_detail::mutable_iter(m_map, pos.inner())->second = value;
+        hybrid_map_::mutable_iter(m_map, pos.inner())->second = value;
     }
 
     /// Returns the number of items in this map.

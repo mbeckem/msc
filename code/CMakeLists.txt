@@ -10,7 +10,7 @@ option(USE_BLOOM "Use bloom filters instead of interval sets in the inverted ind
 
 # Release build by default.
 if(NOT CMAKE_BUILD_TYPE)
-    message("Defaulting to \"Release\" build type")
+    message(STATUS "Defaulting to \"Release\" build type.")
     set(CMAKE_BUILD_TYPE "Release"
         CACHE STRING
         "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel Profile."
@@ -43,6 +43,7 @@ if ((CMAKE_CXX_COMPILER_ID MATCHES "GNU") OR (CMAKE_CXX_COMPILER_ID MATCHES "Cla
 endif()
 
 if ((CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND (CMAKE_BUILD_TYPE STREQUAL "Release"))
+    message(STATUS "Link time optimization is enabled.")
     set(CMAKE_AR "gcc-ar")
     set(CMAKE_RANLIB "gcc-ranlib")
     set(CMAKE_NM "gcc-nm")
@@ -59,6 +60,7 @@ else()
 endif()
 
 include(deps/Dependencies.cmake)
+add_subdirectory(doc)
 add_subdirectory(geodb)
 add_subdirectory(cmd)
 add_subdirectory(test)

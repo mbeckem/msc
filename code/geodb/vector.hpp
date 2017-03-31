@@ -11,6 +11,9 @@
 #include <ostream>
 #include <tuple>
 
+/// \file
+/// A generic implementation of n-dimensional vectors.
+
 namespace geodb {
 
 namespace detail {

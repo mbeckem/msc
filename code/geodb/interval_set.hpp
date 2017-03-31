@@ -24,6 +24,9 @@
 #include <queue>
 #include <vector>
 
+/// \file
+/// Implements a compact set based on sorted, non-overlapping intervals.
+
 namespace geodb {
 
 namespace detail {

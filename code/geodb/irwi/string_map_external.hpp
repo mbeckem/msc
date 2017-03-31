@@ -9,6 +9,9 @@
 #include <boost/noncopyable.hpp>
 #include <tpie/file_stream.h>
 
+/// \file
+/// Backend for external storage.
+
 namespace geodb {
 
 class string_map_external;

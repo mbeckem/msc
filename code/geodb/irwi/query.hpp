@@ -8,6 +8,9 @@
 #include <unordered_set>
 #include <vector>
 
+/// \file
+/// Contains definitions related to IRWI Tree queries.
+
 namespace geodb {
 
 struct simple_query {

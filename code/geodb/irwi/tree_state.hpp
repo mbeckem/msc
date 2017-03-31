@@ -12,6 +12,11 @@
 
 #include <limits>
 
+/// \file
+/// The tree state bundles all runtime state of a tree.
+/// It exposes every to the different tree algorithms
+/// and bulk loading strategies.
+
 namespace geodb {
 
 /// A tree_state contains the basic state of a tree, including its storage.

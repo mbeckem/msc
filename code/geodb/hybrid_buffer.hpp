@@ -7,6 +7,9 @@
 #include <boost/variant.hpp>
 #include <tpie/file_stream.h>
 
+/// \file
+/// Contains a buffer that lives either in internal or external storage.
+
 namespace geodb {
 
 /// A simple buffer in internal memory.

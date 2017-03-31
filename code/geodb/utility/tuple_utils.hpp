@@ -8,6 +8,9 @@
 #include <type_traits>
 #include <utility>
 
+/// \file
+/// Helper functions for working with tuples.
+
 namespace geodb {
 
 namespace detail {

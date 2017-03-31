@@ -8,6 +8,9 @@
 #include <boost/noncopyable.hpp>
 #include <boost/iterator/iterator_adaptor.hpp>
 
+/// \file
+/// Maps labels to unique indices (both directions).
+
 namespace geodb {
 
 struct label_mapping {

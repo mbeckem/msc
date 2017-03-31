@@ -10,6 +10,10 @@
 #include <boost/noncopyable.hpp>
 #include <tpie/file_stream.h>
 
+/// \file
+/// Postings list backend for external storage.
+/// Every postings list is stored in its own file.
+
 namespace geodb {
 
 class postings_list_external;

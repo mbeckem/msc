@@ -11,6 +11,9 @@
 #include <array>
 #include <ostream>
 
+/// \file
+/// Contains a bloom filter implementation.
+
 namespace geodb {
 
 std::array<u64, 2> murmur3(const u8* data, size_t size);

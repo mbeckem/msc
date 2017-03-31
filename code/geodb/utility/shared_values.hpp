@@ -11,6 +11,9 @@
 
 #include <type_traits>
 
+/// \file
+/// A class that keeps track of (and reuses) its opened instances.
+
 namespace geodb {
 
 namespace shared_instances_ {

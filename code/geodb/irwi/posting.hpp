@@ -5,6 +5,10 @@
 #include "geodb/id_set.hpp"
 #include "geodb/trajectory.hpp"
 
+/// \file
+/// Contains the definition of the \ref posting class,
+/// which is used in \ref postings_list.
+
 namespace geodb {
 
 /// Identifies child entries of an internal node (by index).

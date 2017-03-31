@@ -17,6 +17,9 @@
 #include <unordered_map>
 #include <vector>
 
+/// \file
+/// The inverted index used by every internal node of an IRWI Tree.
+
 namespace geodb {
 
 /// An inverted file belongs to an internal node of the IRWI tree.

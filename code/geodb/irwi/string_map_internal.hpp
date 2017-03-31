@@ -3,6 +3,9 @@
 
 #include "geodb/irwi/string_map_bimap.hpp"
 
+/// \file
+/// Backend for internal storage.
+
 namespace geodb {
 
 class string_map_internal;

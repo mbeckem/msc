@@ -6,6 +6,9 @@
 #include "geodb/bounding_box.hpp"
 #include "geodb/trajectory.hpp"
 
+/// \file
+/// Common definitions used by the tree classes and algorithms.
+
 namespace geodb {
 
 template<typename StorageSpec, u32 Lambda>

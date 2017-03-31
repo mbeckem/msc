@@ -25,6 +25,9 @@
 #include <map>
 #include <ostream>
 
+/// \file
+/// Contains the main IRWI Tree class.
+
 namespace geodb {
 
 /// An IRWI Tree stores spatio-textual trajectories.

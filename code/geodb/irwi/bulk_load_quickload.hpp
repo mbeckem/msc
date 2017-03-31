@@ -26,6 +26,9 @@
 
 #include <unordered_map>
 
+/// \file
+/// Contains an implemention of the quickload algorithm.
+
 namespace geodb {
 
 /// A quick_load_tree is a small, in-memory version of an IRWI tree.

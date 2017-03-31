@@ -11,6 +11,9 @@
 #include <string>
 #include <vector>
 
+/// \file
+/// Classes representing trajectories.
+
 namespace geodb {
 
 using label_type = u32;

@@ -7,6 +7,9 @@
 
 #include <tpie/blocks/block_collection_cache.h>
 
+/// \file
+/// A collection of blocks on disk.
+
 namespace geodb {
 
 /// A block file that hands out blocks of the given BlockSize.
@@ -20,7 +23,7 @@ public:
 public:
     /// A block collection at the given file system location
     /// with the specified cache size.
-    block_collection(const fs::path& path, size_t max_cache)
+    block_collection(const fs::path& path, size_t max_cache = 32)
         : m_blocks(path.string(), BlockSize, std::max(max_cache, size_t(4)), true)
     {}
 

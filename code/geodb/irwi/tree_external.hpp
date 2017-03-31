@@ -19,6 +19,9 @@
 #include <fmt/format.h>
 #include <tpie/blocks/block_collection_cache.h>
 
+/// \file
+/// External storage backend for IRWI Trees.
+
 namespace geodb {
 
 template<size_t block_size, size_t fanout_leaf = 0, size_t fanout_internal = fanout_leaf>

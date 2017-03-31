@@ -11,8 +11,16 @@
 #include <tpie/file_stream.h>
 #include <tpie/serialization_stream.h>
 
+/// \file
+/// Bulk loading based on hilbert values.
+
 namespace geodb {
 
+/// The hilbert_loader loads a set of entries into a tree by
+/// sorting them by their hilbert value first (see \ref hilbert_curve).
+/// Entries are then visited in linear order to form leaf nodes,
+/// which in turn are packed together into internal nodes until
+/// only the root remains.
 template<typename Tree>
 class hilbert_loader : public bulk_load_common<Tree, hilbert_loader<Tree>> {
     using common_t = typename hilbert_loader::bulk_load_common;

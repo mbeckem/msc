@@ -5,11 +5,14 @@
 
 #include <tpie/blocks/block.h>
 
+/// \file
+/// A handle to a block on disk, using in conjunction with \ref block_collection.
+
 namespace geodb {
 
-/// block sizes are always the same.
-/// the IRWI block_handle class wastes space by
-/// additionaly storing the block size.
+/// A handle to a block with a size determined at compile time.
+/// This saves us space on disk because the size does not have
+/// to be stored in the file.
 template<size_t block_size>
 struct block_handle {
     // for serialization support.
@@ -34,6 +37,7 @@ public:
         geodb_assert(h.size == block_size, "block must have the correct size");
     }
 
+    /// Returns the index of the block.
     constexpr u64 index() const {
         return m_index;
     }

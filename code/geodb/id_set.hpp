@@ -5,6 +5,12 @@
 #include "geodb/common.hpp"
 #include "geodb/interval_set.hpp"
 
+/// \file
+/// Defines the id set class used by this project.
+///
+/// Uses either the interval set or the bloom filter,
+/// depending on preprocessor flags.
+
 namespace geodb {
 
 #if defined(GEODB_ID_SET_INTERVALS)
