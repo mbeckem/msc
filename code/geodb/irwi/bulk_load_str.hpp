@@ -2,6 +2,7 @@
 #define GEODB_IRWI_BULK_LOAD_STR
 
 #include "geodb/common.hpp"
+#include "geodb/str.hpp"
 #include "geodb/irwi/base.hpp"
 #include "geodb/irwi/bulk_load_common.hpp"
 #include "geodb/irwi/tree.hpp"
@@ -132,55 +133,13 @@ private:
         // The order of the comparison object defines the tiling order.
         switch (m_mode) {
         case sort_mode::label_first:
-            sort_recursive(input, 0, input.size(),
-                           cmp_label(), cmp_x(), cmp_y(), cmp_t());
+            sort_tile_recursive(input, m_leaf_size, cmp_label(), cmp_x(), cmp_y(), cmp_t());
             break;
         case sort_mode::label_last:
-            sort_recursive(input, 0, input.size(),
-                           cmp_x(), cmp_y(), cmp_t(), cmp_label());
+            sort_tile_recursive(input, m_leaf_size, cmp_x(), cmp_y(), cmp_t(), cmp_label());
             break;
         }
     }
-
-    // Base case for template recursion to make the compiler happy.
-    void sort_recursive(tpie::file_stream<tree_entry>& input, tpie::stream_size_type offset, tpie::stream_size_type size) {
-        unused(input, offset, size);
-    }
-
-    /// Recursively sort the input file using the given comparators.
-    template<typename Comp, typename... Comps>
-    void sort_recursive(tpie::file_stream<tree_entry>& input,
-                        const tpie::stream_size_type offset,
-                        const tpie::stream_size_type size,
-                        Comp&& comp, Comps&&... comps) {
-        constexpr size_t dimension = sizeof...(Comps) + 1;
-
-        // Sort the input file using the current comp.
-        external_sort(input, offset, size, comp);
-
-        if (dimension > 1) {
-            // Divide the input file into slabs and sort those.
-            const tpie::stream_size_type P = (size + m_leaf_size - 1) / m_leaf_size;
-            const tpie::stream_size_type S = std::max(1.0, std::pow(P, double(dimension - 1) / double(dimension)));
-            const tpie::stream_size_type slab_size = m_leaf_size * S;
-
-            // Number of processed / remaining items.
-            tpie::stream_size_type slab_start = offset;
-            tpie::stream_size_type remaining = size;
-
-            // Recursivly visit the child slabs.
-            while (remaining) {
-                const size_t count = std::min(remaining, slab_size);
-
-                // Recursive sort.
-                sort_recursive(input, slab_start, count, comps...);
-
-                remaining -= count;
-                slab_start += count;
-            }
-        }
-    }
-
 
     /// Takes chunks of size `m_leaf_size` items and packs them into leaf nodes.
     /// References to these nodes (and their summary) are written to `refs`.

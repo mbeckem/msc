@@ -1,0 +1,2 @@
+add_executable(algorithm_examples main.cpp)
+target_link_libraries(algorithm_examples common)

@@ -30,7 +30,13 @@ void enumerate_impl(F&& f, std::index_sequence<I...>) {
     unused(ignored);
 }
 
-}  // namespace detail
+template<typename F, typename Tuple, std::size_t... I>
+decltype(auto) apply_impl(F&& f, Tuple&& tuple, std::index_sequence<I...>) {
+    return std::forward<F>(f)(std::get<I>(std::forward<Tuple>(tuple))...);
+}
+
+
+} // namespace detail
 
 
 /// Iterate over the elements of a tuple.
@@ -50,6 +56,16 @@ template<size_t size, typename F>
 void enumerate(F&& f) {
     return detail::enumerate_impl(
         std::forward<F>(f), std::make_index_sequence<size>());
+}
+
+/// Call a function by unpacking the tuple into function arguments.
+/// Returns the result of the function call.
+template<typename F, typename Tuple,
+         std::enable_if_t<is_specialization_of<std::tuple, Tuple>::value>* = nullptr>
+decltype(auto) apply(F&& f, Tuple&& tuple) {
+    return detail::apply_impl(
+            std::forward<F>(f), std::forward<Tuple>(tuple),
+            std::make_index_sequence<std::tuple_size<std::decay_t<Tuple>>::value>{});
 }
 
 } // namespace geodb

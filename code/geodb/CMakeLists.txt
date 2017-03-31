@@ -25,6 +25,7 @@ set(HEADERS
     klee.hpp
     parser.hpp
     rectangle.hpp
+    str.hpp
     trajectory.hpp
     type_traits.hpp
     vector.hpp

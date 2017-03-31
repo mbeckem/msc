@@ -1,6 +1,7 @@
 #include "common/common.hpp"
 
 #include "geodb/hilbert.hpp"
+#include "geodb/str.hpp"
 
 #include <boost/program_options.hpp>
 #include <fmt/format.h>
@@ -18,6 +19,7 @@ using std::cerr;
 using std::endl;
 using std::flush;
 
+static std::string algorithm;
 static u32 seed;
 static u32 num_points;
 static u32 leaf_size;
@@ -93,15 +95,17 @@ void parse_options(int argc, char** argv) {
     options.add_options()
             ("points,p", po::value(&num_points)->default_value(1000),
              "The number of generated points.")
-            ("leaf-size,l", po::value(&leaf_size)->default_value(64),
-             "The number of entries per leaf.")
-            ("heuristic", po::bool_switch(&heuristic),
-             "Enable the leaf size heuristic.")
             ("skewed,s", po::bool_switch(&skewed)->default_value(false),
              "If false, generates uniformly distributed points in [0, 1]x[0, 1}. "
              "If true, the point set will be skewed instead.")
             ("seed", po::value(&seed),
              "The seed used by the random number generator. Defaults to a truly random seed.")
+            ("algorithm", po::value(&algorithm),
+             "The leaf packing algorithm. Either \"hilbert\" or \"str\".")
+            ("leaf-size,l", po::value(&leaf_size)->default_value(64),
+             "The number of entries per leaf.")
+            ("heuristic", po::bool_switch(&heuristic),
+             "Enable the leaf size heuristic (hilbert only).")
             ("help,h", "Show this message.");
 
     po::variables_map vm;
@@ -149,6 +153,13 @@ u64 index(const vec2& p) {
 
     curve::point_t point{map_coord(p.x), map_coord(p.y)};
     return curve::hilbert_index(point);
+}
+
+/// Sorts the points by their hilbert index.
+void sort_hilbert(std::vector<vec2>& points) {
+    std::sort(points.begin(), points.end(), [](const vec2& a, const vec2& b) {
+        return index(a) < index(b);
+    });
 }
 
 /// Returns a random value in [0, 1].
@@ -216,8 +227,11 @@ box2 get_bounding_box(Iter first, Iter last) {
     return box;
 }
 
-std::vector<leaf> create_leaves(const std::vector<vec2>& points, size_t leaf_size) {
+
+std::vector<leaf> create_hilbert_leaves(std::vector<vec2>& points, size_t leaf_size) {
     geodb_assert(leaf_size > 1, "invalid leaf size");
+
+    sort_hilbert(points);
 
     std::vector<leaf> leaves;
 
@@ -236,8 +250,10 @@ std::vector<leaf> create_leaves(const std::vector<vec2>& points, size_t leaf_siz
     return leaves;
 }
 
-std::vector<leaf> create_leaf_heuristic(const std::vector<vec2>& points, size_t leaf_size) {
+std::vector<leaf> create_hilbert_leaves_heuristic(std::vector<vec2>& points, size_t leaf_size) {
     geodb_assert(leaf_size > 1, "invalid leaf size");
+
+    sort_hilbert(points);
 
     static constexpr double max_grow = 1.2;
 
@@ -276,6 +292,33 @@ std::vector<leaf> create_leaf_heuristic(const std::vector<vec2>& points, size_t 
     return leaves;
 }
 
+std::vector<leaf> create_str_leaves(std::vector<vec2>& points, size_t leaf_size) {
+    geodb_assert(leaf_size > 1, "invalid leaf size");
+
+    auto cmp_x = [](const vec2& a, const vec2& b) {
+        return a.x < b.x;
+    };
+    auto cmp_y = [](const vec2& a, const vec2& b) {
+        return a.y < b.y;
+    };
+    sort_tile_recursive(points, leaf_size, cmp_x, cmp_y);
+
+    std::vector<leaf> leaves;
+
+    auto pos = points.begin();
+    auto end = points.end();
+    while (pos != end) {
+        size_t count = std::min(leaf_size, size_t(end - pos));
+
+        leaf l;
+        l.mbb = get_bounding_box(pos, pos + count);
+        l.points.assign(pos, pos + count);
+        leaves.push_back(std::move(l));
+
+        pos += count;
+    }
+    return leaves;
+}
 
 int main(int argc, char** argv) {
     return tpie_main([&]{
@@ -286,15 +329,19 @@ int main(int argc, char** argv) {
                 ? create_skewed_points(num_points)
                 : create_points(num_points);
 
-        // Sort them by their hilbert value.
-        std::sort(points.begin(), points.end(), [](const vec2& a, const vec2& b) {
-            return index(a) < index(b);
-        });
-
         // Iterate over the sorted points and create leaf nodes.
-        std::vector<leaf> leaves = heuristic
-                ? create_leaf_heuristic(points, leaf_size)
-                : create_leaves(points, leaf_size);
+        std::vector<leaf> leaves = [&] {
+            if (algorithm == "hilbert") {
+                return heuristic
+                        ? create_hilbert_leaves_heuristic(points, leaf_size)
+                        : create_hilbert_leaves(points, leaf_size);
+            } else if (algorithm == "str") {
+                return create_str_leaves(points, leaf_size);
+            } else {
+                fmt::print(cerr, "Invalid algorithm: {}.\n", algorithm);
+                throw exit_main(1);
+            }
+        }();
 
         json result = {
             {"leaves", leaves},
