@@ -36,6 +36,7 @@ static size_t max_leaves;
 static float beta;
 static string stats_file;
 static boost::optional<u64> limit;
+static std::string tmp;
 
 void parse_options(int argc, char** argv);
 
@@ -48,6 +49,11 @@ algorithm_type get_algorithm();
 int main(int argc, char** argv) {
     return tpie_main([&]{
         parse_options(argc, argv);
+
+        if (!tmp.empty()) {
+            fmt::print(cout, "Using tmp dir {}.\n", tmp);
+            tpie::tempname::set_default_path(tmp);
+        }
 
         fmt::print(cout, "Opening tree at {} with beta {}.\n", tree_path, beta);
 
@@ -126,7 +132,9 @@ void parse_options(int argc, char** argv) {
             ("stats", po::value(&stats_file)->value_name("FILE"),
              "Output path for stats in json format.")
             ("limit,n", po::value<u64>()->value_name("N"),
-             "Only insert the first N entries.");
+             "Only insert the first N entries.")
+            ("tmp", po::value(&tmp)->value_name("PATH"),
+             "Override the default temp directory.");
 
     po::variables_map vm;
     try {

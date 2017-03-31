@@ -153,11 +153,18 @@ static QString get_type(const external_tree::cursor& node) {
     return "Internal";
 }
 
+static QString get_mbb(const external_tree::cursor& node) {
+    std::stringstream ss;
+    ss << node.mbb();
+    return QString::fromStdString(ss.str());
+}
+
 void TreeDisplay::refreshNode() {
     if (m_current) {
         ui->nodeIdText->setText(QString::number(m_current->id()));
         ui->nodeTypeText->setText(get_type(*m_current));
         ui->nodePathText->setText(get_path(*m_current));
+        ui->nodeMbbText->setText(get_mbb(*m_current));
 
         ui->parentButton->setEnabled(m_current->has_parent());
         ui->rootButton->setEnabled(!m_current->is_root());
@@ -166,6 +173,7 @@ void TreeDisplay::refreshNode() {
         ui->nodeIdText->setText("N/A");
         ui->nodeTypeText->setText("N/A");
         ui->nodePathText->setText("N/A");
+        ui->nodeMbbText->setText("N/A");
 
         ui->parentButton->setEnabled(false);
         ui->rootButton->setEnabled(false);

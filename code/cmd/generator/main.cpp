@@ -103,7 +103,6 @@ static label_type label(label_type last) {
     return last;
 }
 
-
 /// Generates a single trajectory as a random walk with `size` trajectory units.
 static void generate_walk(u64 id, u32 size, tpie::file_stream<tree_entry>& out) {
     if (size == 0)
