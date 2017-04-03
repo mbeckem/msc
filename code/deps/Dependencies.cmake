@@ -25,6 +25,7 @@ ExternalProject_Add(project_fmt
                 -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
                 -DFMT_DOC=0
                 -DFMT_TEST=0
+    EXCLUDE_FROM_ALL 1
 )
 
 ExternalProject_Get_Property(project_fmt INSTALL_DIR)
@@ -44,6 +45,7 @@ ExternalProject_add(project_tpie
     CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release
                 -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
                 -DCOMPILE_TEST=0
+    EXCLUDE_FROM_ALL 1
 )
 
 ExternalProject_Get_Property(project_tpie INSTALL_DIR)
@@ -67,6 +69,23 @@ find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets OpenGL)
 
 ### openscenegraph
 find_package(OpenSceneGraph REQUIRED COMPONENTS osgDB osgGA osgUtil osgViewer)
-add_library(osg INTERFACE)
-target_include_directories(osg SYSTEM INTERFACE "${OPENSCENEGRAPH_INCLUDE_DIRS}")
-target_link_libraries(osg INTERFACE "${OPENSCENEGRAPH_LIBRARIES}")
+if (OPENSCENEGRAPH_FOUND)
+    add_library(osg INTERFACE)
+    target_include_directories(osg SYSTEM INTERFACE "${OPENSCENEGRAPH_INCLUDE_DIRS}")
+    target_link_libraries(osg INTERFACE "${OPENSCENEGRAPH_LIBRARIES}")
+endif()
+
+### osrm (openstreetmaps)
+ExternalProject_Add(project_osrm
+    SOURCE_DIR  "${DEPS_SOURCE_DIR}/osrm"
+    PREFIX      "${DEPS_BINARY_DIR}/osrm"
+    CMAKE_ARGS  -DCMAKE_BUILD_TYPE=Release
+                -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+    EXCLUDE_FROM_ALL 1
+)
+
+ExternalProject_Get_Property(project_osrm INSTALL_DIR)
+add_library(osrm INTERFACE)
+add_dependencies(osrm project_osrm)
+target_include_directories(osrm SYSTEM INTERFACE "${INSTALL_DIR}/include")
+target_link_libraries(osrm INTERFACE "${INSTALL_DIR}/lib/libosrm.a")
