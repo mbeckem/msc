@@ -4,4 +4,4 @@ if (NOT BUILD_OSM)
 endif()
 
 add_executable(osm_generator main.cpp)
-target_link_libraries(osm_generator common osrm)
+target_link_libraries(osm_generator osrm common)

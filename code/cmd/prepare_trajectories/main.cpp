@@ -29,7 +29,7 @@ void parse_options(int argc, char** argv);
 int main(int argc, char** argv) {
     return tpie_main([&]{
         parse_options(argc, argv);
-        labels_map label_map{string_map_external(labels)};
+        external_string_map label_map{string_map_external(labels)};
 
         tpie::serialization_writer out;
         out.open(output);

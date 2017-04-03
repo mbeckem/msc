@@ -2,6 +2,8 @@
 #define COMMON_COMMON_HPP
 
 #include "geodb/common.hpp"
+#include "geodb/irwi/string_map.hpp"
+#include "geodb/irwi/string_map_external.hpp"
 #include "geodb/irwi/tree.hpp"
 #include "geodb/irwi/tree_external.hpp"
 
@@ -36,6 +38,8 @@ using external_storage = geodb::tree_external<block_size>;
 
 extern template class geodb::tree<external_storage, lambda>;
 using external_tree = geodb::tree<external_storage, lambda>;
+
+using external_string_map = geodb::string_map<geodb::string_map_external>;
 
 /// Initializes the tpie library, calls the function f and deinitializes tpie.
 /// Returns the value returned by `f`, which should be an int.

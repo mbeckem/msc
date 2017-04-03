@@ -34,13 +34,13 @@ struct activity {
 
 struct geolife_parser {
     fs::path path;
-    labels_map& labels;
+    external_string_map& labels;
     tpie::serialization_writer& out;
     tpie::progress_indicator_base& progress;
 
     trajectory_id_type next_id = 1;
 
-    geolife_parser(const fs::path& path, labels_map& labels,
+    geolife_parser(const fs::path& path, external_string_map& labels,
                    tpie::serialization_writer& out,
                    tpie::progress_indicator_base& progress)
         : path(path)
@@ -185,7 +185,7 @@ struct geolife_parser {
 
 } // namespace
 
-void parse_geolife(const fs::path& path, labels_map& labels,
+void parse_geolife(const fs::path& path, external_string_map& labels,
                    tpie::serialization_writer& out,
                    tpie::progress_indicator_base& progress) {
     geolife_parser p(path, labels, out, progress);
