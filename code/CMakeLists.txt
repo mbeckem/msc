@@ -7,6 +7,8 @@ include(Profile)
 
 option(SANITIZE_UNDEFINED "Enable undefined behaviour sanitizer (gnu and clang only)" OFF)
 option(USE_BLOOM "Use bloom filters instead of interval sets in the inverted index" OFF)
+option(BUILD_OSM "Build the openstreetmaps generator." OFF)
+option(BUILD_INSPECTOR "Build the inspector tool. Requires Qt5 and libopenscenegraph." OFF)
 
 # Release build by default.
 if(NOT CMAKE_BUILD_TYPE)

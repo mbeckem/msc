@@ -1,0 +1,8 @@
+add_library(gsl INTERFACE)
+target_include_directories(gsl SYSTEM INTERFACE "${DEPS_SOURCE_DIR}/gsl/include")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    #target_compile_definitions(gsl INTERFACE GSL_THROW_ON_CONTRACT_VIOLATION)
+    target_compile_definitions(gsl INTERFACE GSL_TERMINATE_ON_CONTRACT_VIOLATION)
+else()
+    target_compile_definitions(gsl INTERFACE GSL_UNENFORCED_ON_CONTRACT_VIOLATION)
+endif()

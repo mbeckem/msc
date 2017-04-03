@@ -7,6 +7,7 @@ add_subdirectory(generator)
 add_subdirectory(hilbert_curve)
 add_subdirectory(inspector)
 add_subdirectory(loader)
+add_subdirectory(osm_generator)
 add_subdirectory(prepare_trajectories)
 add_subdirectory(stats)
 
