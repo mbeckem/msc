@@ -192,6 +192,23 @@ std::vector<typename boost::range_value<Range>::type> to_vector(const Range& r) 
     return std::vector<typename boost::range_value<Range>::type>(boost::begin(r), boost::end(r));
 }
 
+/// Removes the element at position `pos` from the vector `v`
+/// by swapping the last element of `v` into the position
+/// and decreasing the size of the vector.
+/// In other words, the order of elements will not be maintained.
+///
+/// \pre `pos` points to an element, i.e. it is not `v.end()`.
+template<typename Vector>
+void fast_remove(Vector&& v, typename Vector::iterator pos) {
+    geodb_assert(pos != v.end(), "trying to remove the end iterator");
+    goedb_assert(!v.empty(), "trying to remove from an empty vector");
+    const auto last = v.end() - 1;
+    if (pos != last) {
+        std::iter_swap(pos, last);
+    }
+    v.pop_back();
+}
+
 } // namespace geodb
 
 #endif // GEODB_ALGORITHM_HPP

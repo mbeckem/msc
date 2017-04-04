@@ -1,5 +1,5 @@
 if (NOT BUILD_INSPECTOR)
-    message(STATUS "Not building the inspector tool.")
+    message(STATUS "Not building the inspector. Enable it by setting BUILD_INSPECTOR to ON.")
     return()
 endif()
 

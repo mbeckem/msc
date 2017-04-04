@@ -1,5 +1,5 @@
 if (NOT BUILD_OSM)
-    message(STATUS "Not building the osm_generator")
+    message(STATUS "Not building the osm_generator tool. Enable it by setting BUILD_OSM to ON.")
     return()
 endif()
 

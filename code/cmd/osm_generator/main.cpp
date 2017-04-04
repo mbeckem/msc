@@ -355,29 +355,60 @@ private:
     }
 };
 
+/// Returns a list of city pairs (shuffled).
+static std::vector<std::pair<size_t, size_t>> city_pairs() {
+    std::vector<std::pair<size_t, size_t>> result;
+
+    // Generate all possible pairs.
+    const size_t n = cities.size();
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = i + 1; j < n; ++j) {
+            result.push_back({i, j});
+        }
+    }
+
+    // Shuffle them.
+    std::mt19937 rng{std::random_device{}()};
+    std::shuffle(result.begin(), result.end(), rng);
+
+    return result;
+}
+
 int main(int argc, char** argv) {
     return tpie_main([&]{
         parse_options(argc, argv);
 
         external_string_map string_map({strings});
-
         route_generator gen(map, string_map);
 
-        std::mt19937 rng{std::random_device{}()};
-        std::uniform_int_distribution<size_t> dist(0, cities.size() - 1);
-        for (int i = 0; i < 20; ++i) {
-            size_t a = dist(rng);
-            size_t b = dist(rng);
-            if (a == b)
-                continue;
+        tpie::file_stream<tree_entry> out;
+        out.open(output);
+        out.truncate(0);
 
-            const auto units = gen.generate(cities[a], cities[b]);
-            for (const trajectory_unit& unit : units) {
-                std::cout << unit << std::endl;
+        trajectory_id_type tid = 0;
+        for (const auto& pair : city_pairs()) {
+            if (out.size() >= entries) {
+                fmt::print(cout, "Generated {} entries in {} trajectories.\n", out.size(), tid);
+                return 0;
             }
 
-            break;
+            // Generate a route between the two cities.
+            const auto units = gen.generate(cities[pair.first], cities[pair.second]);
+
+            // Save all trajectory units in the output file as a single
+            // logical trajectory.
+            u32 unit_index = 0;
+            for (const trajectory_unit& unit : units) {
+                tree_entry entry(tid, unit_index++, unit);
+                out.write(entry);
+            }
+
+            ++tid;
         }
+
+        fmt::print(cout, "Cities pairs exhausted before the requested number of "
+                         "trajectory units could be generated.\n"
+                         "There are {} units in {} trajectories.\n", out.size(), tid);
         return 0;
     });
 }
