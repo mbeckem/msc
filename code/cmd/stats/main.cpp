@@ -36,13 +36,15 @@ public:
 };
 
 struct tree_stats {
-    averager entry_area;
-    averager leaf_area;
+    averager entry_area;    // Volume of data entries
+    averager leaf_area;     // Volume of leaf nodes
+    averager index_size;    // Number of postings lists per index
     std::map<size_t, averager> internal_volume_ratio;
 };
 
 struct analyze_result {
     bounding_box mbb;
+    double index_size = 0;
     double entry_area = 0;
     double leaf_area = 0;
     std::vector<double> internal_volume_ratio;
@@ -162,6 +164,7 @@ static void analyze(external_tree::cursor& node, tree_stats& stats) {
         fmt::print("node {:30} has ratio {:16}\n", path(node), ratio);
 
         stats.internal_volume_ratio[node.level()].push(ratio);
+        stats.index_size.push(node.inverted_index()->size());
 
         for (size_t i = 0; i < node.size(); ++i) {
             node.move_child(i);
@@ -183,6 +186,7 @@ static analyze_result analyze(const external_tree& tree) {
         result.mbb = root.mbb();
         result.entry_area = stats.entry_area.average() / result.mbb.size();
         result.leaf_area = stats.leaf_area.average() / result.mbb.size();
+        result.index_size = stats.index_size.average();
 
         for (const auto& pair : stats.internal_volume_ratio) {
             result.internal_volume_ratio.push_back(pair.second.average());
@@ -215,6 +219,7 @@ int main(int argc, char** argv) {
 
         result["internal_nodes"] = tree.internal_node_count();
         result["internal_area_ratio"] = stats.internal_volume_ratio;
+        result["internal_index_size"] = stats.index_size;
 
         std::cout << result.dump(4) << std::endl;
         return 0;
