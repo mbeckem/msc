@@ -33,6 +33,7 @@ private:
     void refreshNode();
     void refreshChildren();
     void refreshIndex();
+    void refreshSummary();
     void refreshScene();
 
     void refreshDirection();

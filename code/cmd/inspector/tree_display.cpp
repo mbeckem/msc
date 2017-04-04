@@ -14,6 +14,7 @@
 
 #include <QtWidgets/QInputDialog>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QTableWidgetItem>
 
 #include <sstream>
 
@@ -55,9 +56,11 @@ TreeDisplay::TreeDisplay(const QString& path, external_tree tree, QWidget *paren
     , m_tree(std::move(tree))
 {
     ui->setupUi(this);
+    ui->treeTabs->setCurrentWidget(ui->childrenTab);
     ui->leafChildrenTree->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
     ui->internalChildrenTree->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
     ui->indexTree->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->summaryTree->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
 
     ui->pathText->setText(m_path);
     ui->sizeText->setText(QString::number(m_tree.size()));
@@ -165,6 +168,9 @@ void TreeDisplay::refreshNode() {
         ui->nodeTypeText->setText(get_type(*m_current));
         ui->nodePathText->setText(get_path(*m_current));
         ui->nodeMbbText->setText(get_mbb(*m_current));
+        ui->nodeEntriesText->setText(QString("%1/%2")
+                                     .arg(m_current->size())
+                                     .arg(m_current->max_size()));
 
         ui->parentButton->setEnabled(m_current->has_parent());
         ui->rootButton->setEnabled(!m_current->is_root());
@@ -174,6 +180,7 @@ void TreeDisplay::refreshNode() {
         ui->nodeTypeText->setText("N/A");
         ui->nodePathText->setText("N/A");
         ui->nodeMbbText->setText("N/A");
+        ui->nodeEntriesText->setText("N/A");
 
         ui->parentButton->setEnabled(false);
         ui->rootButton->setEnabled(false);
@@ -182,6 +189,7 @@ void TreeDisplay::refreshNode() {
 
     refreshChildren();
     refreshIndex();
+    refreshSummary();
     refreshScene();
 }
 
@@ -253,6 +261,60 @@ void TreeDisplay::refreshIndex() {
             append(QString("Label %1").arg(item.label()), list);
         }
     }
+}
+
+void TreeDisplay::refreshSummary() {
+    QTreeWidget* tree = ui->summaryTree;
+    tree->clear();
+    tree->setSortingEnabled(false);
+
+    if (!m_current) {
+        return;
+    }
+
+    auto insert_summary = [&](auto label, auto summary) {
+        auto* item = new QTreeWidgetItem;
+        item->setData(0, Qt::DisplayRole, qint64(label));
+        item->setData(1, Qt::DisplayRole, qint64(summary.count));
+        item->setData(2, Qt::DisplayRole, to_string(summary.trajectories));
+        tree->addTopLevelItem(item);
+    };
+
+    if (m_current->is_internal()) {
+        auto index = m_current->inverted_index();
+
+        for (const auto& entry : *index) {
+            const auto label = entry.label();
+            const auto summary = entry.postings_list()->summarize();
+            insert_summary(label, summary);
+        }
+    } else {
+        struct item {
+            std::set<geodb::trajectory_id_type> trajectories;
+            u64 count = 0;
+        };
+
+        std::map<geodb::label_type, item> items;
+        for (size_t i = 0; i < m_current->size(); ++i) {
+            const geodb::tree_entry entry = m_current->value(i);
+
+            auto& item = items[entry.unit.label];
+            ++item.count;
+            item.trajectories.insert(entry.trajectory_id);
+        }
+
+        for (const auto& pair : items) {
+            geodb::postings_list_summary<external_tree::lambda()> summary;
+            summary.count = pair.second.count;
+            summary.trajectories.assign(pair.second.trajectories.begin(),
+                                        pair.second.trajectories.end());
+
+            insert_summary(pair.first, summary);
+        }
+    }
+
+    tree->sortByColumn(1, Qt::DescendingOrder);
+    tree->setSortingEnabled(true);
 }
 
 void TreeDisplay::refreshScene() {

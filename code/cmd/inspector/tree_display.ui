@@ -257,7 +257,7 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="0" colspan="4">
+          <item row="5" column="0" colspan="4">
            <widget class="QWidget" name="widget" native="true">
             <property name="styleSheet">
              <string notr="true">QPushButton { padding: 3px; }</string>
@@ -412,17 +412,43 @@
             </property>
            </widget>
           </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="nodeEntriesLabel">
+            <property name="text">
+             <string>Entries:</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLabel" name="nodeEntriesText">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
        <item>
         <widget class="QTabWidget" name="treeTabs">
          <property name="currentIndex">
-          <number>0</number>
+          <number>2</number>
          </property>
          <widget class="QWidget" name="childrenTab">
           <attribute name="title">
            <string>Children</string>
+          </attribute>
+          <attribute name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Lists all children of a node.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </attribute>
           <layout class="QVBoxLayout" name="verticalLayout_2">
            <property name="leftMargin">
@@ -542,7 +568,10 @@
           <attribute name="title">
            <string>Index</string>
           </attribute>
-          <layout class="QHBoxLayout" name="horizontalLayout_5">
+          <attribute name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Displays the inverted index of a node. Leaf nodes do not have an inverted index.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_7">
            <property name="leftMargin">
             <number>3</number>
            </property>
@@ -566,6 +595,59 @@
              <column>
               <property name="text">
                <string>Node</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Count</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Trajectories</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="summaryTab">
+          <attribute name="title">
+           <string>Label Summary</string>
+          </attribute>
+          <attribute name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Displays the summary of this node.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_6">
+           <property name="leftMargin">
+            <number>3</number>
+           </property>
+           <property name="topMargin">
+            <number>3</number>
+           </property>
+           <property name="rightMargin">
+            <number>3</number>
+           </property>
+           <property name="bottomMargin">
+            <number>3</number>
+           </property>
+           <item>
+            <widget class="QTreeWidget" name="summaryTree">
+             <property name="editTriggers">
+              <set>QAbstractItemView::NoEditTriggers</set>
+             </property>
+             <property name="tabKeyNavigation">
+              <bool>false</bool>
+             </property>
+             <property name="horizontalScrollMode">
+              <enum>QAbstractItemView::ScrollPerPixel</enum>
+             </property>
+             <attribute name="headerStretchLastSection">
+              <bool>false</bool>
+             </attribute>
+             <column>
+              <property name="text">
+               <string>Label</string>
               </property>
              </column>
              <column>

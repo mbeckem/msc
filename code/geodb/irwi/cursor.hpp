@@ -111,6 +111,15 @@ public:
         }
     }
 
+    /// Returns the maximum number of children or entries for the current node.
+    size_t max_size() const {
+        if (is_leaf()) {
+            return state_type::max_leaf_entries();
+        } else {
+            return state_type::max_internal_entries();
+        }
+    }
+
     /// Returns a cursor for the current internal node's inverted index.
     /// \pre `is_internal()`.
     /// \warning Every inverted index may only be opened once.
