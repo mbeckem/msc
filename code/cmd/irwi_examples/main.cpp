@@ -19,28 +19,31 @@ using internal_tree = tree<tree_internal<4>, 2>;
 
 using internal_strings = string_map<string_map_internal>;
 
-static std::vector<vector3> points_a{
-    {10, 5, 0}, {4, 10, 5}, {15, 18, 20}, {30, 20, 30}
+// Bike -> Train
+static std::vector<vector3> points_1{
+    {30, 20, 0}, {15, 18, 5}, {4, 10, 10}, {5, 5, 15}
 };
 
-static std::vector<vector3> points_b{
-    {19, 4, 0}, {16, 8, 5}, {16, 15, 10}, {12, 20, 15}, {9, 20, 20}
+// Car
+static std::vector<vector3> points_2{
+    {20, 5, 0}, {25, 10, 5}, {25, 20, 10}, {15, 25, 15}, {5, 25, 20}
 };
 
-static std::vector<vector3> points_c{
-    {10, 8, 10}, {13, 9, 15}, {13, 12, 20}, {14, 15, 25}, {15, 19, 30}
+// Pedestrian
+static std::vector<vector3> points_3{
+    {15, 9, 0}, {13, 12, 5}, {13, 15, 10}, {10, 18, 15}, {6, 17, 20}
 };
 
-static std::vector<std::string> labels_a{
-    "foot", "train", "train"
+static std::vector<std::string> labels_1{
+    "train", "train", "bike"
 };
 
-static std::vector<std::string> labels_b{
+static std::vector<std::string> labels_2{
     "car", "car", "car", "car"
 };
 
-static std::vector<std::string> labels_c{
-    "foot", "foot", "foot", "bike"
+static std::vector<std::string> labels_3{
+    "walk", "walk", "walk", "walk"
 };
 
 static std::vector<trajectory_unit> units(internal_strings& strings,
@@ -78,9 +81,9 @@ int main(int argc, char *argv[]) {
 
     return tpie_main([&]() {
         internal_strings strings;
-        const auto units_a = units(strings, points_a, labels_a);
-        const auto units_b = units(strings, points_b, labels_b);
-        const auto units_c = units(strings, points_c, labels_c);
+        const auto units_1 = units(strings, points_1, labels_1);
+        const auto units_2 = units(strings, points_2, labels_2);
+        const auto units_3 = units(strings, points_3, labels_3);
 
         auto print_units = [](const auto& units) {
             u32 index = 0;
@@ -90,15 +93,15 @@ int main(int argc, char *argv[]) {
         };
 
         fmt::print("Trajectory 1:\n");
-        print_units(units_a);
+        print_units(units_1);
         fmt::print("\n");
 
         fmt::print("Trajectory 2:\n");
-        print_units(units_b);
+        print_units(units_2);
         fmt::print("\n");
 
         fmt::print("Trajectory 3:\n");
-        print_units(units_c);
+        print_units(units_3);
         fmt::print("\n");
 
         fmt::print("Strings mapping:\n");
@@ -108,9 +111,9 @@ int main(int argc, char *argv[]) {
         fmt::print("\n");
 
         internal_tree tree({}, 1.0);
-        insert_as_trajectory(tree, 1, units_a);
-        insert_as_trajectory(tree, 2, units_b);
-        insert_as_trajectory(tree, 3, units_c);
+        insert_as_trajectory(tree, 1, units_1);
+        insert_as_trajectory(tree, 2, units_2);
+        insert_as_trajectory(tree, 3, units_3);
 
         fmt::print("Tree:\n");
         dump(cout, tree.root(), 2);
