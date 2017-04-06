@@ -3,23 +3,27 @@
 import json
 import matplotlib
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import Axes3D, proj3d
 import numpy as np
 import subprocess
 
 from itertools import combinations, product
 from commands import RESULT_PATH
 
-# Format: min, max, color, linestyle, label, labelpos
+
+def color(a, b, c):
+    return (a / 255, b / 255, c / 255.0)
+
+# Format: min, max, color, label, labelpos
 cubes = [
     # N1
-    ((13, 5, 0), (30, 20, 5), "black", "solid", "$R_1$", (12, 5, -1)),
+    ((13, 5, 0), (30, 20, 5), color(132, 141, 197), "$R_1$", (12, 3, 0)),
     # N2
-    ((4, 5, 5), (15, 18, 15), "black", "dashed", "$R_2$", (3, 5, 4)),
+    ((4, 5, 5), (15, 18, 15), color(147, 156, 72), "$R_2$", (2, 4, 4)),
     # N3
-    ((15, 10, 5), (25, 25, 15), "black", "dotted", "$R_3$", (26, 25, 15)),
+    ((15, 10, 5), (25, 25, 15), color(159, 98, 198), "$R_3$", (26, 25, 15)),
     # N4
-    ((5, 15, 10), (15, 25, 20), "black", "dashdot", "$R_4$", (4, 14, 20)),
+    ((5, 15, 10), (15, 25, 20), color(203, 88, 96), "$R_4$", (3, 14, 20)),
 ]
 
 trajectories = [
@@ -50,9 +54,12 @@ def pairwise(iterable):
         a = b
 
 
-def plot_cube(ax, min, max, color, linestyle, label, labelpos):
+def plot_cube(ax, min, max, color, label, labelpos):
     # All cube corners
     points = np.array(list(product(*zip(min, max))))
+
+    backcorner = np.array([min[0], max[1], min[2]])
+    print(backcorner)
 
     # All cube corner pairs
     for a, b in combinations(points, 2):
@@ -61,8 +68,11 @@ def plot_cube(ax, min, max, color, linestyle, label, labelpos):
         # Draw a line if they differ in exactly one coordinate
         if sum(diffs) == 1:
             #‘solid’ | ‘dashed’, ‘dashdot’, ‘dotted’ | (offset, on-off-dash-seq)
+            back = (a == backcorner).all() or (b == backcorner).all()
+            linestyle = "dotted" if back else "solid"
             ax.plot3D(*zip(a, b), color=color, linestyle=linestyle)
 
+    ann_x, ann_y, _ = proj3d.proj_transform(*labelpos, ax.get_proj())
     ax.text(*labelpos, label, color=color)
 
 
@@ -78,18 +88,19 @@ ax.set_zlabel("t")
 ax.set_aspect("equal")
 ax.locator_params(integer=True)
 
+ax.set_xlim(0, 30)
+ax.set_xticks([0, 10, 20, 30])
+ax.set_ylim(0, 25)
+ax.set_yticks([0, 10, 20])
+ax.set_zlim(0, 20)
+ax.set_zticks([0, 10, 20])
+
 for traj in trajectories:
     plot_trajectory(ax, traj["points"], traj["color"], traj["label"])
 
 for cube in cubes:
     plot_cube(ax, *cube)
 
-ax.set_xlim(0)
-ax.set_xticks([0, 10, 20, 30])
-ax.set_ylim(0)
-ax.set_yticks([0, 10, 20])
-ax.set_zlim(0)
-ax.set_zticks([0, 10, 20])
 ax.legend(loc="upper left")
 
 fig.savefig(str(RESULT_PATH / "irwi_example_boxes.pdf"), bbox_inches="tight")
