@@ -18,7 +18,7 @@ namespace geodb {
 
 using label_type = u32;
 
-using trajectory_id_type = u64;
+using trajectory_id_type = u32;
 
 /// A spatio-textual trajectory unit stores the spatial line segment
 /// and a label identifier.
