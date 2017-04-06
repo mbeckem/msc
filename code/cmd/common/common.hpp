@@ -30,11 +30,13 @@ public:
     exit_main(int code = 0): code(code) {}
 };
 
+constexpr const size_t leaf_fanout_override = 0;
+constexpr const size_t internal_fanout_override = 0;
 constexpr const size_t block_size = 4096;
 constexpr const size_t lambda = 40;
 
-extern template class geodb::tree_external<block_size>;
-using external_storage = geodb::tree_external<block_size>;
+extern template class geodb::tree_external<block_size, leaf_fanout_override, internal_fanout_override>;
+using external_storage = geodb::tree_external<block_size, leaf_fanout_override, internal_fanout_override>;
 
 extern template class geodb::tree<external_storage, lambda>;
 using external_tree = geodb::tree<external_storage, lambda>;

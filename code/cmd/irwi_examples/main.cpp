@@ -67,7 +67,8 @@ static std::vector<trajectory_unit> units(internal_strings& strings,
     return units;
 }
 
-static void insert_as_trajectory(internal_tree& tree, trajectory_id_type tid, const std::vector<trajectory_unit>& units) {
+template<typename Tree>
+static void insert_as_trajectory(Tree& tree, trajectory_id_type tid, const std::vector<trajectory_unit>& units) {
     u32 index = 0;
     for (const auto& unit : units) {
         tree_entry entry(tid, index++, unit);
@@ -117,7 +118,6 @@ int main(int argc, char *argv[]) {
 
         fmt::print("Tree:\n");
         dump(cout, tree.root(), 2);
-
         return 0;
     });
 }
