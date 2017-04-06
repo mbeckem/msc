@@ -827,11 +827,49 @@ private:
     ///             Can be either a leaf or an internal node.
     void replace_entry(internal_ptr p, const node_summary& c) {
         const u32 i = state.index_of(p, c.ptr);
+        storage.set_mbb(p, i, c.mbb);
+
         index_ptr index = storage.index(p);
 
-        clear_index(*index, i);
-        insert_index(*index, i, c);
-        storage.set_mbb(p, i, c.mbb);
+        // Update the entry in the "total" list.
+        insert_or_update(*index->total(), posting_type(i, c.total));
+
+        // Update all label lists.
+        // We have to visit every list for labels in the summary (and possibly create them)
+        // to insert the new summary entry. We also have to visit every list with a label that is NOT
+        // in c.labels because it might have an old entry that has to be removed.
+        // Thus, we visit the union of the two label sets, arriving at O(n+m) actions for the two
+        // following loops combined.
+
+        auto index_pos = index->begin();
+        auto index_end = index->end();
+        for (const label_summary& ls : c.labels) {
+            // Catch up to the summary position (to arrive at a label greater than or equal to).
+            // Any posting list on the way can be cleared of this node.
+            while (index_pos != index_end && index_pos->label() < ls.label) {
+                remove_posting(*index_pos->postings_list(), i);
+                ++index_pos;
+            }
+
+            // Make sure that a posting list for the current label exists.
+            if (index_pos == index_end || index_pos->label() > ls.label) {
+                // A label in the summary without a corresponding posting list.
+                // Create an new list and be careful about iterators, because insertion
+                // into a btree may change the node structure.
+                index_pos = index->create(ls.label);
+                index_end = index->end();
+            }
+
+            // Make sure this list contains an entry.
+            insert_or_update(*index_pos->postings_list(), posting_type(i, ls.data));
+            ++index_pos;
+        }
+
+        // Any remaining entries in the index can have their postings removed.
+        while (index_pos != index_end) {
+            remove_posting(*index_pos->postings_list(), i);
+            ++index_pos;
+        }
     }
 
     /// Insert the child node (represented by its summary)
@@ -841,6 +879,9 @@ private:
     /// \param i                The index of `c` in its parent.
     /// \param c                The summary of the new child.
     void insert_index(index_type& parent_index, u32 i, const node_summary& c) {
+        // Insert a new entry into the "total" list.
+        parent_index.total()->append(posting_type(i, c.total));
+
         // Update the postings lists for all labels that occur in the summary.
         for (const label_summary& ls : c.labels) {
             if (ls.data.count() > 0) {
@@ -849,16 +890,6 @@ private:
                         ->append(posting_type(i, ls.data));
             }
         }
-        parent_index.total()->append(posting_type(i, c.total));
-    }
-
-    /// Remove all references to the given child entry from the index.
-    void clear_index(index_type& index, entry_id_type id) {
-        for (auto entry : index) {
-            list_ptr list = entry.postings_list();
-            remove_posting(*list, id);
-        }
-        remove_posting(*index.total(), id);
     }
 
     /// Removes the posting with the given id from the given list.
@@ -868,6 +899,23 @@ private:
         if (pos != list.end()) {
             list.remove(pos);
         }
+    }
+
+    /// Update an existing posting for this node if one exists.
+    /// Otherwise, append the entry at the end.
+    void insert_or_update(list_type& list, const posting_type& posting) {
+        if (list.empty()) {
+            list.append(posting);
+            return;
+        }
+
+        auto pos = list.find(posting.node());
+        if (pos == list.end()) {
+            list.append(posting);
+            return;
+        }
+
+        list.set(pos, posting);
     }
 
     /// Calculates the textual insertion costs for every child entry of `internal`.
