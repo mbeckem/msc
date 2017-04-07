@@ -251,9 +251,9 @@ private:
     /// Delete the subtree rooted at ptr.
     /// Height is the level of ptr in the tree.
     template<bool leaves_cut>
-    void destroy(base* ptr, size_t height) {
-        geodb_assert(height > 0, "");
-        if (height == m_height) {
+    void destroy(base* ptr, size_t level) {
+        geodb_assert(level > 0, "");
+        if (level == m_height) {
             if (!leaves_cut) {
                 tpie::tpie_delete(cast<leaf>(ptr));
             }
@@ -262,23 +262,23 @@ private:
 
         internal* n = cast<internal>(ptr);
         for (size_t i = 0; i < n->count; ++i) {
-            destroy<leaves_cut>(n->entries[i].ptr, height + 1);
+            destroy<leaves_cut>(n->entries[i].ptr, level + 1);
         }
         tpie::tpie_delete(n);
     }
 
     /// Destroy only the leaves and leave dangling pointers
     /// to them in internal nodes.
-    void destroy_leaves(base* ptr, size_t height) {
-        geodb_assert(height > 0, "");
-        if (height == m_height) {
+    void destroy_leaves(base* ptr, size_t level) {
+        geodb_assert(level > 0, "");
+        if (level == m_height) {
             tpie::tpie_delete(cast<leaf>(ptr));
             return;
         }
 
         internal* n = cast<internal>(ptr);
         for (size_t i = 0; i < n->count; ++i) {
-            destroy_leaves(n->entries[i].ptr, height + 1);
+            destroy_leaves(n->entries[i].ptr, level + 1);
         }
     }
 

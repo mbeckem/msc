@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
         }
 
         const measure_t stats = measure_call([&]{
-            fmt::print(cout, "\n");
+            fmt::print(cout, "Running {}.\n", algorithm);
             loader(tree, entries);
             fmt::print(cout, "Done.\n");
         });

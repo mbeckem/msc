@@ -61,6 +61,12 @@ public:
         return m_path.size();
     }
 
+    /// The depth is the distance of this node from the root,
+    /// i.e. `level() - 1`.
+    size_t depth() const {
+        return level() - 1;
+    }
+
     /// True if the current node has a parent.
     bool has_parent() const {
         return level() > 1;
