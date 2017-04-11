@@ -82,6 +82,11 @@ public:
     using typename posting::posting_data::id_set_type;
 
 public:
+    posting(entry_id_type node)
+        : data_t()
+        , m_node(node)
+    {}
+
     posting(entry_id_type node, u64 count, const id_set_type& ids)
         : m_node(node)
     {

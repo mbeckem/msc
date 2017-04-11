@@ -8,6 +8,7 @@ set(SOURCES
     hybrid_buffer.cpp
     hybrid_map.cpp
     id_allocator.cpp
+    index_builder.cpp
     interval.cpp
     interval_set.cpp
     inverted_index.cpp
@@ -27,6 +28,6 @@ set(SOURCES
     tuple_utils.cpp
 )
 
-add_executable("${PROJECT_NAME}-test" ${SOURCES})
-target_compile_options("${PROJECT_NAME}-test" PRIVATE "-Wno-parentheses")
-target_link_libraries("${PROJECT_NAME}-test" catch geodb)
+add_executable("tests" ${SOURCES})
+target_compile_options("tests" PRIVATE "-Wno-parentheses")
+target_link_libraries("tests" catch geodb)
