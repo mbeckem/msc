@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <map>
+#include <queue>
 #include <vector>
 
 /// \file
@@ -137,6 +138,78 @@ void for_each_adjacent(FwdRange&& r, Function&& f) {
         ++current;
         for (; current != last; ++current, ++previous) {
             f(*previous, *current);
+        }
+    }
+}
+
+/// Iterate over a range of ranges and treat their elements
+/// as one large, contiguous sequence.
+/// The elements will be visited in sorted order.
+///
+/// Uses a binary heap internally to track the position in each
+/// range and thus uses O(m) additional space (where m is the number of ranges).
+/// The algorithm thus takes O(n * log m) time, where n is the number of total
+/// elements over all ranges.
+///
+/// \param ranges
+///     A range of ranges. Every individual range must be sorted.
+/// \param fn
+///     A function that will be invoked for every element in the ranges.
+/// \param comp
+///     A comparison function to compare individual elements of the ranges.
+///     Defaults to std::less.
+template<typename Ranges, typename Function, typename Comp = std::less<>>
+void for_each_sorted(const Ranges& ranges, Function&& fn, Comp&& comp = Comp()) {
+    using nested_range = typename boost::range_value<const Ranges>::type;
+    using nested_iterator = typename boost::range_const_iterator<nested_range>::type;
+
+    static_assert(std::is_lvalue_reference<typename boost::range_reference<const Ranges>::type>::value,
+                  "nested ranges must be lvalues (i.e. no temporaries).");
+
+    struct cursor {
+        nested_iterator current;
+        nested_iterator end;
+
+        cursor(nested_iterator current, nested_iterator end)
+            : current(current), end(end)
+        {}
+    };
+
+    struct cursor_compare {
+        Comp& value_comp;
+
+        cursor_compare(Comp& value_comp): value_comp(value_comp) {}
+
+        bool operator()(const cursor& a, const cursor& b) const {
+            return value_comp(*b.current, *a.current);
+        }
+    };
+
+    auto heap = [&]{
+        std::vector<cursor> cursors;
+        cursors.reserve(boost::size(ranges));
+
+        // Add a cursor for every range.
+        for (auto&& range : ranges) {
+            cursor c(boost::const_begin(range), boost::const_end(range));
+            if (c.current != c.end) {
+                cursors.push_back(std::move(c));
+            }
+        }
+        return std::priority_queue<cursor,
+                std::vector<cursor>,
+                cursor_compare>(cursor_compare(comp), std::move(cursors));
+    }();
+
+    // Read the min value until we have seen everything.
+    while (!heap.empty()) {
+        cursor c = heap.top();
+        heap.pop();
+
+        fn(*c.current);
+        ++c.current;
+        if (c.current != c.end) {
+            heap.push(std::move(c));
         }
     }
 }

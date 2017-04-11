@@ -30,3 +30,19 @@ TEST_CASE("k smallest", "[algorithm]") {
         REQUIRE(boost::equal(t.expect, result));
     }
 }
+
+TEST_CASE("for each sorted", "[algorithm]") {
+    std::vector<int> a = { 1, 3, 4, 5 };
+    std::vector<int> b = { 0, 4, 9 };
+    std::vector<int> c = { 6 , 9 };
+    std::vector<int> d = { };
+    std::vector<int> e = { 3, 4, 5, 5 };
+
+    const std::vector<int> expected = { 0, 1, 3, 3, 4, 4, 4, 5, 5, 5, 6, 9, 9};
+    std::vector<int> result;
+    for_each_sorted(std::vector<std::vector<int>>{a, b, c, d, e}, [&](int i) {
+        result.push_back(i);
+    });
+
+    REQUIRE(boost::equal(result, expected));
+}
