@@ -33,7 +33,7 @@ public:
 
     template<typename... Args>
     movable_adapter(in_place_t, Args&&... args)
-        : m_inner(tpie::make_unique<T>(std::forward<Args>(args)...))
+        : m_inner(std::make_unique<T>(std::forward<Args>(args)...))
     {}
 
     movable_adapter(movable_adapter&& other) noexcept = default;
@@ -50,7 +50,7 @@ private:
     }
 
 private:
-    tpie::unique_ptr<T> m_inner;
+    std::unique_ptr<T> m_inner;
 };
 
 // Specialization for move-constructible types.

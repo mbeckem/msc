@@ -76,26 +76,26 @@ private:
 /// there are `p.count()` trajectory units with the label `l`.
 template<u32 Lambda>
 class posting : public posting_data<Lambda> {
-    using data_t = typename posting::posting_data;
-
 public:
+    using data_type = typename posting::posting_data;
+
     using typename posting::posting_data::id_set_type;
 
 public:
     posting(entry_id_type node)
-        : data_t()
+        : data_type()
         , m_node(node)
     {}
 
     posting(entry_id_type node, u64 count, const id_set_type& ids)
         : m_node(node)
     {
-        data_t::count(count);
-        data_t::id_set(ids);
+        data_type::count(count);
+        data_type::id_set(ids);
     }
 
-    posting(entry_id_type node, posting_data<Lambda> data)
-        : data_t(std::move(data))
+    posting(entry_id_type node, data_type data)
+        : data_type(std::move(data))
         , m_node(node)
     {}
 
@@ -108,7 +108,7 @@ public:
     }
 
     friend bool operator==(const posting& a, const posting& b) {
-        return a.m_node == b.m_node && static_cast<const data_t&>(a) == static_cast<const data_t&>(b);
+        return a.m_node == b.m_node && static_cast<const data_type&>(a) == static_cast<const data_type&>(b);
     }
 
     friend bool operator!=(const posting& a, const posting& b) {

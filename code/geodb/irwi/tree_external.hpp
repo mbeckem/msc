@@ -124,6 +124,8 @@ private:
 public:
     using index_type = inverted_index<index_storage, Lambda>;
 
+    using index_builder_type = inverted_index_external_builder<block_size, Lambda>;
+
 private:
     using index_instances_type = shared_instances<index_id_type, index_type>;
 
@@ -134,6 +136,8 @@ public:
     // ----------------------------------------
 
     using node_id = u64;
+
+    using index_builder_ptr = std::unique_ptr<index_builder_type>;
 
     using index_ptr = typename index_instances_type::pointer;
 
@@ -210,6 +214,12 @@ public:
 
         ++m_leaf_count;
         return l;
+    }
+
+    index_builder_ptr index_builder(internal_ptr i) {
+        internal* n = get_internal(read_block(i));
+        fs::path path = m_index_alloc.path(n->inverted_index);
+        return std::make_unique<index_builder_type>(path, m_lists_blocks);
     }
 
     index_ptr index(internal_ptr i) {
@@ -437,6 +447,15 @@ private:
 
     /// Collection of opened index instances.
     mutable index_instances_type m_indexes;
+};
+
+/// Bulk loading support for internal tree nodes.
+/// The performance of building a single node becomes
+/// importand when the size of the inverted index is large,
+/// i.e. when there are many labels in that subtree.
+template<typename Storage>
+class tree_external_builder {
+
 };
 
 /// Instructs the irwi tree to use external storage with the specified

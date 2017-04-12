@@ -46,3 +46,35 @@ TEST_CASE("for each sorted", "[algorithm]") {
 
     REQUIRE(boost::equal(result, expected));
 }
+
+TEST_CASE("for each sorted suborder", "[algorithm]") {
+    struct x {
+        int key;
+        int order;
+
+        bool operator<(const x& other) const {
+            if (key != other.key) {
+                return key < other.key;
+            }
+            return order < other.order;
+        }
+
+        bool operator==(const x& other) const {
+            return key == other.key && order == other.order;
+        }
+    };
+
+    std::vector<x> a = { {1, 2}, {2, 0}, {4, 0}, {4, 2}};
+    std::vector<x> b = { {2, 1}, {4, -1} };
+    std::vector<x> c = { {1, 0}, {3, 1}, {4, 1} };
+
+    const std::vector<x> expected = {
+        {1, 0}, {1, 2}, {2, 0}, {2, 1}, {3, 1}, {4, -1}, {4, 0}, {4, 1}, {4, 2}
+    };
+    std::vector<x> result;
+    for_each_sorted(std::vector<std::vector<x>>{a, b, c}, [&](const x& v) {
+        result.push_back(v);
+    });
+
+    REQUIRE(boost::equal(result, expected));
+}

@@ -168,6 +168,15 @@ public:
         return result;
     }
 
+    /// Returns the number of trajectory units represented by this list.
+    u64 summarize_count() const {
+        u64 result = 0;
+        for (const posting_type& p : *this) {
+            result += p.count();
+        }
+        return result;
+    }
+
     /// Removes all entries from this list.
     void clear() {
         storage().clear();

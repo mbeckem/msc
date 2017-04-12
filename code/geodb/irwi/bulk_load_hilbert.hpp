@@ -32,6 +32,9 @@ class hilbert_loader : public bulk_load_common<Tree, hilbert_loader<Tree>> {
     using typename common_t::list_summary;
     using typename common_t::label_summary;
 
+    using typename common_t::level_files;
+    using typename common_t::last_level_streams;
+    using typename common_t::next_level_streams;
     using typename common_t::subtree_result;
 
     using leaf_ptr = typename state_type::leaf_ptr;
@@ -62,37 +65,30 @@ private:
 
         u64 count = 0;
 
-        tpie::temp_file current;
+        level_files files;
         {
-            tpie::serialization_writer writer;
-            writer.open(current.path());
-
-            fmt::print("Creating leaves...\n");
-            count = create_leaves(entries, writer);
+            next_level_streams output(files);
+            count = create_leaves(entries, output);
         }
 
         size_t height = 1;
         while (count != 1) {
             geodb_assert(count > 1, "Input must never be empty");
 
-            tpie::temp_file output;
+            level_files next_files;
             {
-                tpie::serialization_reader last_level;
-                tpie::serialization_writer next_level;
-                last_level.open(current.path());
-                next_level.open(output.path());
+                last_level_streams input(files);
+                next_level_streams output(next_files);
 
                 fmt::print("Creating internal nodes at height {}...\n", height + 1);
-                count = create_internals(last_level, count, next_level);
+                count = create_internals(count, input, output);
             }
-            current = output;
-
+            files = next_files;
             ++height;
         }
 
-        tpie::serialization_reader reader;
-        reader.open(current);
-        return subtree_result(common_t::read_root_ptr(reader), height, entries.size());
+        last_level_streams input(files);
+        return subtree_result(common_t::read_root_ptr(input.summaries), height, entries.size());
     }
 
 private:
@@ -175,7 +171,7 @@ private:
         }
     }
 
-    u64 create_leaves(tpie::file_stream<tree_entry>& input, tpie::serialization_writer& writer) {
+    u64 create_leaves(tpie::file_stream<tree_entry>& input, next_level_streams& output) {
         // Augment the entries with their hilbert index
         // and sort them in ascending order.
         tpie::file_stream<hilbert_entry> entries;
@@ -188,7 +184,6 @@ private:
         }
 
         // Then, iterate the entries in linear order and group them as leaves.
-
         u64 leaves = 0;
         u64 remaining = entries.size();
 
@@ -223,7 +218,7 @@ private:
             }
 
             storage().set_count(leaf, count);
-            common_t::write_summary(writer, leaf);
+            common_t::write_summary(output, leaf);
 
             remaining -= count;
             ++leaves;
@@ -232,41 +227,22 @@ private:
         return leaves;
     }
 
-    u64 create_internals(tpie::serialization_reader& reader, u64 count,
-                         tpie::serialization_writer& writer) {
+    u64 create_internals(u64 count, last_level_streams& input, next_level_streams& output) {
         u64 internals = 0;
         u64 remaining = count;
 
-        auto insert_index_entry = [](const auto& list, u32 id, const list_summary& summary) {
-            posting_type entry(id, summary.count, summary.trajectories);
-            list->append(entry);
-        };
-
+        std::vector<node_summary> node_content;
+        node_content.reserve(state_type::max_internal_entries());
         while (remaining) {
             const u32 count = std::min<u64>(remaining, state_type::max_internal_entries());
 
-            // Build the internal node by reading the child summaries from the last level.
-            // The inverted index can be constructed simply by taking these summaries
-            // and appending them to the appropriate lists.
-            internal_ptr internal = storage().create_internal();
-            index_ptr index = storage().index(internal);
+            node_content.clear();
             for (u32 i = 0; i < count; ++i) {
-                auto node_cb = [&](const node_summary& ns) {
-                    storage().set_child(internal, i, ns.ptr);
-                    storage().set_mbb(internal, i, ns.mbb);
-                    insert_index_entry(index->total(), i, ns.total);
-                };
-
-                auto label_cb = [&](const label_summary& ls) {
-                    insert_index_entry(index->find_or_create(ls.label)->postings_list(), i, ls.summary);
-                };
-
-                common_t::read_summary(reader, node_cb, label_cb);
+                node_content.push_back(input.summaries.read());
             }
-            storage().set_count(internal, count);
 
-            // Summarize this node for the next level.
-            common_t::write_summary(writer, internal);
+            internal_ptr internal = common_t::build_internal_node(node_content, input.label_summaries);
+            common_t::write_summary(output, internal);
 
             remaining -= count;
             ++internals;

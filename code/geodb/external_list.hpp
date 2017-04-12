@@ -52,9 +52,10 @@ public:
     ///
     /// \param cache_blocks
     ///     The number of blocks cached in main memory.
-    external_list(const fs::path& path, size_t cache_blocks)
+    external_list(const fs::path& path, size_t cache_blocks, bool read_only = false)
         : m_path(path)
-        , m_blocks((path / "list.blocks").string(), block_size, std::max(cache_blocks, (size_t) 1), true)
+        , m_read_only(read_only)
+        , m_blocks((path / "list.blocks").string(), block_size, std::max(cache_blocks, (size_t) 1), !m_read_only)
     {
         raw_stream rf;
         if (rf.try_open(state_path())) {
@@ -95,7 +96,7 @@ public:
 
     /// Returns the value at the given index.
     /// \pre `index < size()`.
-    value_type operator[](size_type index) {
+    value_type operator[](size_type index) const {
         geodb_assert(index < m_value_count, "index out of bounds");
 
         size_type block_index = index / block_capacity();
@@ -105,6 +106,10 @@ public:
 
     /// Appends a value.
     void append(const value_type& value) {
+        if (m_read_only) {
+            throw std::logic_error("list is read-only");
+        }
+
         if (m_block_count == 0 || m_block_value_count == block_capacity()) {
             next_block();
             m_block_value_count = 0;
@@ -166,6 +171,9 @@ private:
 private:
     /// Path to the block storage on disk.
     fs::path m_path;
+
+    /// True if append() is forbidden.
+    bool m_read_only = false;
 
     /// Number of blocks allocated by this instance.
     size_type m_block_count = 0;
