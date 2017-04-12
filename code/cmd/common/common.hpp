@@ -59,16 +59,18 @@ int tpie_main(Func&& f) {
 }
 
 struct measure_t {
-    u64 reads = 0;        // Block reads
-    u64 writes = 0;       // Block writes
+    u64 read_io = 0;        // Block reads
+    u64 write_io = 0;       // Block writes
+    u64 total_io = 0;          // reads + writes
     u64 duration = 0;     // Time taken (seconds)
     u64 block_size = 0;   // Block size in bytes.
 };
 
 inline void to_json(json& j, const measure_t& m) {
     j = json::object();
-    j["reads"] = m.reads;
-    j["writes"] = m.writes;
+    j["read_io"] = m.read_io;
+    j["write_io"] = m.write_io;
+    j["total_io"] = m.total_io;
     j["duration"] = m.duration;
     j["block_size"] = m.block_size;
 }
@@ -86,8 +88,9 @@ measure_t measure_call(Func&& f) {
     f();
 
     measure_t m;
-    m.reads = (tpie::get_bytes_read() - bytes_read) / block_size;
-    m.writes = (tpie::get_bytes_written() - bytes_written) / block_size;
+    m.read_io = (tpie::get_bytes_read() - bytes_read) / block_size;
+    m.write_io = (tpie::get_bytes_written() - bytes_written) / block_size;
+    m.total_io = m.read_io + m.write_io;
     m.duration = duration_cast<seconds>(steady_clock::now() - start).count();
     m.block_size = block_size;
     return m;

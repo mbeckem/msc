@@ -7,6 +7,7 @@ include(Profile)
 
 option(SANITIZE_UNDEFINED "Enable undefined behaviour sanitizer (gnu and clang only)" OFF)
 option(USE_BLOOM "Use bloom filters instead of interval sets in the inverted index" OFF)
+option(USE_NAIVE_NODE_BUILDING, "Use the unoptimized node loading algorithm." OFF)
 option(BUILD_OSM "Build the openstreetmaps generator." OFF)
 option(BUILD_INSPECTOR "Build the inspector tool. Requires Qt5 and libopenscenegraph." OFF)
 
@@ -33,7 +34,7 @@ if ((CMAKE_CXX_COMPILER_ID MATCHES "GNU") OR (CMAKE_CXX_COMPILER_ID MATCHES "Cla
     # -O1 instead of -O2 for more helpful debug information.
     # set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O1 -g -DNDEBUG")
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -fvisibility=hidden")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-maybe-uninitialized -fvisibility=hidden")
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
     endif()
@@ -57,8 +58,15 @@ include_directories("${PROJECT_SOURCE_DIR}")
 
 if (USE_BLOOM)
     add_definitions(-DGEODB_ID_SET_BLOOM)
+    message(STATUS "Using bloom filters")
 else()
     add_definitions(-DGEODB_ID_SET_INTERVALS)
+    message(STATUS "Using interval sets")
+endif()
+
+if (USE_NAIVE_NODE_BUILDING)
+    add_definitions(-DGEODB_NAIVE_NODE_BUILDING)
+    message(STATUS "Using naive node building algorithm")
 endif()
 
 include(deps/Dependencies.cmake)

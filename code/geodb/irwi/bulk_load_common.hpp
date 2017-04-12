@@ -37,6 +37,7 @@ protected:
     using index_builder = typename storage_type::index_builder_type;
     using index_builder_ptr = typename storage_type::index_builder_ptr;
 
+    using index_ptr = typename state_type::index_ptr;
     using const_index_ptr = typename state_type::const_index_ptr;
 
     using const_list_ptr = typename state_type::const_list_ptr;
@@ -229,6 +230,17 @@ protected:
         }
     };
 
+    internal_ptr build_internal_node(const std::vector<node_summary>& summaries,
+                                     const label_summary_list& label_summaries)
+    {
+#ifdef GEODB_NAIVE_NODE_BUILDING
+        return build_internal_node_naive(summaries, label_summaries);
+#else
+        return build_internal_node_bulk(summaries, label_summaries);
+#endif
+
+    }
+
     /// Build an internal node from a vector of child node summaries.
     /// The summaries themselves are of fixed size, so this still uses constant memory
     /// (the upper bound is the tree's fanout).
@@ -242,8 +254,8 @@ protected:
     /// in the given external list.
     ///
     /// This function returns a pointer to the new internal node.
-    internal_ptr build_internal_node(const std::vector<node_summary>& summaries,
-                                     const label_summary_list& label_summaries)
+    internal_ptr build_internal_node_bulk(const std::vector<node_summary>& summaries,
+                                          const label_summary_list& label_summaries)
     {
         geodb_assert(summaries.size() <= state_type::max_internal_entries(),
                      "Too many entries for an internal node");
@@ -291,6 +303,41 @@ protected:
 
             builder->build();
         }
+        return node;
+    }
+
+    /// Build an internal node the simple way:
+    /// Iterate over the labels of every child in turn and insert the entries into
+    /// the inverted index.
+    internal_ptr build_internal_node_naive(const std::vector<node_summary>& summaries,
+                                           const label_summary_list& label_summaries)
+    {
+        geodb_assert(summaries.size() <= state_type::max_internal_entries(),
+                     "Too many entries for an internal node");
+
+        internal_ptr node = storage().create_internal();
+        index_ptr index = storage().index(node);
+
+        u32 count = 0;
+        for (const node_summary& ns : summaries) {
+            storage().set_mbb(node, count, ns.mbb);
+            storage().set_child(node, count, ns.ptr);
+
+            index->total()->append(posting_type(count, ns.total));
+
+            const u64 labels_begin = ns.labels_begin;
+            const u64 labels_end = ns.labels_begin + ns.labels_size;
+            for (u64 pos = labels_begin; pos < labels_end; ++pos) {
+                label_summary ls = label_summaries[pos];
+
+                index->find_or_create(ls.label)
+                        ->postings_list()
+                        ->append(posting_type(count, ls.summary));
+            }
+            ++count;
+        }
+        storage().set_count(node, count);
+
         return node;
     }
 

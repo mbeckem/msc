@@ -80,7 +80,17 @@ int main(int argc, char** argv) {
             create_progress.done();
         } else if (!entries_path.empty()) {
             fmt::print(cout, "Using existing entry file \"{}\".\n", entries_path);
-            entries.open(entries_path);
+
+            // Make a private copy of the file (some options are destructive, i.e. STR sorting
+            // alters the order of elements).
+            tpie::file_stream<tree_entry> existing;
+            existing.open(entries_path, tpie::open::read_only);
+
+            entries.open();
+            entries.truncate(0);
+            while (existing.can_read()) {
+                entries.write(existing.read());
+            }
         } else {
             fmt::print(cerr, "No input file specified.\n");
             throw exit_main(1);
@@ -96,7 +106,7 @@ int main(int argc, char** argv) {
                    "Blocks read: {}\n"
                    "Blocks written: {}\n"
                    "Seconds: {}\n",
-                   stats.reads, stats.writes, stats.duration);
+                   stats.read_io, stats.write_io, stats.duration);
 
         if (!stats_file.empty()) {
             write_json(stats_file, stats);
