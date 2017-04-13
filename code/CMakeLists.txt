@@ -11,6 +11,12 @@ option(USE_NAIVE_NODE_BUILDING, "Use the unoptimized node loading algorithm." OF
 option(BUILD_OSM "Build the openstreetmaps generator." OFF)
 option(BUILD_INSPECTOR "Build the inspector tool. Requires Qt5 and libopenscenegraph." OFF)
 
+# set(<variable> <value>... CACHE <type> <docstring> [FORCE])
+set(BLOCK_SIZE "4096" CACHE STRING "The block size.")
+set(LEAF_FANOUT "0" CACHE STRING "The fanout of leaf nodes (0 for maximum possible value).")
+set(INTERNAL_FANOUT "0" CACHE STRING "The fanout of internal nodes (0 for maximum possible value).")
+set(LAMBDA "40" CACHE STRING "The size of individual entries in a posting list.")
+
 # Release build by default.
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Defaulting to \"Release\" build type.")
@@ -56,6 +62,8 @@ endif()
 
 include_directories("${PROJECT_SOURCE_DIR}")
 
+include(deps/Dependencies.cmake)
+
 if (USE_BLOOM)
     add_definitions(-DGEODB_ID_SET_BLOOM)
     message(STATUS "Using bloom filters")
@@ -69,7 +77,15 @@ if (USE_NAIVE_NODE_BUILDING)
     message(STATUS "Using naive node building algorithm")
 endif()
 
-include(deps/Dependencies.cmake)
+add_definitions(-DGEODB_BLOCK_SIZE=${BLOCK_SIZE})
+add_definitions(-DGEODB_LEAF_FANOUT=${LEAF_FANOUT})
+add_definitions(-DGEODB_INTERNAL_FANOUT=${INTERNAL_FANOUT})
+add_definitions(-DGEODB_LAMBDA=${LAMBDA})
+message(STATUS "Using block size ${BLOCK_SIZE}")
+message(STATUS "Using leaf fanout ${LEAF_FANOUT}")
+message(STATUS "Using internal fanout ${INTERNAL_FANOUT}")
+message(STATUS "Using lambda ${LAMBDA}")
+
 add_subdirectory(doc)
 add_subdirectory(geodb)
 add_subdirectory(cmd)

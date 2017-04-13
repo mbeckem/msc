@@ -30,7 +30,7 @@ Result = collections.namedtuple(
 def run(naive_node_building, logfile):
     compile(naive_node_building=naive_node_building)
 
-    stats_dir = OUTPUT_PATH / "build_nodes_stats"
+    stats_dir = common.reset_dir(OUTPUT_PATH / "build_nodes_stats")
 
     results = []
     for entries, labels, entries_path in RANDOM_WALK_VARYING_LABELS:

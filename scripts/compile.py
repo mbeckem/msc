@@ -14,12 +14,20 @@ def bool_str(cond):
 
 def compile(type="Release",
             jobs=_cpus,
+            block_size=4096,
+            lambda_=40,
+            leaf_fanout=0,
+            internal_fanout=0,
             bloom_filters=False,
             naive_node_building=False):
     defines = {
         "CMAKE_BUILD_TYPE": type,
         "USE_BLOOM": bool_str(bloom_filters),
-        "USE_NAIVE_NODE_BUILDING": bool_str(naive_node_building)
+        "USE_NAIVE_NODE_BUILDING": bool_str(naive_node_building),
+        "BLOCK_SIZE": str(block_size),
+        "LAMBDA": str(lambda_),
+        "LEAF_FANOUT": str(leaf_fanout),
+        "INTERNAL_FANOUT": str(internal_fanout),
     }
 
     args = [common.CMAKE]
