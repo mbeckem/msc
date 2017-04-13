@@ -16,25 +16,25 @@ def _check(path):
     return path
 
 
-def _osm_generated(entries):
+def osm_generated(entries):
     return _check(DATA_PATH / "osm-generated-n{}.entries".format(entries))
 
 
-def _walk_generated(entries, labels):
+def walk_generated(entries, labels):
     return _check(DATA_PATH / "walk-generated-n{}-l{}.entries".format(entries, labels))
 
 RANDOM_WALK_VARYING_LABELS = [
-    (5000000, labels, _walk_generated(5000000, labels))
+    (5000000, labels, walk_generated(5000000, labels))
     for labels in [10, 20, 30, 40, 50, 100,
                    150, 200, 250, 500, 1000, 2000, 5000, 10000]
 ]
 
 RANDOM_WALK_VARYING_SIZE = [
-    (entries, 100, _walk_generated(entries, 100))
+    (entries, 100, walk_generated(entries, 100))
     for entries in _times(range(1, 7), 1000000)
 ]
 
 OSM_VARYING_SIZE = [
-    (entries, None, _osm_generated(entries))
+    (entries, None, osm_generated(entries))
     for entries in _times(range(1, 9), 500000)
 ]

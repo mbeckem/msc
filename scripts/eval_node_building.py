@@ -7,7 +7,9 @@ import subprocess
 from pathlib import Path
 
 import common
+import commands
 import format
+
 from common import DATA_PATH, TMP_PATH, OUTPUT_PATH, RESULT_PATH, LOADER
 from compile import compile
 from datasets import RANDOM_WALK_VARYING_LABELS
@@ -24,49 +26,35 @@ def load_tree(tree_path, entries_path, stats_path, logfile):
     ], stdout=logfile)
 
 Result = collections.namedtuple(
-    "Result", ["labels", "read_io", "write_io", "total_io", "duration", "index_size", "tree_size", "total_size"])
+    "Result", ["labels", "total_io", "duration", "index_size", "tree_size", "total_size"])
 
 
 def run(naive_node_building, logfile):
     compile(naive_node_building=naive_node_building)
-
-    stats_dir = common.reset_dir(OUTPUT_PATH / "build_nodes_stats")
 
     results = []
     for entries, labels, entries_path in RANDOM_WALK_VARYING_LABELS:
         print("entries = {}, labels = {}, path = {}"
               .format(entries, labels, entries_path))
 
-        stats = stats_dir / "{}_{}.json".format(
-            "naive" if naive_node_building else "bulk", labels)
-
         tree_path = TMP_PATH / "node_building_tmp_tree"
-        common.remove(tree_path)
-        load_tree(tree_path, entries_path, stats, logfile)
-        print("\n\n", file=logfile, flush=True)
-
-        stats_json = None
-        with stats.open() as f:
-            stats_json = json.load(f)
+        stats = commands.build_tree("hilbert", tree_path,
+                                    entries_path, logfile)
 
         total_size = common.file_size(tree_path)
         tree_size = common.file_size(tree_path / "tree.blocks")
         index_size = total_size - tree_size
 
         result = Result(labels=labels,
-                        read_io=stats_json["read_io"],
-                        write_io=stats_json["write_io"],
-                        total_io=stats_json["total_io"],
-                        duration=stats_json["duration"],
+                        total_io=stats.total_io,
+                        duration=stats.duration,
                         tree_size=tree_size,
                         index_size=index_size,
                         total_size=total_size)
         results.append(result)
     return results
 
-with (OUTPUT_PATH / "build_nodes.log").open("w") as logfile, \
-        (RESULT_PATH / "build_nodes.txt").open("w") as outfile:
-
+with (OUTPUT_PATH / "build_nodes.log").open("w") as logfile:
     eval_naive = run(naive_node_building=True, logfile=logfile)
     eval_bulk = run(naive_node_building=False, logfile=logfile)
 
@@ -96,4 +84,5 @@ with (OUTPUT_PATH / "build_nodes.log").open("w") as logfile, \
     for result in eval_bulk:
         add_result("bulk", result)
 
-    print(table, file=outfile)
+    with (RESULT_PATH / "build_nodes.txt").open("w") as outfile:
+        print(table, file=outfile)

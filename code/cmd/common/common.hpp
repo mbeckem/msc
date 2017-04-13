@@ -61,9 +61,11 @@ int tpie_main(Func&& f) {
 struct measure_t {
     u64 read_io = 0;        // Block reads
     u64 write_io = 0;       // Block writes
-    u64 total_io = 0;          // reads + writes
-    u64 duration = 0;     // Time taken (seconds)
-    u64 block_size = 0;   // Block size in bytes.
+    u64 total_io = 0;       // reads + writes
+    double duration = 0;       // Time taken (seconds)
+    u64 block_size = 0;     // Block size in bytes.
+    u32 internal_fanout = external_tree::max_internal_entries();
+    u32 leaf_fanout = external_tree::max_leaf_entries();
 };
 
 inline void to_json(json& j, const measure_t& m) {
@@ -73,6 +75,8 @@ inline void to_json(json& j, const measure_t& m) {
     j["total_io"] = m.total_io;
     j["duration"] = m.duration;
     j["block_size"] = m.block_size;
+    j["internal_fanout"] = m.internal_fanout;
+    j["leaf_fanout"] = m.leaf_fanout;
 }
 
 /// Calls the given function and measures time taken
@@ -80,6 +84,8 @@ inline void to_json(json& j, const measure_t& m) {
 template<typename Func>
 measure_t measure_call(Func&& f) {
     using namespace std::chrono;
+
+    using double_seconds = duration<double>;
 
     u64 bytes_read = tpie::get_bytes_read();
     u64 bytes_written = tpie::get_bytes_written();
@@ -91,7 +97,7 @@ measure_t measure_call(Func&& f) {
     m.read_io = (tpie::get_bytes_read() - bytes_read) / block_size;
     m.write_io = (tpie::get_bytes_written() - bytes_written) / block_size;
     m.total_io = m.read_io + m.write_io;
-    m.duration = duration_cast<seconds>(steady_clock::now() - start).count();
+    m.duration = duration_cast<double_seconds>(steady_clock::now() - start).count();
     m.block_size = block_size;
     return m;
 }
