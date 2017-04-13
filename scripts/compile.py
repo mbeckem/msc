@@ -3,7 +3,7 @@
 import os
 import subprocess
 
-import commands
+import common
 
 _cpus = os.cpu_count()
 
@@ -22,14 +22,14 @@ def compile(type="Release",
         "USE_NAIVE_NODE_BUILDING": bool_str(naive_node_building)
     }
 
-    args = [commands.CMAKE]
+    args = [common.CMAKE]
     for key, value in defines.items():
         args.extend(["-D", "{}={}".format(key, value)])
-    args.append(str(commands.CODE_PATH))
+    args.append(str(common.CODE_PATH))
 
-    cwd = str(commands.BUILD_PATH)
+    cwd = str(common.BUILD_PATH)
     subprocess.check_call(args, cwd=cwd)
-    subprocess.check_call([commands.MAKE, "-j{}".format(jobs)], cwd=cwd)
+    subprocess.check_call([common.MAKE, "-j{}".format(jobs)], cwd=cwd)
 
 if __name__ == "__main__":
     compile()

@@ -8,7 +8,8 @@ import numpy as np
 import subprocess
 
 from itertools import combinations, product
-from commands import RESULT_PATH
+from common import RESULT_PATH
+from compile import compile
 
 
 def color(a, b, c):
@@ -78,6 +79,8 @@ def plot_cube(ax, min, max, color, label, labelpos):
 
 def plot_trajectory(ax, points, color, label):
     ax.plot3D(*zip(*points), color=color, marker="o", label=label)
+
+compile()
 
 fig = plt.figure(figsize=(8, 8))
 

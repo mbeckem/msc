@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+
+
 def bytes(num):
     for unit in ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB']:
         if abs(num) < 1024.0:

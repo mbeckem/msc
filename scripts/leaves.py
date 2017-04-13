@@ -8,7 +8,8 @@ from matplotlib.patches import Rectangle
 import numpy as np
 import subprocess
 
-from commands import ALGORITHM_EXAMPLES, RESULT_PATH
+from common import ALGORITHM_EXAMPLES, RESULT_PATH
+from compile import compile
 
 
 def get_leaves(points, leaf_size, algorithm, skewed=False, seed=None, heuristic=False):
@@ -79,5 +80,6 @@ def make_str():
                 get_leaves(1000, 16, algorithm="str", skewed=True, seed=1821311943))
     return fig
 
+compile()
 save(make_hilbert(), RESULT_PATH / "hilbert_leaves.pdf")
 save(make_str(), RESULT_PATH / "str_leaves.pdf")

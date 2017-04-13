@@ -119,7 +119,7 @@ protected:
 
         last_level_streams(const level_files& files)
             : summaries()
-            , label_summaries(files.label_summary_dir, state_type::max_internal_entries(), true)
+            , label_summaries(files.label_summary_dir, state_type::max_internal_entries() * 2, true)
         {
             summaries.open(files.summary_file.string(), tpie::open::read_only);
         }
