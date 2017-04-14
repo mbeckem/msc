@@ -141,35 +141,6 @@ public:
         insertion_type(state).insert(v, path_buf);
     }
 
-    /// Inserts the new trajectory into the tree.
-    /// The trajectory's id must be unique and it must
-    /// not already have been inserted.
-    void insert(const trajectory& t) {
-        // A trajectory is inserted by inserting all its units.
-        u32 index = 0;
-        for (const trajectory_unit& unit : t.units) {
-            tree_entry d{t.id, index, unit};
-            insert(d);
-            ++index;
-        }
-    }
-
-    /// FIXME
-    void insert(const point_trajectory& t) {
-        auto pos = t.entries.begin();
-        auto end = t.entries.end();
-        u32 index = 0;
-
-        if (pos != end) {
-            auto last = pos++;
-            for (; pos != end; ++pos) {
-                tree_entry e{t.id, index++, trajectory_unit{last->spatial, pos->spatial, last->textual}};
-                insert(e);
-                last = pos;
-            }
-        }
-    }
-
     /// Finds all trajectories that satisfy the given query.
     std::vector<trajectory_match> find(const sequenced_query& seq_query) const {
         if (empty()) {

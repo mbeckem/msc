@@ -41,8 +41,7 @@ static std::string tmp;
 void parse_options(int argc, char** argv);
 
 void create_entries(const string& path, u64 max_entries,
-                    tpie::file_stream<tree_entry>& entries,
-                    tpie::progress_indicator_base& progress);
+                    tpie::file_stream<tree_entry>& entries);
 
 algorithm_type get_algorithm();
 
@@ -62,6 +61,11 @@ int main(int argc, char** argv) {
 
         auto loader = get_algorithm();
 
+        if (limit) {
+            fmt::print("Limiting to {} entries.\n", *limit);
+        }
+        const u64 max_entries = limit.get_value_or(std::numeric_limits<u64>::max());
+
         tpie::file_stream<tree_entry> entries;
         if (!trajectories_path.empty()) {
             fmt::print(cout, "Creating leaf entries from trajectory file \"{}\".\n", trajectories_path);
@@ -69,15 +73,7 @@ int main(int argc, char** argv) {
             entries.open();
             entries.truncate(0);
 
-            if (limit) {
-                fmt::print("Limiting to {} entries.\n", *limit);
-            }
-            const u64 max_entries = limit.get_value_or(std::numeric_limits<u64>::max());
-
-            tpie::progress_indicator_arrow create_progress("Creating leaf entries", 100);
-            create_progress.set_indicator_length(60);
-            create_entries(trajectories_path, max_entries, entries, create_progress);
-            create_progress.done();
+            create_entries(trajectories_path, max_entries, entries);
         } else if (!entries_path.empty()) {
             fmt::print(cout, "Using existing entry file \"{}\".\n", entries_path);
 
@@ -88,7 +84,7 @@ int main(int argc, char** argv) {
 
             entries.open();
             entries.truncate(0);
-            while (existing.can_read()) {
+            while (entries.size() < max_entries && existing.can_read()) {
                 entries.write(existing.read());
             }
         } else {
@@ -232,19 +228,13 @@ algorithm_type get_algorithm() {
 }
 
 void create_entries(const string& path, u64 max_entries,
-                    tpie::file_stream<tree_entry>& entries,
-                    tpie::progress_indicator_base& progress)
+                    tpie::file_stream<tree_entry>& entries)
 {
     tpie::serialization_reader trajectories;
     trajectories.open(path);
 
-    const tpie::stream_size_type bytes = trajectories.size();
-
-    // Steps are measured in bytes.
-    progress.init(bytes);
     point_trajectory trajectory;
     while (trajectories.can_read()) {
-        auto offset = trajectories.offset();
         trajectories.unserialize(trajectory);
 
         {
@@ -262,16 +252,12 @@ void create_entries(const string& path, u64 max_entries,
 
                     entries.write(e);
                     if (entries.size() >= max_entries) {
-                        goto done;
+                        return;
                     }
 
                     last = pos;
                 }
             }
         }
-
-        progress.step(trajectories.offset() - offset);
     }
-done:
-    progress.done();
 }

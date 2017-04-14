@@ -102,6 +102,34 @@ bool contains_all(const std::vector<trajectory>& trajectories,
     return count == seen.size();
 }
 
+
+template<typename Tree>
+void insert(Tree& tree, const trajectory& t) {
+    // A trajectory is inserted by inserting all its units.
+    u32 index = 0;
+    for (const trajectory_unit& unit : t.units) {
+        tree_entry d{t.id, index, unit};
+        tree.insert(d);
+        ++index;
+    }
+}
+
+template<typename Tree>
+void insert(Tree& tree, const point_trajectory& t) {
+    auto pos = t.entries.begin();
+    auto end = t.entries.end();
+    u32 index = 0;
+
+    if (pos != end) {
+        auto last = pos++;
+        for (; pos != end; ++pos) {
+            tree_entry e{t.id, index++, trajectory_unit{last->spatial, pos->spatial, last->textual}};
+            tree.insert(e);
+            last = pos;
+        }
+    }
+}
+
 using internal = tree_internal<8>;
 using external = tree_external<512>;
 constexpr u32 Lambda = 8;
@@ -146,7 +174,7 @@ TEST_CASE("irwi tree insertion", "[irwi]") {
         }
 
         for (const trajectory& t : trajectories)
-            tree.insert(t);
+            insert(tree, t);
 
         std::set<std::pair<trajectory_id_type, u32>> seen;
         visit(tree.root(), trajectories, seen);
@@ -170,7 +198,7 @@ TEST_CASE("irwi tree query (simple)", "[irwi]") {
         t.units.push_back({vector3(66, 44, 106), vector3(62, 48, 115), 2});
         t.units.push_back({vector3(62, 48, 116), vector3(62, 48, 130), 1});
         t.units.push_back({vector3(62, 48, 131), vector3(55, 33, 140), 3});
-        tree.insert(t);
+        insert(tree, t);
 
         {
             bounding_box rect(vector3(0, 0, 105), vector3(100, 100, 110));
@@ -337,7 +365,7 @@ TEST_CASE("opening resource more than once returns same handle", "[irwi]") {
         for (size_t i = 0; i < tree_t::max_leaf_entries() + 2; ++i) {
             pt.entries.push_back(trajectory_element{vector3(1, 2, 3), 123});
         }
-        tree.insert(pt);
+        insert(tree, pt);
 
         REQUIRE(tree.height() == 2);
 

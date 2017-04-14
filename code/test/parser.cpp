@@ -51,7 +51,6 @@ TEST_CASE("split tokens", "[parser]") {
     }
 }
 
-// TODO
 TEST_CASE("parse plt format", "[parser]") {
     std::string input =
         "Geolife trajectory\n"
@@ -75,7 +74,6 @@ TEST_CASE("parse plt format", "[parser]") {
     }
 }
 
-// TODO
 TEST_CASE("parse labels format", "[parser]") {
     std::string input =
         "Start Time	End Time	Transportation Mode\n"

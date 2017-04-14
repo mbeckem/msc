@@ -308,7 +308,6 @@ public:
 
     template<typename Key, typename Value>
     map_type<Key, Value> make_map() {
-        // TODO: Could assign a special directory instead of global /tmp/
         return map_type<Key, Value>();
     }
 

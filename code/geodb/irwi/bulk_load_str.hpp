@@ -28,8 +28,6 @@ namespace geodb {
 /// (label, x, y, t). They are then grouped into leaf nodes,
 /// which are in turn grouped into internal nodes, until only one
 /// node remains.
-///
-/// FIXME: Consistently use size_t or u64
 template<typename Tree>
 class str_loader : public bulk_load_common<Tree, str_loader<Tree>> {
     using common_t = typename str_loader::bulk_load_common;

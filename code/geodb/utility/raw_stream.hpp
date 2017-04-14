@@ -115,14 +115,13 @@ public:
     }
 
     /// Returns the size of the file in bytes.
-    /// FIXME: function on TPIE's raw accessor is not const.
-    stream_size_type size() {
+    stream_size_type size() const {
         return m_raw.file_size_i();
     }
 
 private:
     fs::path m_path;
-    tpie::file_accessor::raw_file_accessor m_raw;
+    mutable tpie::file_accessor::raw_file_accessor m_raw;
 };
 
 } // namespace geodb
