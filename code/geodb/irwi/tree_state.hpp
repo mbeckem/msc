@@ -90,15 +90,15 @@ private:
 
     /// A factor in [0, 1] for computing the weighted average
     /// between spatial and textual insertion cost.
-    float m_weight = 0;
+    double m_weight = 0;
 
 public:
-    tree_state(const StorageSpec& s, Accessor accessor, float weight)
+    tree_state(const StorageSpec& s, Accessor accessor, double weight)
         : m_storage(s.template construct<Value, Lambda>())
         , m_accessor(std::move(accessor))
         , m_weight(weight)
     {
-        if (m_weight < 0 || m_weight > 1.f)
+        if (m_weight < 0 || m_weight > 1)
             throw std::invalid_argument("weight must be in [0, 1]");
     }
 
@@ -110,7 +110,7 @@ public:
         return *m_storage;
     }
 
-    float weight() const {
+    double weight() const {
         return m_weight;
     }
 
@@ -192,7 +192,7 @@ public:
 
     /// Returns the enlargement that would occurr for the bounding box `e`
     /// should the object represented by `b` be inserted.
-    float enlargement(const bounding_box& e, const bounding_box& b) const {
+    double enlargement(const bounding_box& e, const bounding_box& b) const {
         return e.extend(b).size() - e.size();
     }
 
@@ -200,11 +200,11 @@ public:
     /// and measures the enlargement that occurrs
     /// should `b` be inserted into the child's subtree.
     /// Returns the maximum of these values.
-    float max_enlargement(internal_ptr n, const bounding_box& b) const {
+    double max_enlargement(internal_ptr n, const bounding_box& b) const {
         const u32 count = storage().get_count(n);
         geodb_assert(count > 0, "empty node");
 
-        float max = enlargement(get_mbb(n, 0), b);
+        double max = enlargement(get_mbb(n, 0), b);
         for (u32 i = 1; i < count; ++i) {
             max = std::max(max, enlargement(get_mbb(n, i), b));
         }
@@ -216,7 +216,7 @@ public:
     /// Returns the spatial cost of inserting the new bounding box `b` into an existing
     /// subtree with bounding box `mbb`.
     /// Uses `norm` for normalization.
-    float spatial_cost(const bounding_box& mbb, const bounding_box& b, float norm) {
+    double spatial_cost(const bounding_box& mbb, const bounding_box& b, double norm) {
         return enlargement(mbb, b) * norm;
     }
 
@@ -226,9 +226,9 @@ public:
     ///     The number of units in that subtree that have that label.
     /// \param total_count
     ///     The total number of units in that subtree. Must not be zero.
-    float textual_cost(u64 unit_count, u64 total_count) const {
+    double textual_cost(u64 unit_count, u64 total_count) const {
         geodb_assert(total_count > 0, "there can be no empty subtrees");
-        return 1.0f - float(unit_count) / float(total_count);
+        return 1.0f - double(unit_count) / double(total_count);
     }
 
     /// Generalized textual cost function.
@@ -245,15 +245,15 @@ public:
     /// \param total_count2
     ///     The total number of units in that subtree.
     template<typename LabelCount1, typename LabelCount2>
-    float textual_cost(const LabelCount1& labels1, u64 total_count1,
+    double textual_cost(const LabelCount1& labels1, u64 total_count1,
                        const LabelCount2& labels2, u64 total_count2) const
     {
-        const float total = total_count1 + total_count2;
+        const double total = total_count1 + total_count2;
 
-        float max = 0;
+        double max = 0;
         shared_labels(labels1, labels2, [&](label_type label, u64 count1, u64 count2) {
             unused(label);
-            max = std::max(max, float(count1 + count2) / total);
+            max = std::max(max, double(count1 + count2) / total);
         });
         return 1.0f - max;
     }
@@ -285,17 +285,49 @@ public:
     }
 
     /// Returns the weighted average of the two values.
-    float cost(float spatial, float textual) const {
-        return m_weight * spatial + (1.0f - m_weight) * textual;
+    /// Depending on the configuration, the weighting factor might depend
+    /// on the level of the current node.
+    ///
+    /// \param spatial
+    ///     Spatial cost value (between 0 and 1).
+    /// \param textual
+    ///     Textual cost value (between 0 and 1).
+    /// \param level
+    ///     The level of the current node. The root is at level 1.
+    double cost(double spatial, double textual, size_t level) const {
+        geodb_assert(level >= 1, "Level must be at least 1.");
+        geodb_assert(level <= storage().get_height(), "Level cannot be greater than the tree's height.");
+
+        // The height of the subtree rooted at a node of the given level, minus 1.
+        // We treat the leaf level and the first internal level the same,
+        // both will have height 1 in the following variable.
+        double height = std::max(1.0, double(storage().get_height() - level));
+        double beta = this->weight();
+#ifdef GEODB_BETA_INCREASING
+        beta = std::pow(beta, 1.0f / height);
+#elif GEODB_BETA_DECREASING
+        beta = std::pow(beta, height);
+#elif GEODB_BETA_NORMAL
+        (void) height;
+#else
+#error Must define a weighting strategy.
+#endif
+        return avg(spatial, textual, beta);
     }
 
     /// Returns the inverse of `value` or 0 if the value is very close to zero.
     /// This is used when 1.0 / value is intended as a normalization factor.
-    static float inverse(float value) {
-        static constexpr float min = std::numeric_limits<float>::epsilon() / 2.0f;
+    static double inverse(double value) {
+        static constexpr double min = std::numeric_limits<double>::epsilon() / 2.0f;
         if (value <= min)
             return 0;
         return 1.0f / value;
+    }
+
+private:
+    double avg(double a, double b, double weight) const {
+        geodb_assert(0 <= weight && weight <= 1.0f, "Invalid weight.");
+        return weight * a + (1.0f - weight) * b;
     }
 };
 

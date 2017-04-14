@@ -142,8 +142,6 @@ private:
 
 // Float for x and y coordinates.
 using spatial_type = float;
-
-// TODO: What type for time?
 using time_type = u32;
 
 /// A 3-dimensional point with 2 spatial dimensions (x, y)

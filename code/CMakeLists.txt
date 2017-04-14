@@ -17,6 +17,11 @@ set(LEAF_FANOUT "0" CACHE STRING "The fanout of leaf nodes (0 for maximum possib
 set(INTERNAL_FANOUT "0" CACHE STRING "The fanout of internal nodes (0 for maximum possible value).")
 set(LAMBDA "40" CACHE STRING "The size of individual entries in a posting list.")
 
+# Increasing: The weight of the spatial cost increasing with the distance from the leaf level.
+# Decreasing: It decreases instead (i.e. higher nodes -> textual cost more important).
+# Normal: The weight is the same for every level of the tree.
+set(BETA "normal" CACHE STRING "The strategy for beta. Possible values are \"increasing\" \"decreasing\" and \"normal\".")
+
 # Release build by default.
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "Defaulting to \"Release\" build type.")
@@ -76,6 +81,17 @@ if (USE_NAIVE_NODE_BUILDING)
     add_definitions(-DGEODB_NAIVE_NODE_BUILDING)
     message(STATUS "Using naive node building algorithm")
 endif()
+
+if (BETA STREQUAL "normal")
+    add_definitions(-DGEODB_BETA_NORMAL)
+elseif (BETA STREQUAL "increasing")
+    add_definitions(-DGEODB_BETA_INCREASING)
+elseif (BETA STREQUAL "decreasing")
+    add_definitions(-DGEODB_BETA_DECREASING)
+else()
+    message(FATAL_ERROR "Unsupported strategy for beta: ${BETA}.")
+endif()
+message(STATUS "Using strategy \"${BETA}\" for beta.")
 
 add_definitions(-DGEODB_BLOCK_SIZE=${BLOCK_SIZE})
 add_definitions(-DGEODB_LEAF_FANOUT=${LEAF_FANOUT})

@@ -98,12 +98,12 @@ public:
     ///     Weighting factor for the weighted average between
     ///     spatial and textual cost. A value of 1 yields a classic
     ///     rtree. Must be in [0, 1].
-    tree(const StorageSpec& s = StorageSpec(), float weight = 0.5f)
+    tree(const StorageSpec& s = StorageSpec(), double weight = 0.5f)
         : state(std::move(s), detail::tree_entry_accessor(), weight)
     {}
 
     /// Returns the weighting factor for cost calculation.
-    float weight() const { return state.weight(); }
+    double weight() const { return state.weight(); }
 
     /// Returns the height of the tree. The height is at least 1.
     /// The empty tree has a single, empty leaf node.

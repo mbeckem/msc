@@ -249,7 +249,7 @@ private:
     }
 
     /// Delete the subtree rooted at ptr.
-    /// Height is the level of ptr in the tree.
+    /// Level is the level of ptr in the tree (the root is at level 1).
     template<bool leaves_cut>
     void destroy(base* ptr, size_t level) {
         geodb_assert(level > 0, "");

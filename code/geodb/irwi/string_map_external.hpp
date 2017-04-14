@@ -106,7 +106,7 @@ private:
 private:
     /// The map is backed by a file on disk. When a new entry
     /// is being inserted, a copy of that entry will be appended to the file.
-    tpie::file_stream<char> m_stream; // TODO: Just how dumb is a 1-byte large element?
+    tpie::file_stream<char> m_stream;
 
     /// The label id.
     label_type m_last_id = 0;

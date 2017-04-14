@@ -62,7 +62,7 @@ struct measure_t {
     u64 read_io = 0;        // Block reads
     u64 write_io = 0;       // Block writes
     u64 total_io = 0;       // reads + writes
-    double duration = 0;       // Time taken (seconds)
+    double duration = 0;    // Time taken (seconds)
     u64 block_size = 0;     // Block size in bytes.
     u32 internal_fanout = external_tree::max_internal_entries();
     u32 leaf_fanout = external_tree::max_leaf_entries();

@@ -72,12 +72,28 @@ public:
         read(reinterpret_cast<void*>(std::addressof(value)), sizeof(value));
     }
 
+    /// Read many values from the stream.
+    template<typename Iter>
+    void read(Iter begin, Iter end) {
+        for (; begin != end; ++begin) {
+            read(*begin);
+        }
+    }
+
     /// Write a value to the stream at the current offset.
     template<typename T>
     void write(const T& value) {
         static_assert(std::is_trivially_copyable<T>::value,
                       "Value must be trivially copyable");
         write(reinterpret_cast<const void*>(std::addressof(value)), sizeof(value));
+    }
+
+    /// Write many values to the stream.
+    template<typename Iter>
+    void write(Iter begin, Iter end) {
+        for (; begin != end; ++begin) {
+            write(*begin);
+        }
     }
 
     void read(void* data, size_t size) {

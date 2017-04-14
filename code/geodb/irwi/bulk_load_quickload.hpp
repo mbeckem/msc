@@ -70,7 +70,7 @@ private:
     bool m_leaves_flushed = false;
 
 public:
-    quick_load_tree(Accessor accessor, float weight)
+    quick_load_tree(Accessor accessor, double weight)
         : m_state(storage_spec(), std::move(accessor), weight)
     {}
 
@@ -271,10 +271,10 @@ private:
 
     // Tree parameters
     Accessor m_accessor;
-    float m_weight = 0;
+    double m_weight = 0;
 
 public:
-    quick_load_pass(size_t max_leaves, Accessor accessor, float weight)
+    quick_load_pass(size_t max_leaves, Accessor accessor, double weight)
         : m_bucket_dir("buckets")
         , m_bucket_alloc(m_bucket_dir.path(), ".bucket")
         , m_max_leaves(max_leaves)
@@ -822,7 +822,7 @@ private:
     const size_t m_max_leaves;
 
     /// beta
-    const float m_weight;
+    const double m_weight;
 };
 
 } // namespace geodb

@@ -101,7 +101,7 @@ class tree_insertion {
     };
 
     using internal_count_vec = boost::container::static_vector<u64, State::max_internal_entries()>;
-    using internal_cost_vec = boost::container::static_vector<float, State::max_internal_entries()>;
+    using internal_cost_vec = boost::container::static_vector<double, State::max_internal_entries()>;
 
 private:
     State& state;
@@ -139,7 +139,7 @@ public:
         for (size_t level = 1;; ++level) {
             path.push_back(current);
 
-            const u32 child_index = find_insertion_entry(current, v);
+            const u32 child_index = find_insertion_entry(current, level, v);
             update_parent(current, child_index, v);
 
             const node_ptr child = storage.get_child(current, child_index);
@@ -279,7 +279,7 @@ private:
                 return label_count(ls.label, ls.data.count());
             });
 
-            const u32 child_index = find_insertion_entry(node, child.mbb, label_counts, child.total.count());
+            const u32 child_index = find_insertion_entry(node, path.size(), child.mbb, label_counts, child.total.count());
             update_parent(node, child_index, child);
 
             node = storage.to_internal(storage.get_child(node, child_index));
@@ -300,7 +300,8 @@ private:
     void insert_at_full(leaf_ptr leaf, const value_type& v, gsl::span<const internal_ptr> path) {
         geodb_assert(storage.get_count(leaf) == State::max_leaf_entries(), "leaf is not full");
 
-        return handle_split(leaf, split_and_insert(leaf, v), path);
+        size_t level = path.size() + 1;
+        return handle_split(leaf, split_and_insert(leaf, level, v), path);
     }
 
     /// Inserts a new subtree into the given internal node, which must be full.
@@ -308,7 +309,8 @@ private:
     void insert_at_full(internal_ptr internal, const node_summary& child, gsl::span<const internal_ptr> path) {
         geodb_assert(storage.get_count(internal) == State::max_internal_entries(), "internal node is not full");
 
-        return handle_split(internal, split_and_insert(internal, child), path);
+        size_t level = path.size() + 1;
+        return handle_split(internal, split_and_insert(internal, level, child), path);
     }
 
     /// Takes the result of a split operation (either at internal or leaf level)
@@ -328,15 +330,18 @@ private:
         // Otherwise, the parent must be split.
         while (!path.empty()) {
             internal_ptr parent = back(path);
+            size_t level = path.size();
+
             replace_entry(parent, old_summary);
             if (storage.get_count(parent) < State::max_internal_entries()) {
                 insert_entry(parent, new_summary);
                 return;
             }
 
-            new_summary = summarize(split_and_insert(parent, new_summary));
+            new_summary = summarize(split_and_insert(parent, level, new_summary));
             old_summary = summarize(parent);
             pop_back(path);
+            --level;
         }
 
         // Two nodes remain but there is no parent in path.
@@ -421,8 +426,8 @@ private:
     }
 
     /// Simple case of `find_insertion_entry`: a single value.
-    u32 find_insertion_entry(internal_ptr n, const value_type& v) {
-        return find_insertion_entry(n, state.get_mbb(v), state.get_label_counts(v), state.get_total_count(v));
+    u32 find_insertion_entry(internal_ptr n, size_t level, const value_type& v) {
+        return find_insertion_entry(n, level, state.get_mbb(v), state.get_label_counts(v), state.get_total_count(v));
     }
 
     /// Given an internal node, and the mbb + labels of a new entry,
@@ -433,10 +438,13 @@ private:
     /// This function is more generic because it can also handle subtrees.
     template<typename LabelCounts>
     u32 find_insertion_entry(internal_ptr n,
+                             size_t level,
                              const bounding_box& mbb,
                              const LabelCounts& labels,
                              u64 total_units)
     {
+        geodb_assert(level < storage.get_height(), "Internal node cannot be at leaf level.");
+
         const u32 count = storage.get_count(n);
         geodb_assert(count > 0, "empty internal node");
 
@@ -445,17 +453,17 @@ private:
         spatial_insert_costs(n, mbb, spatial);
 
         auto cost = [&](u32 i) {
-            return state.cost(spatial[i], textual[i]);
+            return state.cost(spatial[i], textual[i], level);
         };
 
         // Find the entry with the smallest cost.
         // Resolve ties by choosing the entry with the smallest mbb.
         u32 min_index = 0;
-        float min_cost = cost(0);
-        float min_size = storage.get_mbb(n, 0).size();
+        double min_cost = cost(0);
+        double min_size = storage.get_mbb(n, 0).size();
         for (u32 i = 1; i < count; ++i) {
-            const float c = cost(i);
-            const float size = state.get_mbb(n, i).size();
+            const double c = cost(i);
+            const double size = state.get_mbb(n, i).size();
             if (c < min_cost || (c == min_cost && size < min_size)) {
                 min_cost = c;
                 min_index = i;
@@ -467,10 +475,12 @@ private:
 
     /// Splits the leaf into two leaves and inserts the extra entry.
     /// Returns the new leaf.
-    leaf_ptr split_and_insert(leaf_ptr old_leaf, const value_type& extra) {
+    leaf_ptr split_and_insert(leaf_ptr old_leaf, size_t level, const value_type& extra) {
+        geodb_assert(level == storage.get_height(), "Leaf must be at leaf level.");
+
         std::vector<value_type> entries = get_entries(old_leaf, extra);
         std::vector<split_element> split;
-        partition_type(state).partition(entries, State::min_leaf_entries(), split);
+        partition_type(state).partition(level, entries, State::min_leaf_entries(), split);
 
         // Move the entries into place.
         auto assign_entries = [&](which_t part, leaf_ptr ptr) {
@@ -503,10 +513,10 @@ private:
     /// \param extra
     ///     The new leaf or internal node that should be inserted,
     ///     represented by its summary.
-    internal_ptr split_and_insert(internal_ptr old_internal, const node_summary& extra) {
+    internal_ptr split_and_insert(internal_ptr old_internal, size_t level, const node_summary& extra) {
         std::vector<internal_entry> entries = get_entries(old_internal, extra);
         std::vector<split_element> split;
-        partition_type(state).partition(entries, State::min_internal_entries(), split);
+        partition_type(state).partition(level, entries, State::min_internal_entries(), split);
         std::sort(split.begin(), split.end(), [&](const auto& a, const auto& b) {
             return a.old_index < b.old_index;
         });
@@ -939,7 +949,7 @@ private:
         counts(*index->total(), count, entry_total_counts);
 
         result.resize(count);
-        std::fill(result.begin(), result.end(), 0.f);
+        std::fill(result.begin(), result.end(), 0);
 
         // Iterate over the shared labels of `v` and the node.
         // This loop is currently O(m * log n) where m is the number of labels in `v`
@@ -958,14 +968,14 @@ private:
                 // would be inserted in internal->entries[i].
                 const u64 combined_count = lc.count + entry_label_counts[i];
                 const u64 combined_total = value_total_count + entry_total_counts[i];
-                const float relative = float(combined_count) / float(combined_total);
+                const double relative = double(combined_count) / double(combined_total);
                 result[i] = std::max(result[i], relative);
             }
         }
 
         // Invert the frequencies to get the cost.
-        for (float& f : result) {
-            f = 1.0f - f;
+        for (double& f : result) {
+            f = 1.0 - f;
         }
     }
 
@@ -978,7 +988,7 @@ private:
     ///     Will contain the cost values.
     void spatial_insert_costs(internal_ptr internal, const bounding_box& mbb, internal_cost_vec& cost) {
         const u32 count = storage.get_count(internal);
-        const float norm = state.inverse(state.max_enlargement(internal, mbb));
+        const double norm = state.inverse(state.max_enlargement(internal, mbb));
 
         cost.resize(count);
         for (u32 i = 0; i < count; ++i) {

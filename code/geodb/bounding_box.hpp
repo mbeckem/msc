@@ -63,10 +63,6 @@ public:
     bounding_box extend(const bounding_box& other) const {
         return { vector3::min(min(), other.min()), vector3::max(max(), other.max()) };
     }
-
-    float size() const {
-        return float(rect_base::size());
-    }
 };
 
 } // namespace geodb

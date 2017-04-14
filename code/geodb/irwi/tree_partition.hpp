@@ -80,11 +80,13 @@ public:
 private:
     /// Represents a leaf node that is currently overflowing.
     struct leaf_entries {
+        size_t level;
         const std::vector<value_type>& entries;
     };
 
     /// Represents an internal node that is currently overflowing.
     struct internal_entries {
+        size_t level;
         const std::vector<internal_entry>& entries;
     };
 
@@ -103,30 +105,34 @@ public:
     /// Implements the quadradic node splitting algorithm for R-Trees
     /// (extended for spatio-textual trajectories).
     ///
+    /// \param level
+    ///     The level of the node whose entries we're partitioning.
     /// \param entries
     ///     The entries of the overflowing internal node.
     /// \param min_elements
     ///     The minimum number of elements for both parts.
     /// \param split
     ///     The vector that will contain the partition.
-    void partition(const std::vector<internal_entry>& entries, size_t min_elements, std::vector<split_element>& split)
+    void partition(size_t level, const std::vector<internal_entry>& entries, size_t min_elements, std::vector<split_element>& split)
     {
-        partition_impl(internal_entries{entries}, min_elements, split);
+        partition_impl(internal_entries{level, entries}, min_elements, split);
     }
 
     /// Partitions the entries of a single node into two groups.
     /// Implements the quadradic node splitting algorithm for R-Trees
     /// (extended for spatio-textual trajectories).
     ///
+    /// \param level
+    ///     The level of the node whose entries we're partitioning.
     /// \param entries
     ///     The entries of the overflowing leaf node.
     /// \param min_elements
     ///     The minimum number of elements for both parts.
     /// \param split
     ///     The vector that will contain the partition.
-    void partition(const std::vector<value_type>& entries, size_t min_elements, std::vector<split_element>& split)
+    void partition(size_t level, const std::vector<value_type>& entries, size_t min_elements, std::vector<split_element>& split)
     {
-        partition_impl(leaf_entries{entries}, min_elements, split);
+        partition_impl(leaf_entries{level, entries}, min_elements, split);
     }
 
 private:
@@ -201,31 +207,31 @@ private:
             // The higher the difference, the more meaningful the decision.
             auto pick_part = [&](u32 index) {
                 const auto mbb = get_mbb(e, index);
-                const float norm = state.inverse(std::max(state.enlargement(left_part.get_mbb(), mbb),
+                const double norm = state.inverse(std::max(state.enlargement(left_part.get_mbb(), mbb),
                                                           state.enlargement(right_part.get_mbb(), mbb)));
 
                 // Normalized and weighted cost of inserting the entry
                 // into the given group.
                 const auto cost = [&](const node_part& p) {
-                    const float spatial = state.spatial_cost(p.get_mbb(), mbb, norm);
-                    const float textual = state.textual_cost(get_labels(e, index), get_total_units(e, index),
+                    const double spatial = state.spatial_cost(p.get_mbb(), mbb, norm);
+                    const double textual = state.textual_cost(get_labels(e, index), get_total_units(e, index),
                                                              p.get_labels(), p.get_total_units());
-                    return state.cost(spatial, textual);
+                    return state.cost(spatial, textual, level(e));
                 };
 
-                const float lc = cost(left_part);
-                const float rc = cost(right_part);
+                const double lc = cost(left_part);
+                const double rc = cost(right_part);
                 return lc < rc ? std::make_tuple(&left_part, rc - lc) : std::make_tuple(&right_part, lc - rc);
             };
 
             // Determine the item with the best cost difference.
             u32* best_item = &remaining[0];
             node_part* best_part = nullptr;
-            float best_diff = 0;
+            double best_diff = 0;
             std::tie(best_part, best_diff) = pick_part(remaining[0]);
             for (u32 i = 1; i < remaining.size(); ++i) {
                 node_part* part;
-                float diff;
+                double diff;
                 std::tie(part, diff) = pick_part(remaining[i]);
 
                 if (diff > best_diff) {
@@ -263,6 +269,10 @@ private:
         return state.get_total_count(n.entries[index]);
     }
 
+    size_t level(const leaf_entries& n) const {
+        return n.level;
+    }
+
     bounding_box get_mbb(const internal_entries& o, u32 index) const {
         return o.entries[index].mbb;
     }
@@ -278,6 +288,10 @@ private:
 
     u32 get_count(const internal_entries& o) const {
         return o.entries.size();
+    }
+
+    size_t level(const internal_entries& o) const {
+        return o.level;
     }
 
     class node_part : boost::noncopyable {
@@ -363,22 +377,22 @@ private:
         const u32 N = get_count(e);
 
         // normalized wasted space and textual cost, combined using weight beta.
-        const float norm = state.inverse(max_waste(e));
+        const double norm = state.inverse(max_waste(e));
         auto cost = [&](u32 i, u32 j) {
-            const float spatial = waste(get_mbb(e, i), get_mbb(e, j)) * norm;
-            const float textual = state.textual_cost(get_labels(e, i), get_total_units(e, i),
+            const double spatial = waste(get_mbb(e, i), get_mbb(e, j)) * norm;
+            const double textual = state.textual_cost(get_labels(e, i), get_total_units(e, i),
                                                      get_labels(e, j), get_total_units(e, j));
-            return state.cost(spatial, textual);
+            return state.cost(spatial, textual, level(e));
         };
 
         // Compute the pair that would produce the maximal cost
         // if its entries were to be placed into the same node.
-        float max = -1.f;
+        double max = -1.f;
         u32 left, right;
         left = right = std::numeric_limits<u32>::max();
         for (u32 i = 0; i < N; ++i) {
             for (u32 j = i + 1; j < N; ++j) {
-                const float v = cost(i, j);
+                const double v = cost(i, j);
                 if (v > max) {
                     max = v;
                     left = i;
@@ -395,19 +409,19 @@ private:
     /// represented by `a` and `b` be stored in the same node.
     /// This is used by the node splitting algorithm to find the seeds
     /// for the old and the newly created node.
-    float waste(const bounding_box& a, const bounding_box& b) const {
+    double waste(const bounding_box& a, const bounding_box& b) const {
         const auto mbb = a.extend(b);
-        return std::max(mbb.size() - a.size() - b.size(), 0.f);
+        return std::max(mbb.size() - a.size() - b.size(), 0.0);
     }
 
     /// Returns the maximal waste value for all bounding box combinations.
     /// Used for normalization of the individual values.
     template<typename Entries>
-    float max_waste(const Entries& n) const {
+    double max_waste(const Entries& n) const {
         const u32 count = get_count(n);
         geodb_assert(count >= 2, "must have at least 2 entries");
 
-        float max = std::numeric_limits<float>::lowest();
+        double max = std::numeric_limits<double>::lowest();
         for (u32 i = 0; i < count; ++i) {
             for (u32 j = i + 1; j < count; ++j) {
                 max = std::max(max, waste(get_mbb(n, i), get_mbb(n, j)));
