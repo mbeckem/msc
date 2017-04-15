@@ -71,6 +71,7 @@ set(HEADERS
     irwi/tree_insertion.hpp
     irwi/tree_internal.hpp
     irwi/tree_partition.hpp
+    irwi/tree_quickload.hpp
     irwi/tree_state.hpp
 )
 

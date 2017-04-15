@@ -1,5 +1,5 @@
-#ifndef GEODB_IRWI_TREE_INTERNAL_HPP
-#define GEODB_IRWI_TREE_INTERNAL_HPP
+#ifndef GEODB_IRWI_TREE_QUICKLOAD_HPP
+#define GEODB_IRWI_TREE_QUICKLOAD_HPP
 
 #include "geodb/hybrid_buffer.hpp"
 #include "geodb/hybrid_map.hpp"
@@ -14,18 +14,14 @@
 namespace geodb {
 
 template<u32 fanout_leaf, u32 fanout_internal = fanout_leaf>
-struct tree_internal;
+struct tree_quickload;
 
 template<u32 fanout_leaf, u32 fanout_internal, typename LeafData, u32 Lambda>
-struct tree_internal_impl;
+struct tree_quickload_impl;
 
-/// Storage backend for an IRWI-Tree that stores its data
-/// in internal memory.
-/// Every node (internal and external) has the specified fanout.
-///
-/// As a user: do not use this class directly.
+/// Storage backend for the quickload algorithm. Mostly uses internal memory.
 template<u32 fanout_leaf, u32 fanout_internal, typename LeafData, u32 Lambda>
-class tree_internal_impl {
+class tree_quickload_impl {
 
     using index_storage = inverted_index_internal_storage;
 
@@ -76,6 +72,14 @@ private:
     template<typename Child>
     Child* cast(base* b) const {
         geodb_assert(b, "null pointer treated as valid node");
+#ifdef GEODB_DEBUG
+            // Do not check leaf pointers if the leaves have been cut off,
+            // they are invalid anyway.
+            if (!std::is_same<Child, leaf>::value || !m_leaves_cut) {
+                auto child = dynamic_cast<Child*>(b);
+                geodb_assert(child, "invalid cast");
+            }
+#endif
         return static_cast<Child*>(b);
     }
 
@@ -121,6 +125,7 @@ public:
     }
 
     leaf_ptr create_leaf() {
+        geodb_assert(!m_leaves_cut, "leaves have been cut off");
         ++m_leaves;
         return tpie::tpie_new<leaf>();
     }
@@ -153,16 +158,16 @@ public:
         i->entries[index].ptr = c;
     }
 
-    u32 get_count(leaf_ptr l) const { return l->count; }
+    u32 get_count(leaf_ptr l) const { return access(l)->count; }
 
-    void set_count(leaf_ptr l, u32 count) { l->count = count; }
+    void set_count(leaf_ptr l, u32 count) { access(l)->count = count; }
 
     LeafData get_data(leaf_ptr l, u32 index) const {
-        return l->entries[index];
+        return access(l)->entries[index];
     }
 
     void set_data(leaf_ptr l, u32 index, const LeafData& d) {
-        l->entries[index] = d;
+        access(l)->entries[index] = d;
     }
 
     size_t get_internal_count() const {
@@ -171,6 +176,22 @@ public:
 
     size_t get_leaf_count() const {
         return m_leaves;
+    }
+
+    /// Free all leaves but keep references to them in their parents.
+    /// Used by the quickload algorithm.
+    /// The number of leaves (i.e. `get_leaf_count()`) remains unaffected.
+    void cut_leaves() {
+        geodb_assert(!m_leaves_cut, "leaves were already cut off");
+
+        m_leaves_cut = true;
+        if (m_root) {
+            destroy_leaves(m_root, 1);
+        }
+    }
+
+    bool leaves_cut() const {
+        return m_leaves_cut;
     }
 
     template<typename Key, typename Value>
@@ -190,32 +211,61 @@ public:
     }
 
 public:
-    tree_internal_impl()
+    tree_quickload_impl()
     {
 
     }
 
-    tree_internal_impl(tree_internal_impl&& other) noexcept
+    tree_quickload_impl(tree_quickload_impl&& other) noexcept
         : m_height(other.m_height)
         , m_size(other.m_size)
         , m_root(other.m_root)
+        , m_leaves_cut(other.m_leaves_cut)
     {
         other.m_height = other.m_size = 0;
         other.m_root = nullptr;
     }
 
-    ~tree_internal_impl() {
+    ~tree_quickload_impl() {
         if (m_root) {
             geodb_assert(m_height > 0, "height must be nonzero if a root exists");
             geodb_assert(m_size > 0, "size must be nonzero if a root exists");
-            destroy(m_root, 1);
+            if (m_leaves_cut) {
+                destroy<true>(m_root, 1);
+            } else {
+                destroy<false>(m_root, 1);
+            }
         }
     }
 
 private:
+    leaf* access(leaf* l) const {
+        geodb_assert(!m_leaves_cut, "leaves have been cut off and cannot be accessed");
+        return l;
+    }
+
     /// Delete the subtree rooted at ptr.
     /// Level is the level of ptr in the tree (the root is at level 1).
+    template<bool leaves_cut>
     void destroy(base* ptr, size_t level) {
+        geodb_assert(level > 0, "");
+        if (level == m_height) {
+            if (!leaves_cut) {
+                tpie::tpie_delete(cast<leaf>(ptr));
+            }
+            return;
+        }
+
+        internal* n = cast<internal>(ptr);
+        for (size_t i = 0; i < n->count; ++i) {
+            destroy<leaves_cut>(n->entries[i].ptr, level + 1);
+        }
+        tpie::tpie_delete(n);
+    }
+
+    /// Destroy only the leaves and leave dangling pointers
+    /// to them in internal nodes.
+    void destroy_leaves(base* ptr, size_t level) {
         geodb_assert(level > 0, "");
         if (level == m_height) {
             tpie::tpie_delete(cast<leaf>(ptr));
@@ -224,9 +274,8 @@ private:
 
         internal* n = cast<internal>(ptr);
         for (size_t i = 0; i < n->count; ++i) {
-            destroy(n->entries[i].ptr, level + 1);
+            destroy_leaves(n->entries[i].ptr, level + 1);
         }
-        tpie::tpie_delete(n);
     }
 
 private:
@@ -235,6 +284,7 @@ private:
     size_t m_leaves = 0;    ///< Number of leaf nodes.
     size_t m_internals = 0; ///< Number of internal nodes.
     base* m_root = nullptr;
+    bool m_leaves_cut = false;
 };
 
 /// Instructs the irwi tree to use internal memory for storage.
@@ -245,16 +295,16 @@ private:
 ///     The maximum number of children in internal nodes.
 ///     Defaults to fanout_leaf.
 template<u32 fanout_leaf, u32 fanout_internal>
-class tree_internal {
+class tree_quickload {
 public:
-    tree_internal() = default;
+    tree_quickload() = default;
 
 private:
     template<typename StorageSpec, typename Value, typename Accessor, u32 Lambda>
     friend class tree_state;
 
     template<typename LeafData, u32 Lambda>
-    using implementation = tree_internal_impl<fanout_leaf, fanout_internal, LeafData, Lambda>;
+    using implementation = tree_quickload_impl<fanout_leaf, fanout_internal, LeafData, Lambda>;
 
     template<typename LeafData, u32 Lambda>
     implementation<LeafData, Lambda>
@@ -265,4 +315,4 @@ private:
 
 } // namespace geodb
 
-#endif // GEODB_IRWI_TREE_INTERNAL_HPP
+#endif // GEODB_IRWI_TREE_QUICKLOAD_HPP

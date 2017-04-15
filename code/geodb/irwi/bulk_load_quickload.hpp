@@ -8,7 +8,7 @@
 #include "geodb/irwi/label_count.hpp"
 #include "geodb/irwi/tree_state.hpp"
 #include "geodb/irwi/tree_insertion.hpp"
-#include "geodb/irwi/tree_internal.hpp"
+#include "geodb/irwi/tree_quickload.hpp"
 #include "geodb/utility/file_allocator.hpp"
 #include "geodb/utility/temp_dir.hpp"
 #include "geodb/utility/range_utils.hpp"
@@ -39,11 +39,13 @@ template<typename Value, typename Accessor, u32 fanout_leaf, u32 fanout_internal
 class quick_load_tree {
     // TODO: Make our own storage implementation derived from the normal internal storage.
     // Inverted indices and postings can grow large and should then be stored in external memory.
-    using storage_spec = tree_internal<fanout_leaf, fanout_internal>;
+    using storage_spec = tree_quickload<fanout_leaf, fanout_internal>;
 
     using value_type = Value;
 
-    using state_type = tree_state<storage_spec, Value, Accessor, 1>;
+    // We use Lambda == 0 because the id sets are unneccesary (the tree
+    // is never going to be queried).
+    using state_type = tree_state<storage_spec, Value, Accessor, 0>;
 
     using storage_type = typename state_type::storage_type;
 
@@ -597,6 +599,7 @@ private:
 
         u64 count = 0;
         {
+            fmt::print("Creating leaf nodes.\n");
             count = create_leaves(input, files);
             geodb_assert(count > 0, "invalid node count");
         }
@@ -604,6 +607,8 @@ private:
         // Loop until only one node remains.
         size_t height = 1;
         while (count > 1) {
+            fmt::print("Creating internal nodes at height {}.\n", height + 1);
+
             // Points to the files of the next level.
             level_files next_files;
 

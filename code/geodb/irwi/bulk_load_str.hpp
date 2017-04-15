@@ -99,11 +99,14 @@ private:
     friend common_t;
 
     subtree_result load_impl(tpie::file_stream<tree_entry>& input) {
+        fmt::print("Sorting entries.\n");
         sort(input);
 
         level_files files;
         u64 count = 0;
         {
+            fmt::print("Creating leaves.\n");
+
             next_level_streams output(files);
             count = create_leaves(input, output);
         }
@@ -114,6 +117,8 @@ private:
 
             level_files next_files;
             {
+                fmt::print("Creating internal nodes at height {}.\n", height + 1);
+
                 last_level_streams last_level(files);
                 next_level_streams next_level(next_files);
                 count = create_internals(count, last_level, next_level);

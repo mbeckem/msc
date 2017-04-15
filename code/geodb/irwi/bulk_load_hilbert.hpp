@@ -176,12 +176,16 @@ private:
         // and sort them in ascending order.
         tpie::file_stream<hilbert_entry> entries;
         {
+            fmt::print("Sorting entries.\n");
+
             entries.open();
             map_entries(input, entries);
             external_sort(entries, [&](const hilbert_entry& a, const hilbert_entry& b) {
                 return a.hilbert_index < b.hilbert_index;
             });
         }
+
+        fmt::print("Creating leaf nodes.\n");
 
         // Then, iterate the entries in linear order and group them as leaves.
         u64 leaves = 0;

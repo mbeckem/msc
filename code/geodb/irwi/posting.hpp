@@ -3,6 +3,7 @@
 
 #include "geodb/common.hpp"
 #include "geodb/id_set.hpp"
+#include "geodb/null_set.hpp"
 #include "geodb/trajectory.hpp"
 
 /// \file
@@ -13,6 +14,50 @@ namespace geodb {
 
 /// Identifies child entries of an internal node (by index).
 using entry_id_type = u32;
+
+template<u32 Lambda>
+class posting_data;
+
+/// A posting with Lambda == 0 does not store any ids.
+template<>
+class posting_data<0> {
+public:
+    using id_set_type = null_set<trajectory_id_type>;
+
+public:
+    posting_data() = default;
+
+    posting_data(u64 count, const id_set_type&): m_count(count) {}
+
+    /// The number of trajectory units counted by this posting.
+    u64 count() const {
+        return m_count;
+    }
+
+    /// Updates the count of this instance.
+    void count(u64 count) {
+        m_count = count;
+    }
+
+    void id_set(const id_set_type&) {}
+
+    id_set_type id_set() const { return {}; }
+
+    friend bool operator==(const posting_data& a, const posting_data& b) {
+        return a.count() == b.count();
+    }
+
+    friend bool operator!=(const posting_data& a, const posting_data& b) {
+        return !(a == b);
+    }
+
+    friend std::ostream& operator<<(std::ostream& o, const posting_data& p) {
+        return o << "count: " << p.count() << ", ids: NONE";
+    }
+
+private:
+    u64 m_count = 0;
+};
 
 /// Represents the data part of a postings list entry, i.e.
 /// a count and a set of trajectory ids.
@@ -34,7 +79,9 @@ public:
     }
 
     /// The number of trajectory units counted by this posting.
-    u64 count() const { return m_count; }
+    u64 count() const {
+        return m_count;
+    }
 
     /// Updates the count of this instance.
     void count(u64 count) {
@@ -57,7 +104,7 @@ public:
     }
 
     friend bool operator==(const posting_data& a, const posting_data& b) {
-        return a.m_count == b.m_count
+        return a.count() == b.count()
                 && std::memcmp(&a.m_binary_ids, &b.m_binary_ids, sizeof(id_set_binary_type)) == 0;
     }
 
@@ -65,8 +112,13 @@ public:
         return !(a == b);
     }
 
+    friend std::ostream& operator<<(std::ostream& o, const posting_data& data) {
+        return o << "count: " << data.count()
+                 << ", ids: " << data.id_set();
+    }
+
 private:
-    u64 m_count = 0;                    ///< The number of units with that label in this subtree.
+    u64 m_count = 0;
     id_set_binary_type m_binary_ids;
 };
 
@@ -88,11 +140,9 @@ public:
     {}
 
     posting(entry_id_type node, u64 count, const id_set_type& ids)
-        : m_node(node)
-    {
-        data_type::count(count);
-        data_type::id_set(ids);
-    }
+        : data_type(count, ids)
+        , m_node(node)
+    {}
 
     posting(entry_id_type node, data_type data)
         : data_type(std::move(data))
@@ -104,7 +154,7 @@ public:
     entry_id_type node() const { return m_node; }
 
     friend std::ostream& operator<<(std::ostream& o, const posting& e) {
-        return o << "{node: " << e.node() << ", count: " << e.count() << ", ids: " << e.id_set() << "}";
+        return o << "{node: " << e.node() << ", " << static_cast<const data_type&>(e) << "}";
     }
 
     friend bool operator==(const posting& a, const posting& b) {
