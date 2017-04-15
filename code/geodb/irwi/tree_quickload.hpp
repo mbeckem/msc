@@ -4,8 +4,11 @@
 #include "geodb/hybrid_buffer.hpp"
 #include "geodb/hybrid_map.hpp"
 #include "geodb/irwi/base.hpp"
+#include "geodb/irwi/block_collection.hpp"
 #include "geodb/irwi/inverted_index.hpp"
-#include "geodb/irwi/inverted_index_internal.hpp"
+#include "geodb/irwi/inverted_index_external.hpp"
+#include "geodb/utility/file_allocator.hpp"
+#include "geodb/utility/temp_dir.hpp"
 
 /// \file
 /// Internal storage backend for IRWI Trees.
@@ -13,17 +16,19 @@
 
 namespace geodb {
 
-template<u32 fanout_leaf, u32 fanout_internal = fanout_leaf>
+template<size_t block_size, u32 fanout_leaf, u32 fanout_internal = fanout_leaf>
 struct tree_quickload;
 
-template<u32 fanout_leaf, u32 fanout_internal, typename LeafData, u32 Lambda>
+template<size_t block_size, u32 fanout_leaf, u32 fanout_internal, typename LeafData, u32 Lambda>
 struct tree_quickload_impl;
 
 /// Storage backend for the quickload algorithm. Mostly uses internal memory.
-template<u32 fanout_leaf, u32 fanout_internal, typename LeafData, u32 Lambda>
-class tree_quickload_impl {
+template<size_t block_size, u32 fanout_leaf, u32 fanout_internal, typename LeafData, u32 Lambda>
+class tree_quickload_impl : boost::noncopyable {
 
-    using index_storage = inverted_index_internal_storage;
+    using index_storage = inverted_index_external<block_size>;
+
+    using dir_alloc_t = directory_allocator<u64>;
 
 public:
     static constexpr u32 max_internal_entries() { return fanout_internal; }
@@ -49,7 +54,19 @@ private:
     };
 
     struct internal : base {
-        /// The index is stored inline.
+        internal(u32 directory_id,
+                 const fs::path& directory_path,
+                 block_collection<block_size>& list_blocks)
+            : directory_id(directory_id)
+            , index(index_storage(directory_path, list_blocks))
+            , count(0)
+        {}
+
+        /// The directory allocated for this node (stores the btree index).
+        u32 directory_id;
+
+        /// The index is stored inline and remains open.
+        /// TODO: hybrid storage!
         index_type index;
 
         /// Total number of entries.
@@ -60,6 +77,8 @@ private:
     };
 
     struct leaf : base {
+        leaf(): count(0) {}
+
         /// Total number of entries.
         u32 count;
 
@@ -121,7 +140,9 @@ public:
 
     internal_ptr create_internal() {
         ++m_internals;
-        return tpie::tpie_new<internal>();
+        u32 directory_id = m_alloc.alloc();
+        internal_ptr i = tpie::tpie_new<internal>(directory_id, m_alloc.path(directory_id), m_list_blocks);
+        return i;
     }
 
     leaf_ptr create_leaf() {
@@ -129,6 +150,22 @@ public:
         ++m_leaves;
         return tpie::tpie_new<leaf>();
     }
+
+private:
+    void destroy_internal(internal_ptr i) {
+        u32 directory_id = i->directory_id;
+
+        // First delete the node (closes open files),
+        // then erase the directory.
+        tpie::tpie_delete(i);
+        m_alloc.free(directory_id);
+    }
+
+    void destroy_leaf(leaf_ptr l) {
+        tpie::tpie_delete(l);
+    }
+
+public:
 
     index_ptr index(internal_ptr i) {
         return &i->index;
@@ -211,19 +248,12 @@ public:
     }
 
 public:
-    tree_quickload_impl()
+    tree_quickload_impl(size_t max_leaves)
+        : m_directory("quickload-tree")
+        , m_alloc(ensure_directory(m_directory.path() / "inverted_index"))
+        , m_list_blocks(m_directory.path() / "posting_lists.data", list_cache_size(max_leaves))
     {
 
-    }
-
-    tree_quickload_impl(tree_quickload_impl&& other) noexcept
-        : m_height(other.m_height)
-        , m_size(other.m_size)
-        , m_root(other.m_root)
-        , m_leaves_cut(other.m_leaves_cut)
-    {
-        other.m_height = other.m_size = 0;
-        other.m_root = nullptr;
     }
 
     ~tree_quickload_impl() {
@@ -251,7 +281,7 @@ private:
         geodb_assert(level > 0, "");
         if (level == m_height) {
             if (!leaves_cut) {
-                tpie::tpie_delete(cast<leaf>(ptr));
+                destroy_leaf(cast<leaf>(ptr));
             }
             return;
         }
@@ -260,7 +290,7 @@ private:
         for (size_t i = 0; i < n->count; ++i) {
             destroy<leaves_cut>(n->entries[i].ptr, level + 1);
         }
-        tpie::tpie_delete(n);
+        destroy_internal(n);
     }
 
     /// Destroy only the leaves and leave dangling pointers
@@ -268,7 +298,7 @@ private:
     void destroy_leaves(base* ptr, size_t level) {
         geodb_assert(level > 0, "");
         if (level == m_height) {
-            tpie::tpie_delete(cast<leaf>(ptr));
+            destroy_leaf(cast<leaf>(ptr));
             return;
         }
 
@@ -278,7 +308,16 @@ private:
         }
     }
 
+    static size_t list_cache_size(size_t max_leaves) {
+        // FIXME
+        return max_leaves;
+    }
+
 private:
+    temp_dir m_directory;
+    dir_alloc_t m_alloc;
+    block_collection<block_size> m_list_blocks;
+
     size_t m_height = 0;    ///< 0: Tree is empty. 1: Root is leaf, 2: Everything else
     size_t m_size = 0;      ///< Number of data items inside the tree.
     size_t m_leaves = 0;    ///< Number of leaf nodes.
@@ -287,29 +326,39 @@ private:
     bool m_leaves_cut = false;
 };
 
-/// Instructs the irwi tree to use internal memory for storage.
+/// Storage for the quickload algorithm.
 ///
+/// \tparam block_size
+///     The block size in external storage.
 /// \tparam fanout_leaf
 ///     The maximum number of children in leaf nodes.
 /// \tparam fanout_internal
 ///     The maximum number of children in internal nodes.
 ///     Defaults to fanout_leaf.
-template<u32 fanout_leaf, u32 fanout_internal>
+template<size_t block_size, u32 fanout_leaf, u32 fanout_internal>
 class tree_quickload {
+private:
+    size_t max_leaves;
+
 public:
-    tree_quickload() = default;
+    /// \param max_leaves
+    ///     The maximum number of leaves that the tree is expected to have.
+    ///     From this value we can derive the maximum number of internal nodes
+    ///     and compute an appropriate per-node cache size.
+    tree_quickload(size_t max_leaves)
+        : max_leaves(max_leaves) {}
 
 private:
     template<typename StorageSpec, typename Value, typename Accessor, u32 Lambda>
     friend class tree_state;
 
     template<typename LeafData, u32 Lambda>
-    using implementation = tree_quickload_impl<fanout_leaf, fanout_internal, LeafData, Lambda>;
+    using implementation = tree_quickload_impl<block_size, fanout_leaf, fanout_internal, LeafData, Lambda>;
 
     template<typename LeafData, u32 Lambda>
-    implementation<LeafData, Lambda>
+    movable_adapter<implementation<LeafData, Lambda>>
     construct() const {
-        return {};
+        return {in_place_t(), max_leaves};
     }
 };
 

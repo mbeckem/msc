@@ -349,14 +349,20 @@ public:
 
     using const_iterator = iterator;
 
+public:
+    static constexpr size_t limit_for_blocks(size_t blocks) {
+        return (blocks * block_size) / (sizeof(Key) + sizeof(Value));
+    }
+
 private:
     backend_t m_backend;
     size_t m_limit = 0;
 
 public:
-    /// Constructs a new map with a reasonable size limit of ca. 2 blocks.
+    /// Constructs a new map that keeps 2 blocks in memory
+    /// before it switches to external storage.
     hybrid_map()
-        : hybrid_map((block_size * 2) / (sizeof(Key) + sizeof(Value)))
+        : hybrid_map(limit_for_blocks(2))
     {}
 
     /// Constructs a new map with the given size limit.

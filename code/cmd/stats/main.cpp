@@ -161,7 +161,6 @@ static void analyze(external_tree::cursor& node, tree_stats& stats) {
         stats.leaf_area.push(node.mbb().size());
     } else {
         double ratio = volume_ratio(node);
-        fmt::print("node {:30} has ratio {:16}\n", path(node), ratio);
 
         stats.internal_volume_ratio[node.level()].push(ratio);
         stats.index_size.push(node.inverted_index()->size());
@@ -197,6 +196,8 @@ static analyze_result analyze(const external_tree& tree) {
 }
 
 int main(int argc, char** argv) {
+    (void) path;
+
     return tpie_main([&]{
         parse_options(argc, argv);
 

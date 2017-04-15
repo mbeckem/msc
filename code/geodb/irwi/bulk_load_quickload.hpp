@@ -35,11 +35,11 @@ namespace geodb {
 /// Values are inserted as usual until the tree reaches a certain number of leaves,
 /// at which point all leaf nodes are flushed to disk and then deleted from internal memory.
 /// However, the internal nodes are retained to distribute any remaining values.
-template<typename Value, typename Accessor, u32 fanout_leaf, u32 fanout_internal>
+template<typename Value, typename Accessor, size_t block_size, u32 fanout_leaf, u32 fanout_internal>
 class quick_load_tree {
     // TODO: Make our own storage implementation derived from the normal internal storage.
     // Inverted indices and postings can grow large and should then be stored in external memory.
-    using storage_spec = tree_quickload<fanout_leaf, fanout_internal>;
+    using storage_spec = tree_quickload<block_size, fanout_leaf, fanout_internal>;
 
     using value_type = Value;
 
@@ -72,8 +72,8 @@ private:
     bool m_leaves_flushed = false;
 
 public:
-    quick_load_tree(Accessor accessor, double weight)
-        : m_state(storage_spec(), std::move(accessor), weight)
+    quick_load_tree(Accessor accessor, double weight, size_t max_leaves)
+        : m_state(storage_spec(max_leaves), std::move(accessor), weight)
     {}
 
     /// Inserts the value into the tree. Grows the tree if necessary.
@@ -200,9 +200,9 @@ using container = multi_index_container<
 /// into nodes for the current level.
 /// This process is repeated until only one node remains.
 /// This node becomes the root of the tree.
-template<typename Value, typename Accessor, u32 fanout_leaf, u32 fanout_internal>
+template<typename Value, typename Accessor, size_t block_size, u32 fanout_leaf, u32 fanout_internal>
 class quick_load_pass {
-    using tree_type = quick_load_tree<Value, Accessor, fanout_leaf, fanout_internal>;
+    using tree_type = quick_load_tree<Value, Accessor, block_size, fanout_leaf, fanout_internal>;
 
     using node_id = typename tree_type::node_id;
 
@@ -443,7 +443,7 @@ private:
     /// Clear the tree.
     void clear_tree() {
         m_tree.reset();
-        m_tree.emplace(m_accessor, m_weight);
+        m_tree.emplace(m_accessor, m_weight, m_max_leaves);
     }
 
     u64 alloc_bucket() {
@@ -522,19 +522,21 @@ class quick_loader : public bulk_load_common<Tree, quick_loader<Tree>> {
     using label_count_list = external_list<label_count, storage_type::get_block_size()>;
 
     // Number of entries in internal nodes of the quickload tree.
-    // Not related to the tree we are building right now,
+    // Not related to the tree we are bulk loading right now,
     // because only leaf nodes of that internal tree become leaf or
     // internal nodes on disk.
     static constexpr size_t internal_fanout() { return 63; }
 
     using leaf_pass_t = quick_load_pass<
         tree_entry, detail::tree_entry_accessor,
+        storage_type::get_block_size(),
         tree_type::max_leaf_entries(), internal_fanout()>;
 
     class pseudo_leaf_entry_accessor;
 
     using internal_pass_t = quick_load_pass<
         pseudo_leaf_entry, pseudo_leaf_entry_accessor,
+        storage_type::get_block_size(),
         tree_type::max_internal_entries(), internal_fanout()>;
 
     struct level_files : common_t::level_files {
