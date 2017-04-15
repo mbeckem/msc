@@ -82,6 +82,7 @@ class str_loader : public bulk_load_common<Tree, str_loader<Tree>> {
 
 public:
     enum class sort_mode {
+        label_ignored,
         label_first,
         label_last,
     };
@@ -136,6 +137,9 @@ private:
     void sort(tpie::file_stream<tree_entry>& input) {
         // The order of the comparison object defines the tiling order.
         switch (m_mode) {
+        case sort_mode::label_ignored:
+            sort_tile_recursive(input, m_leaf_size, cmp_x(), cmp_y(), cmp_t());
+            break;
         case sort_mode::label_first:
             sort_tile_recursive(input, m_leaf_size, cmp_label(), cmp_x(), cmp_y(), cmp_t());
             break;
