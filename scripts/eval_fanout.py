@@ -25,7 +25,7 @@ if __name__ == "__main__":
     fanouts = [32, 50, 64, 0]
     algorithms = [
         "hilbert",
-        "str",
+        "str-lf",
         "quickload",
         #  "obo", # TODO SOO SLOW
     ]

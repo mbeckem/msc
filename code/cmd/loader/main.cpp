@@ -120,8 +120,9 @@ void parse_options(int argc, char** argv) {
              "Possible algorithm choices are:\n"
              "  obo        \tOne by one insertion (constant resource usage, very slow).\n"
              "  hilbert    \tSort entries by hilbert values and pack them into leaf nodes.\n"
-             "  str        \tTile entries using the Sort-Tile-Recursive algorithm and pack them into leaf nodes.\n"
-             "  str2       \tTile like in str, but sort by label last.\n"
+             "  str-plain  \tTile entries using the Sort-Tile-Recursive algorithm and pack them into leaf nodes.\n"
+             "  str-lf     \tTile like in str-plain, but sort by label as the first dimension.\n"
+             "  str-ll     \tTile like in str-plain, but sort by label as the last dimension.\n"
              "  quickload  \tUse the quickload algorithm to pack entries into nodes on every level of the tree.\n")
             ("trajectories", po::value(&trajectories_path)->value_name("PATH"),
              "Path to prepared trajectory file.")
@@ -171,8 +172,8 @@ void parse_options(int argc, char** argv) {
 }
 
 algorithm_type get_algorithm() {
-    if (algorithm == "str") {
-        fmt::print(cout, "Using str loading with memory limit {} MB.\n", memory);
+    if (algorithm == "str-lf") {
+        fmt::print(cout, "Using str-lf loading with memory limit {} MB.\n", memory);
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
             size_t limit = memory * 1024 * 1024;
             tpie::get_memory_manager().set_limit(limit);
@@ -181,8 +182,18 @@ algorithm_type get_algorithm() {
             loader_t loader(tree, loader_t::sort_mode::label_first);
             loader.load(input);
         };
-    } else if (algorithm == "str2") {
-        fmt::print(cout, "Using str2 loading with memory limit {} MB.\n", memory);
+    } else if (algorithm == "str-plain") {
+        fmt::print(cout, "Using str-plain loading with memory limit {} MB.\n", memory);
+        return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
+            size_t limit = memory * 1024 * 1024;
+            tpie::get_memory_manager().set_limit(limit);
+
+            using loader_t = str_loader<external_tree>;
+            loader_t loader(tree, loader_t::sort_mode::label_ignored);
+            loader.load(input);
+        };
+    } else if (algorithm == "str-ll") {
+        fmt::print(cout, "Using str-ll loading with memory limit {} MB.\n", memory);
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
             size_t limit = memory * 1024 * 1024;
             tpie::get_memory_manager().set_limit(limit);

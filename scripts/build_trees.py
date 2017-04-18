@@ -20,7 +20,7 @@ if __name__ == "__main__":
     algorithms = [
         # "obo," # TODO: so slow..
         "hilbert",
-        "str",
+        "str-lf",
         "quickload"
     ]
 
