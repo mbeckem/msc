@@ -163,3 +163,18 @@ TEST_CASE("hybrid map larger dataset", "[hybrid-map]") {
     }
     REQUIRE(count == max);
 }
+
+TEST_CASE("hybrid map custom location", "[hybrid-map]") {
+    temp_dir dir("asd");
+
+    hybrid_map<int, int, 4096> map(dir.path() / "123", 1024);
+    for (int i = 0; i < 4000; ++i) {
+        map.insert(i, i * 2);
+    }
+
+    REQUIRE(map.is_external());
+    REQUIRE(map.size() == 4000);
+
+    REQUIRE(fs::exists(dir.path() / "123"));
+    REQUIRE(fs::exists(dir.path() / "123" / "map.tree"));
+}

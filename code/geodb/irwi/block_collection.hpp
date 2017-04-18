@@ -23,8 +23,8 @@ public:
 public:
     /// A block collection at the given file system location
     /// with the specified cache size.
-    block_collection(const fs::path& path, size_t max_cache = 32)
-        : m_blocks(path.string(), BlockSize, std::max(max_cache, size_t(4)), true)
+    block_collection(const fs::path& path, size_t max_cache = 32, bool read_only = false)
+        : m_blocks(path.string(), BlockSize, std::max(max_cache, size_t(4)), !read_only)
     {}
 
     /// Allocates a new block.

@@ -39,7 +39,7 @@ template<typename Value, typename Accessor, size_t block_size, u32 fanout_leaf, 
 class quick_load_tree {
     // TODO: Make our own storage implementation derived from the normal internal storage.
     // Inverted indices and postings can grow large and should then be stored in external memory.
-    using storage_spec = tree_quickload<block_size, fanout_leaf, fanout_internal>;
+    using storage_spec = quickload::tree_storage<block_size, fanout_leaf, fanout_internal>;
 
     using value_type = Value;
 

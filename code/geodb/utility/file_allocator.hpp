@@ -112,17 +112,33 @@ private:
 /// Directories will be created at allocation time and recursively removed when freed.
 template<typename IdType>
 class directory_allocator : public file_allocator_base<directory_allocator<IdType>, IdType> {
+private:
+    bool m_create_directories = true;
+
 public:
     /// \copydoc file_allocator_base::file_allocator_base(fs::path, std::string)
     directory_allocator(fs::path directory, std::string suffix = "")
         : directory_allocator::file_allocator_base(std::move(directory), std::move(suffix))
     {}
 
+    /// Returns whether this instance creates the directories on disk
+    /// when allocating them.
+    bool create_directories() const { return m_create_directories; }
+
+    /// Skips creation of directories when this is disabled.
+    /// They can be created by the user and will still be deleted (if they exist)
+    /// in `free()`.
+    void set_create_directories(bool enabled) {
+        m_create_directories = enabled;
+    }
+
 private:
     friend class file_allocator_base<directory_allocator<IdType>, IdType>;
 
     void create(const fs::path& p) {
-        fs::create_directory(p);
+        if (m_create_directories) {
+            fs::create_directory(p);
+        }
     }
 
     void remove(const fs::path& p) {

@@ -4,6 +4,7 @@
 #include "geodb/common.hpp"
 #include "geodb/filesystem.hpp"
 #include "geodb/irwi/block_handle.hpp"
+#include "geodb/irwi/block_collection.hpp"
 #include "geodb/utility/raw_stream.hpp"
 
 #include <fmt/format.h>
@@ -39,9 +40,13 @@ private:
     static_assert(std::is_trivially_copyable<value_type>::value,
                   "Value must be trivially copyable");
 
+public:
+    //// Returns the number of items per block.
     static constexpr size_type block_capacity() {
         return block_size / sizeof(value_type);
     }
+
+    static_assert(block_capacity() > 0, "at least one entry must fit into a block.");
 
 public:
     /// Open a list with the given path.
@@ -55,7 +60,7 @@ public:
     external_list(const fs::path& path, size_t cache_blocks, bool read_only = false)
         : m_path(path)
         , m_read_only(read_only)
-        , m_blocks((path / "list.blocks").string(), block_size, std::max(cache_blocks, (size_t) 1), !m_read_only)
+        , m_blocks((path / "list.blocks").string(), std::max(cache_blocks, (size_t) 1), m_read_only)
     {
         raw_stream rf;
         if (rf.try_open(state_path())) {
@@ -97,11 +102,26 @@ public:
     /// Returns the value at the given index.
     /// \pre `index < size()`.
     value_type operator[](size_type index) const {
+        return get(index);
+    }
+
+    /// Returns the value at the given index.
+    /// \pre `index < size()`.
+    value_type get(size_t index) const {
         geodb_assert(index < m_value_count, "index out of bounds");
 
         size_type block_index = index / block_capacity();
         size_type index_in_block = index % block_capacity();
         return get(block_index, index_in_block);
+    }
+
+    /// Replaces the value at the given index with a new one.
+    /// \pre `index < size()`.
+    void set(size_t index, const value_type& value) {
+        geodb_assert(index < m_value_count, "index out of bounds");
+        size_type block_index = index / block_capacity();
+        size_type index_in_block = index % block_capacity();
+        return set(block_index, index_in_block, value);
     }
 
     /// Appends a value.
@@ -188,7 +208,7 @@ private:
     block_handle_type m_current_block;
 
     /// Block storage on disk + cache.
-    mutable tpie::blocks::block_collection_cache m_blocks;
+    mutable block_collection<block_size> m_blocks;
 };
 
 }

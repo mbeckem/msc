@@ -134,6 +134,8 @@ public:
     using typename posting::posting_data::id_set_type;
 
 public:
+    posting(): posting(0) {}
+
     posting(entry_id_type node)
         : data_type()
         , m_node(node)

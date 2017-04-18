@@ -5,8 +5,9 @@
 #include "geodb/utility/movable_adapter.hpp"
 #include "geodb/utility/temp_dir.hpp"
 
-#include <boost/iterator/iterator_facade.hpp>
+#include <boost/optional.hpp>
 #include <boost/variant.hpp>
+#include <boost/iterator/iterator_facade.hpp>
 #include <tpie/btree.h>
 #include <tpie/tempname.h>
 
@@ -163,6 +164,8 @@ private:
 
     using tree_iterator_t = typename tree_t::iterator;
 
+    using storage_t = boost::variant<temp_dir, fs::path>;
+
 public:
     using value_type = std::pair<const Key, Value>;
 
@@ -214,14 +217,25 @@ public:
     using const_iterator = iterator;
 
 private:
-    temp_dir m_dir{"external_map"};
+    storage_t m_storage;
     tpie::unique_ptr<tree_t> m_tree;
 
 public:
     /// Create an empty map.
     external_map()
-        : m_tree(tpie::make_unique<tree_t>((m_dir.path() / "map.tree").string()))
-    {}
+        : m_storage(temp_dir("external-map"))
+    {
+        open();
+    }
+
+    /// Create an internal map in the given directory.
+    /// The directory does not need to exist (it will be created),
+    /// but if it exists then it should be empty.
+    external_map(const fs::path& directory)
+        : m_storage(ensure_directory(directory))
+    {
+        open();
+    }
 
     external_map(external_map&&) noexcept = default;
 
@@ -263,6 +277,22 @@ public:
     /// Returns the number of items in this map.
     size_t size() const {
         return m_tree->size();
+    }
+
+private:
+    void open() {
+        struct get_path {
+            const fs::path& operator()(const fs::path& path) const {
+                return path;
+            }
+
+            const fs::path& operator()(const temp_dir& dir) const {
+                return dir.path();
+            }
+        };
+
+        const fs::path& path = boost::apply_visitor(get_path(), m_storage);
+        m_tree = tpie::make_unique<tree_t>((path / "map.tree").string());
     }
 };
 
@@ -357,6 +387,7 @@ public:
 private:
     backend_t m_backend;
     size_t m_limit = 0;
+    boost::optional<fs::path> m_path;
 
 public:
     /// Constructs a new map that keeps 2 blocks in memory
@@ -372,6 +403,26 @@ public:
         : m_backend()
         , m_limit(limit)
     {}
+
+    /// Constructs a new map that keeps 2 blocks in memory
+    /// before it switches to external storage.
+    /// When the limit is exceeded, the map will move to external
+    /// storage at the given directory location.
+    /// See the constructor of \ref external_map.
+    explicit hybrid_map(const fs::path& path)
+        : hybrid_map(path, limit_for_blocks(2))
+    {}
+
+    /// Constructs a new map with the given size limit.
+    /// When the limit is exceeded, the map will move to external
+    /// storage at the given directory location.
+    /// See the constructor of \ref external_map.
+    hybrid_map(const fs::path& path, size_t limit)
+        : m_backend()
+        , m_limit(limit)
+        , m_path(path)
+    {
+    }
 
     hybrid_map(hybrid_map&&) noexcept = default;
 
@@ -446,7 +497,10 @@ public:
 
         internal_backend& internal = boost::get<internal_backend>(m_backend);
 
-        external_backend external;
+        external_backend external = m_path ? external_backend(*m_path)
+                                           : external_backend();
+
+        // TODO: Could even use bulk loading here.
         for (const auto& pair : internal) {
             external.insert(pair.first, pair.second);
         }
