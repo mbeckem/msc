@@ -10,13 +10,9 @@ import commands
 
 from common import LOADER, RESULT_PATH, OUTPUT_PATH, TMP_PATH, DATA_PATH
 from compile import compile
-from datasets import OSM_VARYING_SIZE, RANDOM_WALK_VARYING_SIZE
+from datasets import OSM_ROUTES, RANDOM_WALK
 from lib.prettytable import PrettyTable
 
-
-def annotate(value, tuples):
-    for t in tuples:
-        yield (value,) + t
 
 if __name__ == "__main__":
     compile()
@@ -36,17 +32,22 @@ if __name__ == "__main__":
     table.align["Duration"] = "r"
 
     with (OUTPUT_PATH / "build_trees.log").open("w") as logfile:
-        dataset = list(itertools.chain(annotate("osm", OSM_VARYING_SIZE),
-                                       annotate("random-walk", RANDOM_WALK_VARYING_SIZE)))
+        def size_steps(name, max_entries, path):
+            step = int(max_entries / 10)
+            for i in range(1, 11):
+                yield (name, i * step, path)
+
+        dataset = list(itertools.chain(size_steps("osm", *OSM_ROUTES),
+                                       size_steps("random-walk", *RANDOM_WALK)))
         for algorithm in algorithms:
-            for data_kind, entries, _, data_path in dataset:
+            for data_kind, entries, data_path in dataset:
                 basename = "{}-{}-n{}".format(data_kind, algorithm, entries)
                 tree_path = tree_dir / basename
 
                 print("Running {} on {} entries from {}"
                       .format(algorithm, entries, data_kind))
                 result = commands.build_tree(algorithm, tree_path,
-                                             data_path, logfile)
+                                             data_path, logfile, limit=entries)
                 table.add_row([
                     algorithm, data_kind, entries, result.total_io, result.duration
                 ])

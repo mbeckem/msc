@@ -3,5 +3,7 @@ if (NOT BUILD_OSM)
     return()
 endif()
 
+message(STATUS "Building the osm_generator tool.")
+
 add_executable(osm_generator main.cpp)
 target_link_libraries(osm_generator osrm common)

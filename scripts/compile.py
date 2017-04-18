@@ -21,7 +21,9 @@ def compile(type="Release",
             leaf_fanout=0,
             internal_fanout=0,
             bloom_filters=False,
-            naive_node_building=False):
+            naive_node_building=False,
+            build_inspector=False,
+            build_osm=False):
     defines = {
         "CMAKE_BUILD_TYPE": type,
         "USE_BLOOM": bool_str(bloom_filters),
@@ -31,6 +33,8 @@ def compile(type="Release",
         "LAMBDA": str(lambda_),
         "LEAF_FANOUT": str(leaf_fanout),
         "INTERNAL_FANOUT": str(internal_fanout),
+        "BUILD_INSPECTOR": bool_str(build_inspector),
+        "BUILD_OSM": bool_str(build_osm),
     }
 
     args = [common.CMAKE]
@@ -82,6 +86,16 @@ if __name__ == "__main__":
                         action="store_true",
                         default=argparse.SUPPRESS,
                         help="Enable naive node building.")
+    parser.add_argument("--build-inspector",
+                        dest="build_inspector",
+                        action="store_true",
+                        default=argparse.SUPPRESS,
+                        help="Build the inspector tool.")
+    parser.add_argument("--build-osm",
+                        dest="build_osm",
+                        action="store_true",
+                        default=argparse.SUPPRESS,
+                        help="Build the osm utilities.")
 
     result = parser.parse_args()
     compile(**vars(result))

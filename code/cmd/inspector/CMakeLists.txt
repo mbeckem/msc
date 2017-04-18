@@ -3,6 +3,8 @@ if (NOT BUILD_INSPECTOR)
     return()
 endif()
 
+message(STATUS "Building the inspector.")
+
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOMOC ON)
 

@@ -23,18 +23,21 @@ def osm_generated(entries):
 def walk_generated(entries, labels):
     return _check(DATA_PATH / "walk-generated-n{}-l{}.entries".format(entries, labels))
 
+# Random walk with fixed size and growing number of labels (~evenly
+# distributed). More labels == more load in the inverted indices and significantly more
+# data in postings lists.
 RANDOM_WALK_VARYING_LABELS = [
     (5000000, labels, walk_generated(5000000, labels))
     for labels in [10, 20, 30, 40, 50, 100,
                    150, 200, 250, 500, 1000, 2000, 5000, 10000]
 ]
 
-RANDOM_WALK_VARYING_SIZE = [
-    (entries, 100, walk_generated(entries, 100))
-    for entries in _times(range(1, 7), 1000000)
-]
+# Entry file with 10 million entries and 100 labels (~evenly distributed).
+RANDOM_WALK = (10000000, walk_generated(10000000, 100))
 
-OSM_VARYING_SIZE = [
-    (entries, None, osm_generated(entries))
-    for entries in _times(range(1, 9), 500000)
-]
+# 100 million entries (with only 10 labels).
+RANDOM_WALK_LARGE = (100000000, walk_generated(100000000, 10))
+
+# 5 million entries (about 4,5k routes).
+# The labels are street names.
+OSM_ROUTES = (4000000, osm_generated(4000000))
