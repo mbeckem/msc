@@ -31,12 +31,13 @@ int main(int argc, char** argv) {
         parse_options(argc, argv);
         external_string_map label_map{string_map_external(labels)};
 
-        tpie::serialization_writer out;
-        out.open(output);
-
         fmt::print("Parsing geolife trajectories from {}\n", input);
         fmt::print("Writing results to {}\n", output);
         fmt::print("Labels file {}\n", labels);
+
+        tpie::file_stream<tree_entry> out;
+        out.open(output);
+        out.truncate(0);
 
         tpie::progress_indicator_arrow arrow("Parsing dataset", 100);
         arrow.set_indicator_length(60);
@@ -50,11 +51,12 @@ void parse_options(int argc, char** argv) {
     po::options_description options;
     options.add_options()
             ("help,h", "Show this message.")
-            ("input", po::value(&input)->value_name("PATH")->required(),
-             "Path to raw trajectory data.")
-            ("output-trajectories", po::value(&output)->value_name("PATH")->required(),
-             "Output file for trajectories.")
-            ("output-labels", po::value(&labels)->value_name("PATH")->required());
+            ("data", po::value(&input)->value_name("PATH")->required(),
+             "Path to the geolife dataset.")
+            ("output,o", po::value(&output)->value_name("PATH")->required(),
+             "Output file for tree entries.")
+            ("strings,s", po::value(&labels)->value_name("PATH")->required(),
+             "String database on disk (for activity labels).");
 
     po::variables_map vm;
     try {

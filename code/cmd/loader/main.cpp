@@ -28,7 +28,6 @@ namespace po = boost::program_options;
 using algorithm_type = std::function<void(external_tree&, tpie::file_stream<tree_entry>&)>;
 
 static string algorithm;
-static string trajectories_path;
 static string entries_path;
 static string tree_path;
 static size_t memory;
@@ -67,14 +66,7 @@ int main(int argc, char** argv) {
         const u64 max_entries = limit.get_value_or(std::numeric_limits<u64>::max());
 
         tpie::file_stream<tree_entry> entries;
-        if (!trajectories_path.empty()) {
-            fmt::print(cout, "Creating leaf entries from trajectory file \"{}\".\n", trajectories_path);
-
-            entries.open();
-            entries.truncate(0);
-
-            create_entries(trajectories_path, max_entries, entries);
-        } else if (!entries_path.empty()) {
+        {
             fmt::print(cout, "Using existing entry file \"{}\".\n", entries_path);
 
             // Make a private copy of the file (some options are destructive, i.e. STR sorting
@@ -87,9 +79,6 @@ int main(int argc, char** argv) {
             while (entries.size() < max_entries && existing.can_read()) {
                 entries.write(existing.read());
             }
-        } else {
-            fmt::print(cerr, "No input file specified.\n");
-            throw exit_main(1);
         }
 
         const measure_t stats = measure_call([&]{
@@ -124,9 +113,7 @@ void parse_options(int argc, char** argv) {
              "  str-lf     \tTile like in str-plain, but sort by label as the first dimension.\n"
              "  str-ll     \tTile like in str-plain, but sort by label as the last dimension.\n"
              "  quickload  \tUse the quickload algorithm to pack entries into nodes on every level of the tree.\n")
-            ("trajectories", po::value(&trajectories_path)->value_name("PATH"),
-             "Path to prepared trajectory file.")
-            ("entries", po::value(&entries_path)->value_name("PATH"),
+            ("entries", po::value(&entries_path)->value_name("PATH")->required(),
              "Path to a file that already contains leaf entries.")
             ("tree", po::value(&tree_path)->value_name("PATH")->required(),
              "Path to irwi tree directory. Will be created if it doesn't exist.")
@@ -152,7 +139,7 @@ void parse_options(int argc, char** argv) {
         if (vm.count("help")) {
             fmt::print(cerr, "Usage: {0} OPTION...\n"
                              "\n"
-                             "Load a tree from a list of trajectories.\n"
+                             "Load a tree from a list of tree entries.\n"
                              "The algorithm and the resource limits can be chosen below.\n"
                              "\n"
                              "{1}",
@@ -235,40 +222,5 @@ algorithm_type get_algorithm() {
     } else {
         fmt::print(cerr, "Invalid algorithm: {}.\n", algorithm);
         throw exit_main(1);
-    }
-}
-
-void create_entries(const string& path, u64 max_entries,
-                    tpie::file_stream<tree_entry>& entries)
-{
-    tpie::serialization_reader trajectories;
-    trajectories.open(path);
-
-    point_trajectory trajectory;
-    while (trajectories.can_read()) {
-        trajectories.unserialize(trajectory);
-
-        {
-            auto pos = trajectory.entries.begin();
-            auto end = trajectory.entries.end();
-            u32 index = 0;
-
-            if (pos != end) {
-                auto last = pos++;
-                for (; pos != end; ++pos) {
-                    tree_entry e;
-                    e.trajectory_id = trajectory.id;
-                    e.unit_index = index++;
-                    e.unit = trajectory_unit{last->spatial, pos->spatial, last->textual};
-
-                    entries.write(e);
-                    if (entries.size() >= max_entries) {
-                        return;
-                    }
-
-                    last = pos;
-                }
-            }
-        }
     }
 }

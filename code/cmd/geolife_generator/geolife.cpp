@@ -35,13 +35,13 @@ struct activity {
 struct geolife_parser {
     fs::path path;
     external_string_map& labels;
-    tpie::serialization_writer& out;
+    tpie::file_stream<tree_entry>& out;
     tpie::progress_indicator_base& progress;
 
     trajectory_id_type next_id = 1;
 
     geolife_parser(const fs::path& path, external_string_map& labels,
-                   tpie::serialization_writer& out,
+                   tpie::file_stream<tree_entry>& out,
                    tpie::progress_indicator_base& progress)
         : path(path)
         , labels(labels)
@@ -128,7 +128,7 @@ struct geolife_parser {
             progress.push_breadcrumb(title.c_str(), tpie::IMPORTANCE_MINOR);
             progress.refresh();
 
-            parse_subtrajectories(e.path(), activities);
+            parse_trajectory_units(e.path(), activities);
 
             progress.pop_breadcrumb();
             progress.step(1);
@@ -137,7 +137,7 @@ struct geolife_parser {
     }
 
     // FIXME: 1 trajectory per file
-    void parse_subtrajectories(const fs::path& path, const std::vector<activity>& activities) {
+    void parse_trajectory_units(const fs::path& path, const std::vector<activity>& activities) {
         std::vector<geolife_point> list;
         try {
             fs::ifstream in(path);
@@ -147,18 +147,27 @@ struct geolife_parser {
             throw exit_main(1);
         }
 
+        const trajectory_id_type id = next_id++;
+
         auto a_pos = activities.begin();
         auto a_end = activities.end();
         auto l_pos = list.begin();
         auto l_end = list.end();
 
-        int count = 0;
+        struct point {
+            vector3 location;
+            label_type label;
+        };
+
+        std::vector<point> points;
+        u32 count = 0;
         while (a_pos != a_end && l_pos != l_end) {
-            std::vector<trajectory_element> elems;
+            // Find the first point that has starts after the next activity.
             l_pos = std::find_if(l_pos, l_end, [&](const geolife_point& gp) {
                 return gp.time >= a_pos->begin;
             });
 
+            // Iterate over all points until one does not have an associated activity.
             for (; l_pos != l_end; ++l_pos) {
                 while (l_pos->time > a_pos->end && a_pos != a_end) {
                     ++a_pos;
@@ -170,15 +179,19 @@ struct geolife_parser {
 
                 // l_pos->time <= a_pos->end && l_pos_time >= a->pos->begin,
                 // i.e. point is in range for activity.
-                elems.push_back(trajectory_element(vector3(l_pos->latitude, l_pos->longitude, seconds(l_pos->time)),
-                                                   a_pos->label));
+                points.push_back({vector3(l_pos->latitude, l_pos->longitude, seconds(l_pos->time)),
+                                  a_pos->label});
             }
 
-            if (elems.size() >= 2) {
-                ++count;
-                point_trajectory result(next_id++, path.string(), std::move(elems));
-                out.serialize(result);
-            }
+            // Connect all adjacent points to trajectory units.
+            for_each_adjacent(points, [&](const point& a, const point& b) {
+                tree_entry entry;
+                entry.trajectory_id = id;
+                entry.unit_index = count++;
+                entry.unit = trajectory_unit{a.location, b.location, b.label};
+                out.write(entry);
+            });
+            points.clear();
         }
     }
 };
@@ -186,7 +199,7 @@ struct geolife_parser {
 } // namespace
 
 void parse_geolife(const fs::path& path, external_string_map& labels,
-                   tpie::serialization_writer& out,
+                   tpie::file_stream<tree_entry>& out,
                    tpie::progress_indicator_base& progress) {
     geolife_parser p(path, labels, out, progress);
     p.read();
