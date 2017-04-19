@@ -10,7 +10,7 @@ import commands
 
 from common import LOADER, RESULT_PATH, OUTPUT_PATH, TMP_PATH, DATA_PATH
 from compile import compile
-from datasets import OSM_ROUTES, RANDOM_WALK
+from datasets import GEOLIFE, OSM_ROUTES, RANDOM_WALK
 from lib.prettytable import PrettyTable
 
 
@@ -37,7 +37,8 @@ if __name__ == "__main__":
             for i in range(1, 11):
                 yield (name, i * step, path)
 
-        dataset = list(itertools.chain(size_steps("osm", *OSM_ROUTES),
+        dataset = list(itertools.chain(size_steps("geolife", *GEOLIFE),
+                                       size_steps("osm", *OSM_ROUTES),
                                        size_steps("random-walk", *RANDOM_WALK)))
         for algorithm in algorithms:
             for data_kind, entries, data_path in dataset:

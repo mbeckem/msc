@@ -32,6 +32,9 @@ RANDOM_WALK_VARYING_LABELS = [
                    150, 200, 250, 500, 1000, 2000, 5000, 10000]
 ]
 
+# Geolife dataset has ~5.4 million entries with ~10 labels.
+GEOLIFE = (5400000, _check(DATA_PATH / "geolife.entries"))
+
 # Entry file with 10 million entries and 100 labels (~evenly distributed).
 RANDOM_WALK = (10000000, walk_generated(10000000, 100))
 
