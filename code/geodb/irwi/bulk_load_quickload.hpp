@@ -72,8 +72,8 @@ private:
     bool m_leaves_flushed = false;
 
 public:
-    quick_load_tree(Accessor accessor, double weight, size_t max_leaves)
-        : m_state(storage_spec(max_leaves), std::move(accessor), weight)
+    quick_load_tree(Accessor accessor, double weight, size_t posting_cache_blocks)
+        : m_state(storage_spec(posting_cache_blocks), std::move(accessor), weight)
     {}
 
     /// Inserts the value into the tree. Grows the tree if necessary.
@@ -271,15 +271,19 @@ private:
     /// Maximum number of leaf nodes until we switch to external buckets.
     size_t m_max_leaves = 0;
 
+    /// Number of cached blocks for all internal nodes.
+    size_t m_cache_blocks = 0;
+
     // Tree parameters
     Accessor m_accessor;
     double m_weight = 0;
 
 public:
-    quick_load_pass(size_t max_leaves, Accessor accessor, double weight)
+    quick_load_pass(size_t max_leaves, size_t cache_blocks, Accessor accessor, double weight)
         : m_bucket_dir("buckets")
         , m_bucket_alloc(m_bucket_dir.path(), ".bucket")
         , m_max_leaves(max_leaves)
+        , m_cache_blocks(cache_blocks)
         , m_accessor(std::move(accessor))
         , m_weight(weight)
     {
@@ -443,7 +447,7 @@ private:
     /// Clear the tree.
     void clear_tree() {
         m_tree.reset();
-        m_tree.emplace(m_accessor, m_weight, m_max_leaves);
+        m_tree.emplace(m_accessor, m_weight, m_cache_blocks);
     }
 
     u64 alloc_bucket() {
@@ -521,23 +525,17 @@ class quick_loader : public bulk_load_common<Tree, quick_loader<Tree>> {
 
     using label_count_list = external_list<label_count, storage_type::get_block_size()>;
 
-    // Number of entries in internal nodes of the quickload tree.
-    // Not related to the tree we are bulk loading right now,
-    // because only leaf nodes of that internal tree become leaf or
-    // internal nodes on disk.
-    static constexpr size_t internal_fanout() { return 63; }
-
     using leaf_pass_t = quick_load_pass<
         tree_entry, detail::tree_entry_accessor,
         storage_type::get_block_size(),
-        tree_type::max_leaf_entries(), internal_fanout()>;
+        tree_type::max_leaf_entries(), tree_type::max_internal_entries()>;
 
     class pseudo_leaf_entry_accessor;
 
     using internal_pass_t = quick_load_pass<
         pseudo_leaf_entry, pseudo_leaf_entry_accessor,
         storage_type::get_block_size(),
-        tree_type::max_internal_entries(), internal_fanout()>;
+        tree_type::max_internal_entries(), tree_type::max_internal_entries()>;
 
     struct level_files : common_t::level_files {
         fs::path entry_file;
@@ -574,19 +572,41 @@ class quick_loader : public bulk_load_common<Tree, quick_loader<Tree>> {
         label_count_list label_counts;
     };
 
+    struct params_t {
+        size_t max_leaves;
+        size_t max_internal;
+        size_t total_cache_blocks;
+
+        params_t(size_t memory, size_t blocks_per_internal) {
+            // Available blocks in memory.
+            size_t blocks = memory / block_size;
+
+            // Minimum fanout for internal nodes.
+            size_t min_fanout = state_type::min_internal_entries();
+
+            // Cost of an internal node (including the additional cache).
+            double internal_cost = 1 + blocks_per_internal;
+
+            // Total leaf cost (including additional cost for internal nodes).
+            double leaf_cost = 1 + (double(internal_cost) / double(min_fanout - 1));
+
+            max_leaves = blocks / leaf_cost;
+            max_internal = max_leaves / (min_fanout - 1);
+            total_cache_blocks = max_internal * blocks_per_internal;
+        }
+    };
+
 public:
     /// Creates a new instance from the given tree and the specified maximum number of nodes.
     ///
     /// \param tree         The target of the bulk loading operation.
-    /// \param max_leaves   The maximum number of leaf nodes the small in-memory tree is allowed to have.
-    explicit quick_loader(Tree& tree, size_t max_leaves)
+    explicit quick_loader(Tree& tree, size_t blocks_per_internal)
         : common_t(tree)
-        , m_max_leaves(max_leaves)
+        , m_params(tpie::get_memory_manager().available(), blocks_per_internal)
         , m_weight(tree.weight())
     {
-        if (m_max_leaves < 2) {
-            throw std::invalid_argument("Invalid max_leaves value");
-        }
+        if (m_params.max_leaves < 2)
+            throw std::logic_error("Must have enough space for at least two leaf nodes.");
     }
 
 private:
@@ -596,6 +616,14 @@ private:
     /// Creates the tree bottom-up and invokes the quick_load_pass class
     /// for every individual level.
     subtree_result load_impl(tpie::file_stream<tree_entry>& input) {
+        fmt::print("Quickload parameters:\n"
+                   "    max-leaves: {}\n"
+                   "    max-internal: {}   (approximated worst case)\n"
+                   "    cache-blocks: {}\n",
+                   m_params.max_leaves,
+                   m_params.max_internal,
+                   m_params.total_cache_blocks);
+
         // Points to the files of the current level.
         level_files files;
 
@@ -679,7 +707,8 @@ private:
             ++created_nodes;
         };
 
-        leaf_pass_t pass(m_max_leaves, detail::tree_entry_accessor(), m_weight);
+        leaf_pass_t pass(m_params.max_leaves, m_params.total_cache_blocks,
+                         detail::tree_entry_accessor(), m_weight);
         pass.run(source, node_callback);
         return created_nodes;
     }
@@ -815,7 +844,8 @@ private:
             ++created_nodes;
         };
 
-        internal_pass_t pass(m_max_leaves, pseudo_leaf_entry_accessor(last_level.label_counts), m_weight);
+        internal_pass_t pass(m_params.max_leaves, m_params.total_cache_blocks,
+                             pseudo_leaf_entry_accessor(last_level.label_counts), m_weight);
         pass.run(last_level.entries, node_callback);
         return created_nodes;
     }
@@ -825,8 +855,9 @@ private:
     using common_t::state;
 
 private:
-    /// The maximum number of leaves (for the lowest level).
-    const size_t m_max_leaves;
+    /// Quickload parameters (derived from the available memory
+    /// and the space per internal node).
+    const params_t m_params;
 
     /// beta
     const double m_weight;

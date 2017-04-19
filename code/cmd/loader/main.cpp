@@ -31,7 +31,6 @@ static string algorithm;
 static string entries_path;
 static string tree_path;
 static size_t memory;
-static size_t max_leaves;
 static float beta;
 static string stats_file;
 static boost::optional<u64> limit;
@@ -48,12 +47,15 @@ int main(int argc, char** argv) {
     return tpie_main([&]{
         parse_options(argc, argv);
 
+        fmt::print("Memory limited to ca. {} MB.\n", memory);
+        tpie::get_memory_manager().set_limit(memory * 1024 * 1024);
+
         if (!tmp.empty()) {
             fmt::print(cout, "Using tmp dir {}.\n", tmp);
             tpie::tempname::set_default_path(tmp);
         }
 
-        fmt::print(cout, "Opening tree at {} with beta {}.\n", tree_path, beta);
+        fmt::print(cout, "Opening tree at \"{}\" with beta {}.\n", tree_path, beta);
 
         external_tree tree{external_storage(tree_path), beta};
         fmt::print(cout, "Inserting items into a tree of size {}.\n", tree.size());
@@ -67,7 +69,7 @@ int main(int argc, char** argv) {
 
         tpie::file_stream<tree_entry> entries;
         {
-            fmt::print(cout, "Using existing entry file \"{}\".\n", entries_path);
+            fmt::print(cout, "Using entry file \"{}\".\n", entries_path);
 
             // Make a private copy of the file (some options are destructive, i.e. STR sorting
             // alters the order of elements).
@@ -120,9 +122,7 @@ void parse_options(int argc, char** argv) {
             ("beta", po::value(&beta)->value_name("BETA")->default_value(0.5f),
              "Weight factor between 0 and 1 for spatial and textual cost (1.0 is a normal rtree).")
             ("max-memory", po::value(&memory)->value_name("MB")->default_value(32),
-             "Memory limit in megabytes. Used by the str and hilbert algorithms.")
-            ("max-leaves", po::value(&max_leaves)->value_name("N")->default_value(8192),
-             "Leaf limit. Used by the quickload algorithm.")
+             "Memory limit in megabytes.")
             ("stats", po::value(&stats_file)->value_name("FILE"),
              "Output path for stats in json format.")
             ("limit,n", po::value<u64>()->value_name("N"),
@@ -160,52 +160,35 @@ void parse_options(int argc, char** argv) {
 
 algorithm_type get_algorithm() {
     if (algorithm == "str-lf") {
-        fmt::print(cout, "Using str-lf loading with memory limit {} MB.\n", memory);
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
-            size_t limit = memory * 1024 * 1024;
-            tpie::get_memory_manager().set_limit(limit);
-
             using loader_t = str_loader<external_tree>;
             loader_t loader(tree, loader_t::sort_mode::label_first);
             loader.load(input);
         };
     } else if (algorithm == "str-plain") {
-        fmt::print(cout, "Using str-plain loading with memory limit {} MB.\n", memory);
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
-            size_t limit = memory * 1024 * 1024;
-            tpie::get_memory_manager().set_limit(limit);
-
             using loader_t = str_loader<external_tree>;
             loader_t loader(tree, loader_t::sort_mode::label_ignored);
             loader.load(input);
         };
     } else if (algorithm == "str-ll") {
-        fmt::print(cout, "Using str-ll loading with memory limit {} MB.\n", memory);
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
-            size_t limit = memory * 1024 * 1024;
-            tpie::get_memory_manager().set_limit(limit);
-
             using loader_t = str_loader<external_tree>;
             loader_t loader(tree, loader_t::sort_mode::label_last);
             loader.load(input);
         };
     } else if (algorithm == "hilbert") {
-        fmt::print(cout, "Using hilbert loading with memory limit {} MB.\n", memory);
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
-            size_t limit = memory * 1024 * 1024;
-            tpie::get_memory_manager().set_limit(limit);
-
             hilbert_loader<external_tree> loader(tree);
             loader.load(input);
         };
     } else if (algorithm == "quickload") {
-        fmt::print(cout, "Using quickload with leaf limit {}.\n", max_leaves);
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
-            quick_loader<external_tree> loader(tree, max_leaves);
+            // TODO: Adjust cache size.
+            quick_loader<external_tree> loader(tree, 4);
             loader.load(input);
         };
     } else if (algorithm == "obo") {
-        fmt::print(cout, "Using one-by-one insertion.\n");
         return [&](external_tree& tree, tpie::file_stream<tree_entry>& input) {
             tpie::progress_indicator_arrow progress("Inserting", 100);
             progress.set_indicator_length(60);

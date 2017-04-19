@@ -526,10 +526,10 @@ public:
     }
 
 public:
-    tree_storage_impl(size_t max_leaves)
+    tree_storage_impl(size_t postings_cache_blocks)
         : m_directory("quickload-tree")
         , m_lists_backend(ensure_directory(m_directory.path() / "posting_lists"),
-                          list_cache_size(max_leaves))
+                          postings_cache_blocks)
     {
     }
 
@@ -616,15 +616,13 @@ private:
 template<size_t block_size, u32 fanout_leaf, u32 fanout_internal>
 class tree_storage {
 private:
-    size_t max_leaves;
+    size_t postings_cache_blocks;
 
 public:
-    /// \param max_leaves
-    ///     The maximum number of leaves that the tree is expected to have.
-    ///     From this value we can derive the maximum number of internal nodes
-    ///     and compute an appropriate per-node cache size.
-    tree_storage(size_t max_leaves)
-        : max_leaves(max_leaves) {}
+    /// \param postings_cache_blocks
+    ///     The number of cached blocks (for posting lists) used accross all internal nodes.
+    tree_storage(size_t postings_cache_blocks)
+        : postings_cache_blocks(postings_cache_blocks) {}
 
 private:
     template<typename StorageSpec, typename Value, typename Accessor, u32 Lambda>
@@ -637,7 +635,7 @@ private:
     movable_adapter<implementation<LeafData, Lambda>>
     construct() const {
         static_assert(Lambda == 0, "quickload only uses Lambda == 0.");
-        return {in_place_t(), max_leaves};
+        return {in_place_t(), postings_cache_blocks};
     }
 };
 

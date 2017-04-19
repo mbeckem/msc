@@ -16,7 +16,7 @@ limits = resource.getrlimit(resource.RLIMIT_NOFILE)
 resource.setrlimit(resource.RLIMIT_NOFILE, (2 ** 14, limits[1]))
 
 
-def build_tree(algorithm, tree_path, entries_path, logfile, limit=None, keep_existing=False):
+def build_tree(algorithm, tree_path, entries_path, logfile, memory=64, limit=None, keep_existing=False):
     if not keep_existing:
         # Make sure the tree does not exist yet.
         common.remove(tree_path)
@@ -32,6 +32,7 @@ def build_tree(algorithm, tree_path, entries_path, logfile, limit=None, keep_exi
         "--tree", str(tree_path),
         "--tmp", str(tpie_temp_path),
         "--stats", str(stats_path)
+        "--max-memory", str(memory)
     ]
     if limit is not None:
         args.extend(["--limit", str(limit)])
