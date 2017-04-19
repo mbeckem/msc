@@ -2,10 +2,7 @@
 
 import collections
 import itertools
-import json
-import subprocess
 
-import common
 import commands
 import datasets
 from common import LOADER, RESULT_PATH, OUTPUT_PATH, TMP_PATH, DATA_PATH

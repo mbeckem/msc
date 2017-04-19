@@ -329,7 +329,7 @@ public:
         : m_directory(directory)
         , m_index_alloc(ensure_directory(directory / "inverted_index"))
         , m_blocks((directory / "tree.blocks").string(), 32)
-        , m_lists_blocks((directory / "postings.blocks").string(), 32)
+        , m_lists_blocks((directory / "postings.blocks").string(), 128)
     {
         raw_stream rf;
         if (rf.try_open(state_path())) {

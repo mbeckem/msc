@@ -2,8 +2,6 @@
 
 import collections
 import itertools
-import json
-import subprocess
 
 import common
 import commands
@@ -17,6 +15,7 @@ from lib.prettytable import PrettyTable
 if __name__ == "__main__":
     compile()
 
+    # TODO build obo tree incrementally.
     algorithms = [
         # "obo," # TODO: so slow..
         "hilbert",
@@ -31,7 +30,7 @@ if __name__ == "__main__":
     table.align["I/O"] = "r"
     table.align["Duration"] = "r"
 
-    with (OUTPUT_PATH / "build_trees.log").open("w") as logfile:
+    with (OUTPUT_PATH / "eval_tree_building.log").open("w") as logfile:
         def size_steps(name, max_entries, path):
             step = int(max_entries / 10)
             for i in range(1, 11):
@@ -53,5 +52,5 @@ if __name__ == "__main__":
                     algorithm, data_kind, entries, result.total_io, result.duration
                 ])
 
-    with (RESULT_PATH / "build_trees.txt").open("w") as outfile:
+    with (RESULT_PATH / "eval_tree_building.txt").open("w") as outfile:
         print(table, file=outfile)

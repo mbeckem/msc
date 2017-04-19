@@ -7,7 +7,7 @@ import common
 from common import LOADER, TMP_PATH
 
 BuildStats = collections.namedtuple("BuildStats", [
-    "total_io", "duration", "leaf_fanout", "internal_fanout"
+    "read_io", "write_io", "total_io", "duration", "leaf_fanout", "internal_fanout"
 ])
 
 # Make sure that we can open enough files (quickload requires many
@@ -31,7 +31,7 @@ def build_tree(algorithm, tree_path, entries_path, logfile, memory=64, limit=Non
         "--entries", str(entries_path),
         "--tree", str(tree_path),
         "--tmp", str(tpie_temp_path),
-        "--stats", str(stats_path)
+        "--stats", str(stats_path),
         "--max-memory", str(memory)
     ]
     if limit is not None:

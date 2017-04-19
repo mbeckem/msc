@@ -67,7 +67,7 @@ def run_others(naive_node_building, logfile):
 
     return results
 
-with (OUTPUT_PATH / "build_nodes.log").open("w") as logfile:
+with (OUTPUT_PATH / "eval_node_building.log").open("w") as logfile:
     def random_walk_table():
         eval_naive = run_random_walk(naive_node_building=True, logfile=logfile)
         eval_bulk = run_random_walk(naive_node_building=False, logfile=logfile)
@@ -128,7 +128,7 @@ with (OUTPUT_PATH / "build_nodes.log").open("w") as logfile:
 
     t1 = random_walk_table()
     t2 = others_table()
-    with (RESULT_PATH / "build_nodes.txt").open("w") as outfile:
+    with (RESULT_PATH / "eval_node_building.txt").open("w") as outfile:
         print("Random walk dataset with increasing number of labels.\n", file=outfile)
         print(t1, file=outfile)
         print("")

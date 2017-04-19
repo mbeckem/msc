@@ -62,14 +62,13 @@ int main(int argc, char** argv) {
 
         auto loader = get_algorithm();
 
-        if (limit) {
-            fmt::print("Limiting to {} entries.\n", *limit);
-        }
-        const u64 max_entries = limit.get_value_or(std::numeric_limits<u64>::max());
-
         tpie::file_stream<tree_entry> entries;
         {
             fmt::print(cout, "Using entry file \"{}\".\n", entries_path);
+            if (limit) {
+                fmt::print("Limiting to {} entries.\n", *limit);
+            }
+            u64 max_entries = limit.get_value_or(std::numeric_limits<u64>::max());
 
             // Make a private copy of the file (some options are destructive, i.e. STR sorting
             // alters the order of elements).
@@ -84,7 +83,7 @@ int main(int argc, char** argv) {
         }
 
         const measure_t stats = measure_call([&]{
-            fmt::print(cout, "Running {}.\n", algorithm);
+            fmt::print(cout, "Running algorithm \"{}\".\n", algorithm);
             loader(tree, entries);
             fmt::print(cout, "Done.\n");
         });
@@ -92,8 +91,9 @@ int main(int argc, char** argv) {
         fmt::print("\n"
                    "Blocks read: {}\n"
                    "Blocks written: {}\n"
+                   "Blocks total: {}\n"
                    "Seconds: {}\n",
-                   stats.read_io, stats.write_io, stats.duration);
+                   stats.read_io, stats.write_io, stats.total_io, stats.duration);
 
         if (!stats_file.empty()) {
             write_json(stats_file, stats);
@@ -122,7 +122,7 @@ void parse_options(int argc, char** argv) {
             ("beta", po::value(&beta)->value_name("BETA")->default_value(0.5f),
              "Weight factor between 0 and 1 for spatial and textual cost (1.0 is a normal rtree).")
             ("max-memory", po::value(&memory)->value_name("MB")->default_value(32),
-             "Memory limit in megabytes.")
+             "Memory limit in megabytes. Don't make this value too small because TPIE seems to allocate a few megabytes (~4) for itself.")
             ("stats", po::value(&stats_file)->value_name("FILE"),
              "Output path for stats in json format.")
             ("limit,n", po::value<u64>()->value_name("N"),
