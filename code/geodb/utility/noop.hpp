@@ -3,6 +3,9 @@
 
 #include "geodb/common.hpp"
 
+/// \file
+/// A function object that does nothing.
+
 namespace geodb {
 
 /// A function object that accept any arguments and does nothing.

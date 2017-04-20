@@ -113,6 +113,7 @@ public:
     {}
 
     /// Same as the other overload, but creates a new vector instance every time.
+    template<bool UpdateParents = true>
     leaf_ptr traverse_tree(const value_type& v) {
         std::vector<internal_ptr> path;
         return traverse_tree(v, path);
@@ -125,6 +126,12 @@ public:
     /// to reflect the insertion of `v`.
     ///
     /// \pre The tree is not empty.
+    ///
+    /// \tparam UpdateParents
+    ///     If true, update the parents of the returned leaf pointer on the way
+    ///     down the tree to reflect the future insertion of `v` into the leaf node.
+    ///     If false, the parents are not modified.
+    template<bool UpdateParents = true>
     leaf_ptr traverse_tree(const value_type& v, std::vector<internal_ptr>& path) {
         geodb_assert(storage.get_height() > 0, "empty tree has no leaves");
 

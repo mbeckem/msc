@@ -22,6 +22,7 @@ def compile(type="Release",
             internal_fanout=0,
             bloom_filters=False,
             naive_node_building=False,
+            cheap_quickload=False,
             build_inspector=False,
             build_osm=False):
     defines = {
@@ -33,6 +34,7 @@ def compile(type="Release",
         "LAMBDA": str(lambda_),
         "LEAF_FANOUT": str(leaf_fanout),
         "INTERNAL_FANOUT": str(internal_fanout),
+        "CHEAP_QUICKLOAD": bool_str(cheap_quickload),
         "BUILD_INSPECTOR": bool_str(build_inspector),
         "BUILD_OSM": bool_str(build_osm),
     }
@@ -86,6 +88,11 @@ if __name__ == "__main__":
                         action="store_true",
                         default=argparse.SUPPRESS,
                         help="Enable naive node building.")
+    parser.add_argument("--cheap-quickload",
+                        dest="cheap_quickload",
+                        action="store_true",
+                        default=argparse.SUPPRESS,
+                        help="Use the cheap quickload variant.")
     parser.add_argument("--build-inspector",
                         dest="build_inspector",
                         action="store_true",

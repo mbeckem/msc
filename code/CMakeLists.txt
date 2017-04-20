@@ -16,6 +16,7 @@ set(BLOCK_SIZE "4096" CACHE STRING "The block size.")
 set(LEAF_FANOUT "0" CACHE STRING "The fanout of leaf nodes (0 for maximum possible value).")
 set(INTERNAL_FANOUT "0" CACHE STRING "The fanout of internal nodes (0 for maximum possible value).")
 set(LAMBDA "40" CACHE STRING "The size of individual entries in a posting list.")
+set(CHEAP_QUICKLOAD OFF CACHE BOOL "Use the cheap quick load insertion variant.")
 
 # Increasing: The weight of the spatial cost increasing with the distance from the leaf level.
 # Decreasing: It decreases instead (i.e. higher nodes -> textual cost more important).
@@ -92,6 +93,13 @@ else()
     message(FATAL_ERROR "Unsupported strategy for beta: ${BETA}.")
 endif()
 message(STATUS "Using strategy \"${BETA}\" for beta.")
+
+if (CHEAP_QUICKLOAD)
+    add_definitions(-DGEODB_QUICKLOAD_CHEAP_INSERT)
+    message(STATUS "Using cheap quickload insertion.")
+else()
+    message(STATUS "Using normal quickload insertion.")
+endif()
 
 add_definitions(-DGEODB_BLOCK_SIZE=${BLOCK_SIZE})
 add_definitions(-DGEODB_LEAF_FANOUT=${LEAF_FANOUT})

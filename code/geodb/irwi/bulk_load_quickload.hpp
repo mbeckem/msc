@@ -94,7 +94,14 @@ public:
         // Find the leaf, but dont insert the value there.
         tree_insertion<state_type> ins(state());
         std::vector<internal_ptr>& path = m_path_buf;
+#ifdef GEODB_QUICKLOAD_CHEAP_INSERT
+        // Do *not* update the parents.
+        // This acts as if v was not inserted at all, i.e.
+        // the tree remains the same.
+        leaf_ptr leaf = ins.traverse_tree<false>(v, path);
+#else
         leaf_ptr leaf = ins.traverse_tree(v, path);
+#endif
 
         // Return the leaf id to the caller so that the value can be placed into the
         // appropriate bucket.

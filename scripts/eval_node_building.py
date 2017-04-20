@@ -12,7 +12,7 @@ import format
 
 from common import DATA_PATH, TMP_PATH, OUTPUT_PATH, RESULT_PATH, LOADER
 from compile import compile
-from datasets import RANDOM_WALK_VARYING_LABELS, OSM_ROUTES
+from datasets import RANDOM_WALK_VARYING_LABELS, OSM_ROUTES, GEOLIFE
 from lib.prettytable import PrettyTable
 
 Result = collections.namedtuple(
@@ -55,7 +55,7 @@ def run_others(naive_node_building, logfile):
 
     results = []
     algorithms = ["hilbert", "str-plain", "str-lf", "str-ll", "quickload"]
-    datasets = [("osm", OSM_ROUTES)]  # TODO Geolife
+    datasets = [("osm", OSM_ROUTES), ("geolife", GEOLIFE)]
     for name, (entries, entries_path) in datasets:
         for algorithm in algorithms:
             print("dataset = {}, algorithm = {}".format(name, algorithm))
@@ -93,10 +93,9 @@ with (OUTPUT_PATH / "eval_node_building.log").open("w") as logfile:
                 format.bytes(result["tree_size"]),
             ])
 
-        for result in eval_naive:
-            add_result("naive", result)
-        for result in eval_bulk:
-            add_result("bulk", result)
+        for result_naive, result_bulk in zip(eval_naive, eval_bulk):
+            add_result("naive", result_naive)
+            add_result("bulk", result_bulk)
 
         return table
 
