@@ -74,7 +74,7 @@ if __name__ == "__main__":
             basename = "{}-obo-n{}".format(data_kind, entries)
             tree_path = tree_dir / basename
 
-            print("Running one by one insertion on entries from {}".format(data_path))
+            print("Running one by one insertion on entries from {}".format(data_kind))
             last_size = 0
             total_io = 0
             read_io = 0
