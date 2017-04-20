@@ -34,6 +34,7 @@ static size_t memory;
 static float beta;
 static string stats_file;
 static boost::optional<u64> limit;
+static boost::optional<u64> offset;
 static std::string tmp;
 
 void parse_options(int argc, char** argv);
@@ -65,6 +66,9 @@ int main(int argc, char** argv) {
         tpie::file_stream<tree_entry> entries;
         {
             fmt::print(cout, "Using entry file \"{}\".\n", entries_path);
+            if (offset) {
+                fmt::print("Starting at offset {}.\n", *offset);
+            }
             if (limit) {
                 fmt::print("Limiting to {} entries.\n", *limit);
             }
@@ -74,6 +78,13 @@ int main(int argc, char** argv) {
             // alters the order of elements).
             tpie::file_stream<tree_entry> existing;
             existing.open(entries_path, tpie::open::read_only);
+            if (offset) {
+                if (existing.size() < *offset) {
+                    fmt::print(cerr, "Offset {} is out of range.\n", *offset);
+                    throw exit_main(1);
+                }
+                existing.seek(*offset);
+            }
 
             entries.open();
             entries.truncate(0);
@@ -125,7 +136,9 @@ void parse_options(int argc, char** argv) {
              "Memory limit in megabytes. Don't make this value too small because TPIE seems to allocate a few megabytes (~4) for itself.")
             ("stats", po::value(&stats_file)->value_name("FILE"),
              "Output path for stats in json format.")
-            ("limit,n", po::value<u64>()->value_name("N"),
+            ("offset", po::value<u64>()->value_name("I"),
+             "Start at the index I instead of the beginning of the file.")
+            ("limit", po::value<u64>()->value_name("N"),
              "Only insert the first N entries.")
             ("tmp", po::value(&tmp)->value_name("PATH"),
              "Override the default temp directory.");
@@ -147,6 +160,9 @@ void parse_options(int argc, char** argv) {
             throw exit_main(0);
         }
 
+        if (vm.count("offset")) {
+            offset = vm["offset"].as<u64>();
+        }
         if (vm.count("limit")) {
             limit = vm["limit"].as<u64>();
         }

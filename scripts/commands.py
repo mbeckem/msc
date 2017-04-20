@@ -16,7 +16,15 @@ limits = resource.getrlimit(resource.RLIMIT_NOFILE)
 resource.setrlimit(resource.RLIMIT_NOFILE, (2 ** 14, limits[1]))
 
 
-def build_tree(algorithm, tree_path, entries_path, logfile, memory=64, limit=None, keep_existing=False):
+# Builds a tree using the specified parameters.
+# Uses the given algorithm to insert entries from the entry file at "entries_path".
+# The tree will be stored at "tree_path". Any existing tree at that location
+# will be removed, unless keep_existing is true.
+# Offset and Limit control where the tool starts in the entry file and how many
+# entries it will insert (offset None means "start at the beginning", limit
+# None means "insert everything up to EOF").
+def build_tree(algorithm, tree_path, entries_path, logfile,
+               memory=64, offset=None, limit=None, keep_existing=False):
     if not keep_existing:
         # Make sure the tree does not exist yet.
         common.remove(tree_path)
@@ -34,6 +42,8 @@ def build_tree(algorithm, tree_path, entries_path, logfile, memory=64, limit=Non
         "--stats", str(stats_path),
         "--max-memory", str(memory)
     ]
+    if offset is not None:
+        args.extend(["--offset", str(offset)])
     if limit is not None:
         args.extend(["--limit", str(limit)])
 
