@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 
 import collections
-import json
-import shutil
-import subprocess
-from pathlib import Path
 
 import common
 import commands
@@ -14,9 +10,6 @@ from common import DATA_PATH, TMP_PATH, OUTPUT_PATH, RESULT_PATH, LOADER
 from compile import compile
 from datasets import RANDOM_WALK_VARYING_LABELS, OSM_ROUTES, GEOLIFE
 from lib.prettytable import PrettyTable
-
-Result = collections.namedtuple(
-    "Result", ["labels", "algorithm", "total_io", "duration", "index_size", "tree_size", "total_size"])
 
 
 def build_tree(algorithm, entries_path):
@@ -46,6 +39,7 @@ def run_random_walk(naive_node_building, logfile):
               .format(entries, labels, entries_path))
         result = build_tree("hilbert", entries_path)
         result["algorithm"] = "hilbert"
+        result["labels"] = labels
         results.append(result)
     return results
 
@@ -93,8 +87,10 @@ with (OUTPUT_PATH / "eval_node_building.log").open("w") as logfile:
                 format.bytes(result["tree_size"]),
             ])
 
-        for result_naive, result_bulk in zip(eval_naive, eval_bulk):
+        for result_naive in eval_naive:
             add_result("naive", result_naive)
+
+        for result_bulk in eval_bulk:
             add_result("bulk", result_bulk)
 
         return table
@@ -118,10 +114,9 @@ with (OUTPUT_PATH / "eval_node_building.log").open("w") as logfile:
                 result["duration"],
             ])
 
-        for result in eval_naive:
-            add_result("naive", result)
-        for result in eval_bulk:
-            add_result("bulk", result)
+        for naive, bulk in zip(eval_naive, evail_bulk):
+            add_result("naive", naive)
+            add_result("bulk", bulk)
 
         return table
 
@@ -132,5 +127,5 @@ with (OUTPUT_PATH / "eval_node_building.log").open("w") as logfile:
         print(t1, file=outfile)
         print("")
 
-        print("Other datasets with different variating algorithms.\n", file=outfile)
+        print("Other datasets with different algorithms.\n", file=outfile)
         print(t2, file=outfile)

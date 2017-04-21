@@ -33,8 +33,6 @@ if __name__ == "__main__":
         "quickload"
     ]
 
-    tree_dir = common.reset_dir(OUTPUT_PATH / "trees")
-
     table = PrettyTable(["Algorithm", "Dataset", "Entries",
                          "Total I/O", "Reads", "Writes", "Duration"])
     table.align["Entries"] = "r"
@@ -53,8 +51,9 @@ if __name__ == "__main__":
         # Create trees using all algorithms, with increasing step size.
         for algorithm in algorithms:
             for data_kind, entries, data_path in dataset_steps:
-                basename = "{}-{}-n{}".format(data_kind, algorithm, entries)
-                tree_path = tree_dir / basename
+                # Overwrite earlier trees with less entries.
+                basename = "{}-{}".format(data_kind, algorithm)
+                tree_path = OUTPUT_PATH / basename
 
                 print("Running {} on {} entries from {}"
                       .format(algorithm, entries, data_kind))
@@ -71,8 +70,8 @@ if __name__ == "__main__":
         # This does not influence the results in a meaningful way because
         # one by one insertion works on a the unit of a single entry.
         for data_kind, entries, data_path in dataset:
-            basename = "{}-obo-n{}".format(data_kind, entries)
-            tree_path = tree_dir / basename
+            basename = "{}-obo".format(data_kind, entries)
+            tree_path = OUTPUT_PATH / basename
 
             print("Running one by one insertion on entries from {}".format(data_kind))
             last_size = 0

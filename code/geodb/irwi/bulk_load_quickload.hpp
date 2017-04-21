@@ -98,7 +98,7 @@ public:
         // Do *not* update the parents.
         // This acts as if v was not inserted at all, i.e.
         // the tree remains the same.
-        leaf_ptr leaf = ins.traverse_tree<false>(v, path);
+        leaf_ptr leaf = ins.template traverse_tree<false>(v, path);
 #else
         leaf_ptr leaf = ins.traverse_tree(v, path);
 #endif

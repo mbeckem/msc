@@ -38,16 +38,24 @@ public:
 struct tree_stats {
     averager entry_area;    // Volume of data entries
     averager leaf_area;     // Volume of leaf nodes
+
     averager index_size;    // Number of postings lists per index
-    std::map<size_t, averager> internal_volume_ratio;
+    std::map<size_t, averager> index_size_level;
+
+    averager internal_volume_ratio;
+    std::map<size_t, averager> internal_volume_ratio_level;
 };
 
 struct analyze_result {
     bounding_box mbb;
-    double index_size = 0;
     double entry_area = 0;
     double leaf_area = 0;
-    std::vector<double> internal_volume_ratio;
+
+    double index_size = 0;
+    std::vector<double> index_size_level;
+
+    double internal_volume_ratio = 0;
+    std::vector<double> internal_volume_ratio_level;
 };
 
 static void parse_options(int argc, char** argv) {
@@ -160,10 +168,14 @@ static void analyze(external_tree::cursor& node, tree_stats& stats) {
 
         stats.leaf_area.push(node.mbb().size());
     } else {
+        size_t index_size = node.inverted_index()->size();
+        stats.index_size.push(index_size);
+        stats.index_size_level[node.level()].push(index_size);
+
         double ratio = volume_ratio(node);
 
-        stats.internal_volume_ratio[node.level()].push(ratio);
-        stats.index_size.push(node.inverted_index()->size());
+        stats.internal_volume_ratio.push(ratio);
+        stats.internal_volume_ratio_level[node.level()].push(ratio);
 
         for (size_t i = 0; i < node.size(); ++i) {
             node.move_child(i);
@@ -185,10 +197,15 @@ static analyze_result analyze(const external_tree& tree) {
         result.mbb = root.mbb();
         result.entry_area = stats.entry_area.average() / result.mbb.size();
         result.leaf_area = stats.leaf_area.average() / result.mbb.size();
-        result.index_size = stats.index_size.average();
 
-        for (const auto& pair : stats.internal_volume_ratio) {
-            result.internal_volume_ratio.push_back(pair.second.average());
+        result.index_size = stats.index_size.average();
+        for (const auto& pair : stats.index_size_level) {
+            result.index_size_level.push_back(pair.second.average());
+        }
+
+        result.internal_volume_ratio = stats.internal_volume_ratio.average();
+        for (const auto& pair : stats.internal_volume_ratio_level) {
+            result.internal_volume_ratio_level.push_back(pair.second.average());
         }
     }
 
@@ -219,8 +236,9 @@ int main(int argc, char** argv) {
         result["leaf_area"] = div0(stats.leaf_area, tree.leaf_node_count());
 
         result["internal_nodes"] = tree.internal_node_count();
-        result["internal_area_ratio"] = stats.internal_volume_ratio;
+        result["internal_area_ratio_level"] = stats.internal_volume_ratio_level;
         result["internal_index_size"] = stats.index_size;
+        result["internal_index_size_level"] = stats.index_size_level;
 
         std::cout << result.dump(4) << std::endl;
         return 0;

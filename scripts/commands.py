@@ -23,7 +23,7 @@ resource.setrlimit(resource.RLIMIT_NOFILE, (2 ** 15, limits[1]))
 # Offset and Limit control where the tool starts in the entry file and how many
 # entries it will insert (offset None means "start at the beginning", limit
 # None means "insert everything up to EOF").
-def build_tree(algorithm, tree_path, entries_path, logfile,
+def build_tree(algorithm, tree_path, entries_path, logfile, beta=0.5,
                memory=64, offset=None, limit=None, keep_existing=False):
     if not keep_existing:
         # Make sure the tree does not exist yet.
@@ -38,6 +38,7 @@ def build_tree(algorithm, tree_path, entries_path, logfile,
         "--algorithm", algorithm,
         "--entries", str(entries_path),
         "--tree", str(tree_path),
+        "--beta", str(beta),
         "--tmp", str(tpie_temp_path),
         "--stats", str(stats_path),
         "--max-memory", str(memory)

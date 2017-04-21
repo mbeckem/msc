@@ -27,8 +27,12 @@ def remove(path):
     path = path.resolve()
     output = OUTPUT_PATH.resolve()
     tmp = TMP_PATH.resolve()
-    if not (tmp in path.parents) and not (output in path.parents):
-        raise RuntimeError("Not a child of TMP_PATH or OUTPUT_PATH")
+    result = RESULT_PATH.resolve()
+    if not (tmp in path.parents) and \
+            not (output in path.parents) and \
+            not (result in path.parents):
+        raise RuntimeError(
+            "Not a child of TMP_PATH, OUTPUT_PATH or RESULT_PATH")
 
     if path.is_dir():
         shutil.rmtree(str(path))

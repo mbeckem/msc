@@ -22,6 +22,8 @@ static std::string output;
 static u64 trajectory_units = 0;
 static u32 trajectory_size = 0;
 static u32 labels = 0;
+static double highx = 1000;
+static double highy = 1000;
 
 static void parse_options(int argc, char** argv) {
     po::options_description options("Options");
@@ -34,7 +36,11 @@ static void parse_options(int argc, char** argv) {
             (",m", po::value(&trajectory_size)->value_name("M")->default_value(1000),
              "The (average) number of trajectory units per trajectory")
             (",l", po::value(&labels)->value_name("L")->default_value(1000),
-             "The number of different labels.");
+             "The number of different labels.")
+            (",x", po::value(&highx)->value_name("MAX"),
+             "Maximum x value for start points.")
+            (",y", po::value(&highy)->value_name("MAX"),
+             "Maximum y value for start points.");
 
     po::variables_map vm;
     try {
@@ -79,7 +85,7 @@ static double get_random(double low, double high) {
 
 /// Returns the start point for a new random walk.
 static vector3 point() {
-    return vector3(get_random() * 1000, get_random() * 1000, get_random() * 100000);
+    return vector3(get_random() * highx, get_random() * highy, get_random() * 100000);
 }
 
 /// Returns the next point in the random walk.

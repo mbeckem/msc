@@ -1,40 +1,41 @@
 #!/usr/bin/env python3
 
 import commands
-from common import DATA_PATH, TMP_PATH, RESULT_PATH, OUTPUT_PATH
+import common
+from common import TMP_PATH, OUTPUT_PATH
 from compile import compile
-from datasets import GEOLIFE
+from datasets import RANDOM_WALK_LARGE
 from lib.prettytable import PrettyTable
 
 if __name__ == "__main__":
     compile()
 
-    dataset = GEOLIFE
-
-    # In Megabyte.
-    # Higher values arent possible right now because quickload requires 1 file
-    # stream for each node. Number of open files is limited by the OS though.
-    sizes = [32, 64, 128]
-
-    algorithms = ["hilbert", "str-lf", "quickload"]
-
-    tree_path = TMP_PATH / "memory_scaling_tree"
+    algorithms = ["hilbert", "quickload"]
+    sizes = [32, 64, 128]  # Megabyte
+    tree_path = TMP_PATH / "large_dataset_tree"
 
     table = PrettyTable([
         "Algorithm", "Memory (MB)", "I/O",
-        "Duration"]
-    )
+        "Duration"
+    ])
     table.align["I/O"] = "r"
     table.align["Duration"] = "r"
 
-    with (OUTPUT_PATH / "eval_memory_scaling.log").open("w") as logfile:
+    dataset = RANDOM_WALK_LARGE
+
+    print("Using dataset {}".format(dataset))
+    with (OUTPUT_PATH / "eval_large_dataset.log").open("w") as logfile:
         for algorithm in algorithms:
             for size in sizes:
+                print("Running algorithm {} with memory size {} MB".format(
+                    algorithm, size))
+
                 _, data_path = dataset
                 result = commands.build_tree(algorithm, tree_path, data_path, logfile,
                                              memory=size)
                 table.add_row([algorithm, size,
                                result.total_io, result.duration])
 
-    with (RESULT_PATH / "eval_memory_scaling.txt").open("w") as outfile:
+    with (RESULT_PATH / "eval_large_dataset.txt").open("w") as outfile:
+        print("Using dataset {} with different algoriths and size in memory.")
         print(table, file=outfile)
