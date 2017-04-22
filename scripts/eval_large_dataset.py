@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Creates trees for a large dataset with varying
+# amounts of RAM.
 
 import commands
 import common

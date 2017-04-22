@@ -1,0 +1,153 @@
+Grobe Struktur 
+===========================
+
+├── build
+├── code            C++ Quellcode
+│   ├── cmd         C++ Executables
+│   ├── deps        Dependencies
+│   ├── doc         Doxygen Konfiguration
+│   ├── geodb       C++ Library
+│   └── test        Unittests
+├── data            Datasets
+├── output          Output von Experimenten (z.B. die konstruierten Bäume und Logs)
+├── results         Generierte Tabellen und Grafiken
+├── scripts         Python Scripts (Experimente + Grafiken)
+└── tmp             Temporäre Dateien (u.a. für TPIE und Bäume die nicht analysiert werden)
+
+
+Das Projekt bauen
+===========================
+
+Der build Ordner enthält die build-Artefakte inklusive
+CMake Konfiguration und die fertigen Commands bzw. die Bibliothek.
+Er kann jederzeit vollständig gelöscht werden.
+Wegen der vielen zur Compile-Zeit festzulegenden Parameter ist der 
+Compilierungsprozess mithilfe von Python scriptbar.
+
+Standardkonfiguration bauen: 
+    $ mkdir build && cd build && cmake ../code && make -j5
+
+Äquivalent:
+    (Scripts immer im Hauptverzeichnis aufrufen!)
+    $ scripts/compile.py
+
+Der Vorteil des Python-Scripts ist, dass es immer für alle nicht-spezifizierten
+Parameter den Standardwert auswählt. CMake hingegeben cacht diese wenn sie nicht
+über die Kommandozeile überschrieben werden.
+Dies war für das Skripten der Experimente wichtig.
+Siehe auch "scripts/compile.py --help".
+
+Für die Parameter zur build-Zeit siehe weiter unten.
+
+
+Quellcode
+===========================
+
+Der "code"-Ordner enhält den C++ Quellcode für die Commands (in "cmd") und den Quellcode
+der Bibliothek (in "geodb"), die von allen Tools verwendet wird.
+Die gebündelten 3rd-Party Abhängigkeiten (Unittests, String-Formatierung,
+OpenStreetMaps, eine modifizierte Version von TPIE, etc.) befinden sich
+im Ordner "deps". Die Unittests für die Bibliothek befinden sich in "test".
+Für nähere Informationen über die Implementierung siehe Doxygen in build/doc/html/index.html.
+
+Einige Dependencies werden als vorinstalliert vorausgesetzt:
+    - Boost (1.61 bzw. 1.62 wurden zur Entwicklung benutzt)
+    - Qt5 (nur wenn das "inspector" Tool gebaut werden soll
+    - OpenSceneGraph (unter Ubuntu das Paket libopenscenegraph-dev), auch nur für die GUI
+    - Doxygen für die Dokumentation ("make doc"). Doxygen ist so konfiguriert dass es
+      zum Parsen libclang benötigt. Die Ubuntu version von Doxygen hat dieses Feature aktiviert.
+
+CMake-Konfigurationsparameter:
+    -DBUILD_INSPECTOR
+        Ob das GUI Tool gebaut werden soll.
+    -DBUILD_OSM
+        Ob die OpenStreetMaps funktionalität gebaut werden soll.
+        Wird nur für die Generierung von Trajektorien benötigt.
+        Eine fertige Datei liegt schon in "data".
+    -DCMAKE_BUILD_TYPE
+        Sollte aus Performancegründen unbedingt "Release" sein (der Standardwert).
+    -DUSE_BLOOM
+        Schaltet die Verwendung von Bloom-Filtern anstatt von Intervall-Sets ein oder aus.
+    -DUSE_NAIVE_NODE_BUILDING
+        Schaltet bulkloading individueller interner Knoten (bzw. deren Indizes)
+        ein oder aus.
+    -DBETA  ("normal", "increasing", "decreasing")
+        Legt die Strategie für den Parameter "beta" (die Gewichtung von räumlichen
+        und textuellen Kosten) fest.
+        "normal": Alle Knoten haben den gleichen Wert.
+        "increasing": Je höher ein Knoten, desto höher ist beta (-> räuml. wird priorisiert).
+        "decrasing": Umgekehrt.
+    -DBLOCK_SIZE
+        Die physische Blockgröße. Standard ist 4 Kilobyte.
+    -DLEAF_FANOUT
+        Die max. Anzahl von Einträgen in einem Blatt. Standard ist "0": so viele wie möglich.
+    -DINTERNAL_FANOUT
+        Analog für interne Knoten.
+    -DLAMBDA
+        Die Größe der einzelnen Intervall-Sets im invertierten Index.
+    
+    Alle Parameter können auch über das Python-Script gesetzt werden.
+    Im Projektverzeichnis:
+    $ scripts/compile.py --beta "increasing" --bloom-filters
+
+
+Daten
+===========================
+
+Im Order "data" sind die zum Testen der Implementierung verwendeten Datensätze.
+Rohdaten befinden sich in "Geolife Trajectories 1.3" bzw. in "osm" (OpenStreetMaps).
+Die daraus generierten Dateien tragen die Endung ".entries". Es sind einfache
+tpie::file_stream<tree_entry>-Dateien wobei tree_entry ein Blatteintrag eines IRWI-Baumes ist.
+Intern werden Label als einfache Integer repräsentiert. Das Mapping von Strings zu Integern
+findet bei der Generierung der .entries-Dateien statt.
+Die *.strings-Dateien enthalten das Label Index <-> Label Name mapping für die jeweiligen Datensets.
+Die Einträge können mit dem Kommando "strings" ausgelesen werden:
+    $ build/strings --input data/osm.strings
+
+
+Neben den "normalen" Datensets "geolife" und "osm" gibt es noch die zufällig generierten
+Dateien (Quellcode dazu in cmd/generator). 
+Neben der Anzahl der Einträge kann hier auch die Anzahl der verschiedenen Label
+variiert werden. Dies is wichtig für die Evaluation vom Bulkloading der Indizes.
+
+Geolife:
+    Die Trajektorien von Personen in Peking. Zu vielen der Trajektorien
+    existiert eine "Labels" Datei die angibt, mit welchem Transportmittel
+    die Person zu welchem Zeitpunkt unterwegs war. Diese Transportmittel
+    dienen als Label für die Trajektorien.
+    Etwa 5 millionen Einträge (trajectory units) und 10 Label.
+
+    Quellcode in cmd/geolife_generator.
+
+
+OSM:
+    Eine aktuelle Version der Deutschlandkarte von Openstreetmaps heruntergeladen
+    (germany-latest.osm.bz2) und mit dem OSRM Projekt aufgearbeitet.
+    Dieses implementiert einen Routenplaner auf einem OSM-Datenset.
+    Es wurden Routen zwischen den 100 größten Deutschen Städten generiert und
+    in kleine Stücke "zerhackt", um trajectory units zu erhalten.
+    Ein Stück ist höchstens ca. ~20 Sekunden lang. Die jeweiligen Straßennahmen
+    der Route dienen als Label.
+
+    Quellcode in cmd/osm_generator.
+    Benötigt zum Bauen die CMake-Option -DUSE_OSM=1.
+
+
+Random-Walk:
+    Von einem zufälligen Startpunkt innerhalb einer vordefinierten Box ausgehende
+    Trajektorien. In kleinen Schritten wird zufällig weitergelaufen.    
+    Vom Zufall bestimmt wird mit einer bestimmten Wahrscheinlichkeit nach jedem
+    Punkt das aktuelle Label gewechselt und aus einem Pool von L Labels 
+    zufällig ausgewählt.
+   
+    Quellcode in cmd/generator.
+
+
+Scripts
+===========================
+
+Die Python-Scripts in scripts/ benötigen alle Python3. Sie sollten immer
+vom Projektverzeichnis aus aufgerufen werden (z.B. "scripts/compile.py")
+da sie sich auf die relativen Pfade verlassen.
+
+

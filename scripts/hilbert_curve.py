@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Generates hilbert curve images.
 
 import json
 import matplotlib

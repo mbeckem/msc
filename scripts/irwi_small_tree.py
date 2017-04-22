@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Creates a tree with only few entries and very low fanout.
+# Also builds the inspector tool.
 
 import itertools
 

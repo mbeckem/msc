@@ -7,8 +7,8 @@
 #include "geodb/trajectory.hpp"
 
 /// \file
-/// Contains the definition of the \ref posting class,
-/// which is used in \ref postings_list.
+/// Contains the definition of the `posting` class,
+/// which is used the lists of an inverted index.
 
 namespace geodb {
 

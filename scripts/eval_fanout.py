@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Creates trees with different fanouts and gathers statistics.
 
 import collections
 import itertools

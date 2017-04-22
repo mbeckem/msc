@@ -155,18 +155,30 @@ public:
     using t_type = time_type;
 
 public:
+    /// Default constructs a new instance. All coordinates are 0.
     vector3() = default;
 
+    /// Constructs a new instance with the given coordinates.
     vector3(x_type x, y_type y, t_type t)
         : m_t(t), m_y(y), m_x(x)
     {}
 
+    /// Returns the x coodiante.
     const x_type& x() const { return m_x; }
+
+    /// Returns the y coordinate.
     const y_type& y() const { return m_y; }
+
+    /// Returns the t coordinate.
     const t_type& t() const { return m_t; }
 
+    /// Returns a mutable reference to the x coordinate.
     x_type& x() { return m_x; }
+
+    /// Returns a mutable reference to the y coordinate.
     y_type& y() { return m_y; }
+
+    /// Returns a mutable reference to the t coordinate.
     t_type& t() { return m_t; }
 
 private:
@@ -215,10 +227,16 @@ public:
         : m_x(x), m_y(y)
     {}
 
+    /// Returns the x coordinate.
     const double& x() const { return m_x; }
+
+    /// Returns the y coordinate.
     const double& y() const { return m_y; }
 
+    /// Returns a reference to the x coordiante.
     double& x() { return m_x; }
+
+    /// Returns a reference to the y coordiante.
     double& y() { return m_y; }
 
 private:
@@ -259,12 +277,22 @@ public:
         : m_x(x), m_y(y), m_z(z)
     {}
 
+    /// Returns the x coordinate.
     const double& x() const { return m_x; }
+
+    /// Returns the y coordinate.
     const double& y() const { return m_y; }
+
+    /// Returns the z coordinate.
     const double& z() const { return m_z; }
 
+    /// Returns a reference to the x coordiante.
     double& x() { return m_x; }
+
+    /// Returns a reference to the y coordiante.
     double& y() { return m_y; }
+
+    /// Returns a reference to the z coordiante.
     double& z() { return m_z; }
 
 private:

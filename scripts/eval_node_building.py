@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Compares the naive and bulk node building algorithms.
+# This requires a large amount of labels (otherwise, 1-by-1 insertion
+# of index entries would be good enough).
+
 
 import collections
 

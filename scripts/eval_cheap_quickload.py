@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Compares the "cheap" quickload variant against the normal one
+# by building trees and comparing the required time and IOs.
 
 import itertools
 

@@ -443,6 +443,8 @@ private:
     std::vector<internal_ptr> path_buf;
 };
 
+/// Prints a string representation of the subtree rooted at `c`
+/// to the given output stream.
 template<typename Cursor>
 void dump(std::ostream& o, Cursor c, int indent_length = 0) {
     auto indent = [&]() -> std::ostream& {

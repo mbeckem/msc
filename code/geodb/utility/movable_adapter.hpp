@@ -86,6 +86,7 @@ private:
     T m_inner;
 };
 
+/// Factory function for movable adapters.
 template<typename T, typename... Args>
 movable_adapter<T> make_movable(Args&&... args) {
     return movable_adapter<T>(in_place_t(), std::forward<Args>(args)...);

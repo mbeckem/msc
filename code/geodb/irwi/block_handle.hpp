@@ -6,7 +6,7 @@
 #include <tpie/blocks/block.h>
 
 /// \file
-/// A handle to a block on disk, using in conjunction with \ref block_collection.
+/// A handle to a block on disk, used in conjunction with `block_collection`.
 
 namespace geodb {
 

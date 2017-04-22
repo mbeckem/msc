@@ -10,7 +10,7 @@
 
 /// \file
 /// Contains the definition of the internal data structure
-/// used by \ref string_map.
+/// used by \ref geodb::string_map.
 
 namespace geodb {
 

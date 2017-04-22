@@ -42,7 +42,7 @@ class bulk_load_common;
 struct tree_entry {
     trajectory_id_type trajectory_id = 0;   ///< Index of the trajectory this unit belongs to.
     u32 unit_index = 0;                     ///< Index of this unit within the trajectory.
-    trajectory_unit unit;
+    trajectory_unit unit;                   ///< The trajecotry unit represented by this leaf entry.
 
     tree_entry() = default;
 
