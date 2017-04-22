@@ -166,7 +166,7 @@ public:
     static point_t hilbert_index_inverse(index_t h) {
         static constexpr u32 dimension_mask = (1 << dimension) - 1;
 
-        /// Returns [bit(h, i * n + n - 1), ..., bit(h, i * n)]
+        // Returns [bit(h, i * n + n - 1), ..., bit(h, i * n)]
         auto bits = [&](u32 i) {
             const u32 base = i * dimension;
             return static_cast<u32>(h >> base) & dimension_mask;

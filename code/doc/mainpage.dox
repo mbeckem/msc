@@ -1,0 +1,76 @@
+/**
+
+\mainpage Übersicht
+
+In dieser Bibliothek wird der IRWI-Baum inklusive aller benötigten integenen Datenstrukturen
+und Algorithmen implementiert. Dazu kommen mehrere Strategien zum Bulk-Loading dieser
+Datenstruktur und die Möglichkeit, den Baum zur Compile-Zeit mit Template-Parametern zu konfigurieren.
+
+\section irwi Der IRWI-Baum
+
+Der IRWI-Baum ist ein modifizierter R-Baum, der zusätzlich in jedem Internen Knoten einen
+invertierten Index speichert. Dieser Index gibt Aufschluss darüber, welche Daten in den Kindern
+des Knotens zu finden sind. Die in einem Baum gespeicherten Daten sind Trajectory Units,
+3-dimensionale Liniensegmente (x, y und Zeit) versehen mit einem Label. Viele aufeinanderfolgende
+Trajectory Units ergeben eine Trajektorie. Siehe dazu die Struktur \ref geodb::tree_entry.
+
+Der IRWI-Baum selbst lebt als \ref geodb::tree im Verzeichnis `geodb/irwi`.
+Zur Compile-Zeit kann angegeben werden,
+ob der Baum den internen Speicher oder den Sekundärspeicher nutzen soll. 
+Außerdem ist der Parameter "Lambda" anpassbar: dieser gibt an, wie groß ein Eintrag 
+zu einem Kindknoten im invertierten Index ist (siehe \ref geodb::posting).
+
+\code{.cpp}
+    // Ein interner Baum mit Lambda == 10
+    tree<tree_internal, 10> ta;  
+
+    // Ein Baum auf der Festplatte mit Lambda == 40.
+    tree<tree_external, 40> tb(tree_external("directory/on/disk"));
+\endcode
+
+Zum Besuchen der Knoten eines Baumes kann die Klasse \ref geodb::tree_cursor verwendet werden.
+Der Cursor zur Wurzel eines Baumes wird mit \ref geodb::tree::root() konstruiert,
+von dort aus kann der Baum frei besucht werden.
+
+\section design Design und Konventionen
+
+Die starke Benutzung von Templates macht an vielen Stellen typedefs zur besseren Lesbarkeit nötig.
+Dabei gelten die folgenden Konventionen:
+    - `tree_type` bezeichnet immer eine konkrete Instanzierung des Templates \ref geodb::tree.
+    - `state_type` ist immer ein \ref geodb::tree_state.
+    - `index_type` ist immer ein \ref geodb::inverted_index.
+    - `list_type` ist immer eine \ref geodb::postings_list.
+    - `posting_type` ist immer eine Instanz von \ref geodb::posting.
+    - Für den Zugriff auf interne Datenstrukturen bzw. einzelne Knoten
+      werden Pointer (Objekte im RAM) oder pointerähnliche Klassen (Objekte im externen Speicher, siehe \ref geodb::shared_instances)
+      verwendet. Die Typen tragen immer die bezeichnug `*_ptr`.
+      Eine Instanz des Typs `index_ptr` zeigt also immer auf ein Objekt des Typs `index_type`.
+    - Für jede Datenstruktur stehen mindestens zwei verschiedene Speicher-Backends zur Verfügung (intern & extern).
+      Diese implementieren das gleiche Interface und kümmern sich nur um das holen/ablegen/suchen von Einträgen.
+      Die Logik ist in den eigentlichen Datenstrukturen zu finden, welche auf die Backends mit dem Namen `storage_type` verweist.
+      Beispiel: \ref geodb::inverted_index implementiert den Invertierten Index zu einem Knoten des Baums; die Speicherlogik
+      für externe Indizes ist in \ref geodb::inverted_index_external_impl zu finden.
+    - Speicherseiten werden nicht explizit gelesen oder geschrieben. Stattdessen kommen kleine Caches mit statischer Größe zum Einsatz.
+      So können interne und externe Operationen unter einem vereinheitlichtem Interface betrachtet werden.
+      Siehe \ref geodb::block_collection, welches auf der block_collection von TPIE basiert.
+
+\section bausteine Einzelne Bausteine
+
+Intervall-Sets, einschließlich effizienter Sweep-Line-Verfahren zum Bilden von Vereinigungen und Schnittmengen
+sind mit der Klasse \ref geodb::interval_set implementiert. Sie kommen in den Invertierten Indizes zum Einsatz, 
+um die Trajektorien-IDs grob zu erfassen.
+Ein \ref geodb::bloom_filter erfüllt den gleichen Zweck und implementiert das selbe Interface.
+Die Set-Typen können durch build-Parameter ausgetauscht werden.
+
+\section hilbert Hilbert-Indizes
+
+Siehe \ref geodb::hilbert_curve. Der \ref geodb::hilbert_loader nutzt diese Klasse,
+um Objekte nach ihrem Hilbert-Index zu sortieren.
+
+\section str Sort-Tile-Recursive:
+
+Die eigentlich rekursive Sortierfunktion wird von \ref geodb::sort_tile_recursive()
+ausgeführt (sowohl für Dateien wie auch für `std::vector`-Instanzen).
+Die dazugehörige Klasse \ref geodb::str_loader implementiert damit das Bulkloading für einen IRWI-Baum.
+
+*/

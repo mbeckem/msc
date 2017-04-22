@@ -138,12 +138,13 @@ public:
     const_iterator end() const { return const_iterator(this, storage().end()); }
 
     /// Returns an iterator pointing to the postings list of the given label
-    /// or \ref end() if there is no such list.
+    /// or `end()` if there is no such list.
     iterator find(label_type label) {
         return convert(static_cast<const inverted_index&>(*this).find(label));
     }
 
-    /// \copydoc find() const
+    /// Returns an iterator pointing to the postings list of the given label
+    /// or `end()` if there is no such list.
     const_iterator find(label_type label) const {
         return const_iterator(this, storage().find(label));
     }

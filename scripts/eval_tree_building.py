@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Build trees with many algorithms varying number of entries.
+# For every algorithm, we only keep the largest tree on disk,
+# but we keep the stats for all of them.
 
 import collections
 import itertools

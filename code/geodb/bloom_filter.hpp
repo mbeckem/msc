@@ -16,8 +16,11 @@
 
 namespace geodb {
 
+/// Returns the murmur3 hash for the given byte sequence.
 std::array<u64, 2> murmur3(const u8* data, size_t size);
 
+/// Returns the murmur3 hash for a given value.
+/// The value is reinterpreted as a sequence of bytes, then hashed.
 template<typename T>
 std::array<u64, 2> murmur3(const T& value) {
     static_assert(std::is_trivially_copyable<T>::value, "");

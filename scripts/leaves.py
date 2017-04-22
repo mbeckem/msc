@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Leaf packing algorithms for example data.
 
 import json
 import matplotlib

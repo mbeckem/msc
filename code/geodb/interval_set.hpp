@@ -239,15 +239,15 @@ namespace detail {
 /// Represents a set of integers as intervals.
 /// Points can be inserted as intervals of size 1.
 /// Using \ref trim(), one can reduce the size of the set
-/// by merging neighboring intervals, zhus introducing some error.
+/// by merging neighboring intervals, thus introducing some error.
 ///
 /// Efficient algorithms for computing the union / intersection of an
 /// arbitrary number of interval_sets are provided.
 ///
 /// Note: This class is backed by a sorted vector. Insert performance could
-/// bed improved by using a balanced search tree instead.
-/// Intervals are sorted and do not overlap, thus a "normal" 1-D tree
-/// is sufficient.
+/// be improved by using a balanced search tree instead.
+/// Intervals are sorted and do not overlap, so a "normal" 1-D tree
+/// would be sufficient.
 template<typename T>
 class interval_set {
     using storage_type = std::vector<interval<T>>;

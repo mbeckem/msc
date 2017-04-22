@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Generates an example R-Tree with some trajectory units.
 
 import json
 import matplotlib
