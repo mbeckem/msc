@@ -41,7 +41,7 @@ RANDOM_WALK = (10000000, walk_generated(10000000, 100))
 RANDOM_WALK_SMALL = (64000, _check(DATA_PATH / "walk-generated-small.entries"))
 
 # 100 million entries (with only 10 labels).
-RANDOM_WALK_LARGE = (400000000, _check(
+RANDOM_WALK_LARGE = (100000000, _check(
     DATA_PATH / "random-walk-large.entries"))
 
 # 5 million entries (about 4,5k routes).

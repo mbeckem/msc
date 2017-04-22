@@ -13,13 +13,13 @@ using namespace std;
 using namespace geodb;
 namespace po = boost::program_options;
 
-static std::string strings;
+static std::string input;
 
 static void parse_options(int argc, char** argv) {
     po::options_description options;
     options.add_options()
             ("help,h", "Show this message.")
-            ("strings", po::value(&strings)->value_name("PATH")->required(),
+            ("input", po::value(&input)->value_name("PATH")->required(),
              "Path to the strings database.");
 
     po::variables_map vm;
@@ -49,9 +49,9 @@ int main(int argc, char** argv) {
     return tpie_main([&]{
         parse_options(argc, argv);
 
-        external_string_map string_map({strings});
+        external_string_map string_map({input});
 
-        fmt::print(cout, "Content of {}:\n", strings);
+        fmt::print(cout, "Content of {}:\n", input);
         for (const auto& mapping : string_map) {
             fmt::print("\t{:8}: {}\n", mapping.id, mapping.name);
         }

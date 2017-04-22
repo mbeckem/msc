@@ -806,6 +806,10 @@ private:
     u64 create_internals(const level_files& last_files, const level_files& next_files) {
         static constexpr size_t cache_blocks = tree_type::max_internal_entries() * 4;
 
+        // Pseudo leaf entries are larger than normal ones.
+        // Therefore, we must reduce the the number of leaf nodes available for the tree.
+        static constexpr double size_factor = double(sizeof(tree_entry)) / double(sizeof(pseudo_leaf_entry));
+
         last_level_t last_level(last_files, cache_blocks);
         next_level_t next_level(next_files);
 
@@ -851,7 +855,7 @@ private:
             ++created_nodes;
         };
 
-        internal_pass_t pass(m_params.max_leaves, m_params.total_cache_blocks,
+        internal_pass_t pass(m_params.max_leaves * size_factor, m_params.total_cache_blocks,
                              pseudo_leaf_entry_accessor(last_level.label_counts), m_weight);
         pass.run(last_level.entries, node_callback);
         return created_nodes;

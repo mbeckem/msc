@@ -2,7 +2,7 @@
 
 import commands
 import common
-from common import TMP_PATH, OUTPUT_PATH
+from common import TMP_PATH, OUTPUT_PATH, RESULT_PATH
 from compile import compile
 from datasets import RANDOM_WALK_LARGE
 from lib.prettytable import PrettyTable
