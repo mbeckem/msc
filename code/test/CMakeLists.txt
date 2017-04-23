@@ -22,6 +22,7 @@ set(SOURCES
     range_utils.cpp
     raw_stream.cpp
     shared_values.cpp
+    stats_guard.cpp
     string_map.cpp
     trajectory.cpp
     tree_internals.cpp

@@ -17,6 +17,7 @@ set(LEAF_FANOUT "0" CACHE STRING "The fanout of leaf nodes (0 for maximum possib
 set(INTERNAL_FANOUT "0" CACHE STRING "The fanout of internal nodes (0 for maximum possible value).")
 set(LAMBDA "40" CACHE STRING "The size of individual entries in a posting list.")
 set(CHEAP_QUICKLOAD OFF CACHE BOOL "Use the cheap quick load insertion variant.")
+set(DEBUG_STATS OFF CACHE BOOL "Print stats for debugging.")
 
 # Increasing: The weight of the spatial cost increasing with the distance from the leaf level.
 # Decreasing: It decreases instead (i.e. higher nodes -> textual cost more important).
@@ -99,6 +100,11 @@ if (CHEAP_QUICKLOAD)
     message(STATUS "Using cheap quickload insertion.")
 else()
     message(STATUS "Using normal quickload insertion.")
+endif()
+
+if (DEBUG_STATS)
+    add_definitions(-DGEODB_DEBUG_STATS)
+    message(STATUS "Debugging stats enabled.")
 endif()
 
 add_definitions(-DGEODB_BLOCK_SIZE=${BLOCK_SIZE})

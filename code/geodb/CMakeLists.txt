@@ -6,6 +6,8 @@ set(SOURCES
     trajectory.cpp
 
     irwi/base.cpp
+
+    utility/stats_guard.cpp
 )
 
 set(HEADERS
@@ -41,6 +43,7 @@ set(HEADERS
     utility/range_utils.hpp
     utility/raw_stream.hpp
     utility/shared_values.hpp
+    utility/stats_guard.hpp
     utility/temp_dir.hpp
     utility/tuple_utils.hpp
 

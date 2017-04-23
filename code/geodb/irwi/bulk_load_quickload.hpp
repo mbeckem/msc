@@ -12,6 +12,7 @@
 #include "geodb/utility/file_allocator.hpp"
 #include "geodb/utility/temp_dir.hpp"
 #include "geodb/utility/range_utils.hpp"
+#include "geodb/utility/stats_guard.hpp"
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/member.hpp>
@@ -315,26 +316,36 @@ public:
         // The todo queue contains references to the buckets that
         // still have to be processed in the future.
         tpie::queue<u64> todo;
-        run(source, target, todo);
-        if (todo.empty()) {
-            // The whole tree fit into memory.
-            return;
+        {
+            STATS_GUARD(guard, "Main run ({} entries)", source.size());
+            run(source, target, todo);
+            if (todo.empty()) {
+                // The whole tree fit into memory.
+                return;
+            }
         }
 
         // Handle entries in todo. The files were allocated
         // as buckets and have to be freed individually.
         // Recursive calls to run() might add their own new
         // entries into `todo`.
+        STATS_GUARD(guard, "Recursive runs");
         file_stream bucket;
+        u64 count = 0;
         while (!todo.empty()) {
+            ++count;
             const u64 bucket_id = todo.pop();
             open_bucket(bucket, bucket_id);
 
-            run(bucket, target, todo);
+            {
+                STATS_GUARD(rec_guard, "Recursive run #{} ({} entries)", count, bucket.size());
+                run(bucket, target, todo);
+            }
 
             bucket.close();
             free_bucket(bucket_id);
         }
+        STATS_PRINT(guard, "Completed {} recursive invocations.", count);
     }
 
 private:
@@ -344,48 +355,59 @@ private:
     void run(file_stream& source, NextLevel&& target, tpie::queue<u64>& todo) {
         source.seek(0);
 
-        while (source.can_read() && m_tree->leaf_node_count() < m_max_leaves) {
-            m_tree->insert(source.read());
-        }
+        // Create an in-memory tree with the requested maximum number of leaves.
+        {
+            STATS_GUARD(guard, "Creating leaves");
+            while (source.can_read() && m_tree->leaf_node_count() < m_max_leaves) {
+                m_tree->insert(source.read());
+            }
 
-        if (!source.can_read()) {
-            // No more values, i.e. the entire source dataset fit.
-            m_tree->flush_leaves([&](node_id leaf, gsl::span<const Value> data) {
-                unused(leaf);
-                target(data);
-            });
-            clear_tree();
-            return;
-        }
-
-        // Flush all leaves to disk and remember their state in m_nodes.
-        // They do not yet have associated buckets - those are only constructed when needed.
-        m_tree->flush_leaves([this](node_id leaf, gsl::span<const Value> data) {
-            create_state(leaf, data);
-        });
-
-        // Put all remaining entries into buckets.
-        while (source.can_read()) {
-            const Value& v = source.read();
-            node_id leaf = m_tree->simulate_insert(v);
-            insert_into_bucket(leaf, v);
-        }
-
-        // A leaf with an empty bucket will be forwarded to the next level,
-        // the others are placed into the todo list.
-        // Iterate in insertion order for deterministic processing.
-        for (const node_state& n : m_nodes.template get<order_tag>()) {
-            if (!n.has_bucket) {
-                forward_leaf(n, target);
-            } else {
-                geodb_assert(n.bucket_id != 0, "must have a bucket");
-                todo.push(n.bucket_id);
+            if (!source.can_read()) {
+                // No more values, i.e. the entire source dataset fit.
+                // We can halt here because there will be no recursive calls.
+                m_tree->flush_leaves([&](node_id leaf, gsl::span<const Value> data) {
+                    unused(leaf);
+                    target(data);
+                });
+                reset();
+                return;
             }
         }
 
-        clear_tree();
-        m_nodes.clear();
-        m_leaf_buffer.truncate(0);
+        // No new leaf values will be inserted into the tree.
+        // We will use overflow buckets from now on.
+        {
+            STATS_GUARD(guard, "Writing overflow buckets");
+
+            // Flush all leaves to disk and remember their state in m_nodes.
+            // They do not yet have associated buckets - those are only constructed when needed.
+            m_tree->flush_leaves([this](node_id leaf, gsl::span<const Value> data) {
+                create_state(leaf, data);
+            });
+
+            // Put all remaining entries into buckets.
+            {
+                while (source.can_read()) {
+                    const Value& v = source.read();
+                    node_id leaf = m_tree->simulate_insert(v);
+                    insert_into_bucket(leaf, v);
+                }
+            }
+
+            // A leaf with an empty bucket will be forwarded to the next level,
+            // the others are placed into the todo list.
+            // Iterate in insertion order for deterministic processing.
+            for (const node_state& n : m_nodes.template get<order_tag>()) {
+                if (!n.has_bucket) {
+                    forward_leaf(n, target);
+                } else {
+                    geodb_assert(n.bucket_id != 0, "must have a bucket");
+                    todo.push(n.bucket_id);
+                }
+            }
+        }
+
+        reset();
     }
 
     /// Takes the leaf's entries and forwards them to the target.
@@ -467,6 +489,12 @@ private:
 
     void open_bucket(file_stream& bucket, u64 id) {
         bucket.open(m_bucket_alloc.path(id).string());
+    }
+
+    void reset() {
+        clear_tree();
+        m_nodes.clear();
+        m_leaf_buffer.truncate(0);
     }
 };
 
@@ -625,11 +653,13 @@ private:
     subtree_result load_impl(tpie::file_stream<tree_entry>& input) {
         fmt::print("Quickload parameters:\n"
                    "    max-leaves: {}\n"
-                   "    max-internal: {}   (approximated worst case)\n"
+                   "    max-internal: {}\n"
                    "    cache-blocks: {}\n",
                    m_params.max_leaves,
                    m_params.max_internal,
                    m_params.total_cache_blocks);
+
+        STATS_GUARD(guard, "Quickload");
 
         // Points to the files of the current level.
         level_files files;
@@ -644,16 +674,16 @@ private:
         // Loop until only one node remains.
         size_t height = 1;
         while (count > 1) {
-            fmt::print("Creating internal nodes at height {}.\n", height + 1);
+            ++height;
+            fmt::print("Creating internal nodes at height {}.\n", height);
 
             // Points to the files of the next level.
             level_files next_files;
 
-            count = create_internals(files, next_files);
+            count = create_internals(files, next_files, height);
             geodb_assert(count > 0, "invalid node count");
 
             files = next_files;
-            ++height;
         }
 
         return subtree_result(get_root(files), height, input.size());
@@ -669,6 +699,8 @@ private:
     /// Create a level of leaf nodes from a sequence of leaf entries by using the
     /// quickload_pass template.
     u64 create_leaves(tpie::file_stream<tree_entry>& source, const level_files& next_files) {
+        STATS_GUARD(guard, "Leaf level");
+
         u64 created_nodes = 0;
         next_level_t next_level(next_files);
 
@@ -803,7 +835,9 @@ private:
 
     /// Creates a new level of internal nodes by passing the set entries from the last
     /// level to the quick_load_pass class.
-    u64 create_internals(const level_files& last_files, const level_files& next_files) {
+    u64 create_internals(const level_files& last_files, const level_files& next_files, size_t height) {
+        STATS_GUARD(guard, "Internal level {}", height);
+
         static constexpr size_t cache_blocks = tree_type::max_internal_entries() * 4;
 
         // Pseudo leaf entries are larger than normal ones.
