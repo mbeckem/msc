@@ -5,6 +5,9 @@
 
 #include <initializer_list>
 
+/// \file
+/// Implements a "set" that does nothing.
+
 namespace geodb {
 
 /// The null set is a trivial probabilistic data structure

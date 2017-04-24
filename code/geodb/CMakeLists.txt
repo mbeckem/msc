@@ -25,6 +25,7 @@ set(HEADERS
     interval.hpp
     interval_set.hpp
     klee.hpp
+    null_set.hpp
     parser.hpp
     rectangle.hpp
     str.hpp
