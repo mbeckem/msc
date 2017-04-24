@@ -230,12 +230,7 @@ private:
         u64 value_offset = 0;
 
         /// Number of entries of the original leaf.
-        /// Every node state gets a preallocated amount of leaf_fanout entries
-        /// even if it initially stores less than that.
-        /// Additional entries will fill up this space until it overflows,
-        /// at which point a bucket will be created.
-        /// \invariant `value_count <= leaf_fanout`.
-        mutable u64 value_count = 0;
+        u64 value_count = 0;
 
         /// True if the bucket has been initialized.
         mutable bool has_bucket = false;
@@ -434,19 +429,16 @@ private:
     /// Appends the leaf entries to the leaf buffer and stores their position.
     void create_state(node_id leaf, gsl::span<const Value> data) {
         geodb_assert(data.size() > 0 && data.size() <= fanout_leaf,
-                     "invalid leaf size.");
-
-        const u64 offset = m_leaf_buffer.size();
+                     "invalid number of leaf entries");
+        geodb_assert(m_leaf_buffer.offset() == m_leaf_buffer.size(),
+                     "buffer must be at end");
 
         auto& index = m_nodes.template get<id_tag>();
         id_iterator pos;
         bool inserted;
-        std::tie(pos, inserted) = index.emplace(leaf, offset, data.size());
+        std::tie(pos, inserted) = index.emplace(leaf, m_leaf_buffer.offset(), data.size());
         geodb_assert(inserted, "A bucket for the given leaf already exists.");
 
-        // Preallocate enough for a complete leaf.
-        m_leaf_buffer.truncate(offset + fanout_leaf);
-        m_leaf_buffer.seek(offset);
         for (const Value& v : data) {
             m_leaf_buffer.write(v);
         }
@@ -456,19 +448,8 @@ private:
     /// Lazily creates the bucket on first use.
     void insert_into_bucket(node_id leaf, const Value& v) {
         const node_state& n = find_state(leaf);
-        geodb_assert(n.value_count <= fanout_leaf, "node has too many values.");
 
-        if (n.value_count < fanout_leaf) {
-            // There is still room left in the initial leaf storage.
-            m_leaf_buffer.seek(n.value_offset + n.value_count);
-            m_leaf_buffer.write(v);
-            ++n.value_count;
-            return;
-        }
-
-        // The leaf buffer is full.
         // Allocate and initialize a new bucket if none exists yet.
-        // Move everything from the leaf buffer into the bucket.
         if (!n.has_bucket) {
             n.has_bucket = true;
             n.bucket_id = alloc_bucket();
