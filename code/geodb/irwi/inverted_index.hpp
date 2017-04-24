@@ -212,6 +212,14 @@ public:
             set = set.union_with(p.id_set());
         };
 
+        if (labels.empty()) {
+            // Query for "any" label.
+            auto list = total();
+            std::for_each(list->begin(), list->end(), insert_or_merge);
+            return;
+        }
+
+        // Query for n >= 1 labels.
         const auto e = end();
         for (label_type label : labels) {
             auto iter = find(label);

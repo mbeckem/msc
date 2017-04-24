@@ -12,6 +12,7 @@
 #include "geodb/irwi/tree_insertion.hpp"
 #include "geodb/irwi/tree_state.hpp"
 #include "geodb/utility/range_utils.hpp"
+#include "geodb/utility/stats_guard.hpp"
 
 #include <boost/container/static_vector.hpp>
 #include <boost/noncopyable.hpp>
@@ -143,6 +144,8 @@ public:
 
     /// Finds all trajectories that satisfy the given query.
     std::vector<trajectory_match> find(const sequenced_query& seq_query) const {
+        STATS_GUARD(guard, "Query");
+
         if (empty()) {
             return {}; // no root.
         }
@@ -181,10 +184,13 @@ private:
     std::vector<std::vector<leaf_ptr>> find_leaves(QueryRange&& queries) const {
         geodb_assert(!empty(), "requires a root node.");
 
+        STATS_GUARD(guard, "Find Leaves");
+
         // Status of a simple query. Simple queries are evaluated in parallel.
         struct state_t {
-            state_t(const simple_query& query): query(query) {}
+            state_t(size_t id, const simple_query& query): id(id), query(query) {}
 
+            const size_t id;
             const simple_query& query;
             std::vector<node_ptr> nodes;                // set of remaining nodes
             std::vector<candidate_entry> candidates;    // children of these nodes
@@ -192,35 +198,57 @@ private:
             id_set_type ids;                    // union of ids in candidates
         };
 
-        std::vector<state_t> states(boost::begin(queries), boost::end(queries));
-        for (state_t& state : states) {
-            state.nodes.push_back(storage().get_root());
+        // Create a query state for every query.
+        // The search starts at the root.
+        std::vector<state_t> states;
+        {
+            states.reserve(queries.size());
+            size_t i = 0;
+            for (const auto& query : queries) {
+                states.emplace_back(++i, query);
+                states.back().nodes.push_back(storage().get_root());
+            }
         }
 
         // For every non-leaf level.
         const size_t height = storage().get_height();
         for (size_t level = 1; level < height; ++level) {
+            STATS_GUARD(loop_guard, "Level {}", level);
+
             // Gather candidate entries by looking at the inverted index
             // and bounding boxes.
             for (state_t& state : states) {
+                STATS_GUARD(query_guard, "Query {}", state.id);
+
                 auto to_internal = [&](auto ptr) {
                     return this->storage().to_internal(ptr);
                 };
                 get_matching_entries(state.query, state.nodes | transformed(to_internal), state.candidates);
                 state.time_window = get_time_window(state.candidates);
                 state.ids = get_ids(state.candidates);
+
+                STATS_PRINT(query_guard, "candiates: {}.", state.candidates.size());
+                STATS_PRINT(query_guard, "time window: {}.", state.time_window);
+                //STATS_PRINT(query_guard, "ids: {}", state.ids);
             }
 
             auto shared_ids = id_set_type::set_intersection(
                         states | transformed_member(&state_t::ids));
             if (shared_ids.empty()) {
+                STATS_PRINT(loop_guard, "No common ids.");
                 return {}; // No common ids.
             }
+            //STATS_PRINT(loop_guard, "Shared ids: {}.", shared_ids);
+
             if (!trim_time_windows(states | transformed_member(&state_t::time_window))) {
+                STATS_PRINT(loop_guard, "No time overlap.");
                 return {}; // Time windows contradict each other.
             }
 
             for (state_t& state : states) {
+                STATS_GUARD(query_guard, "Query {}", state.id);
+                STATS_PRINT(query_guard, "trimmed time window: {}.", state.time_window);
+
                 state.nodes.clear();
                 for (const candidate_entry& c : state.candidates) {
                     // Keep an entry when its time interval overlaps and
@@ -230,8 +258,12 @@ private:
                         state.nodes.push_back(c.ptr);
                     }
                 }
+                STATS_PRINT(query_guard, "{} nodes remain, {} filtered.",
+                            state.nodes.size(),
+                            state.candidates.size() - state.nodes.size());
 
                 if (state.nodes.empty()) {
+                    STATS_PRINT(query_guard, "No more nodes.");
                     return {}; // This query has no further nodes.
                 }
             }
@@ -306,7 +338,7 @@ private:
     /// If b2 < b1, none of the trajectory units in [b2, b1] that belong to q2
     /// can satisfy the overall query because there cannot be any earlier trajectory units
     /// satisfying q1 within the same trajectory.
-    /// We can therefore adjust w2 to [b2, e2], which reduces the search space for q2.
+    /// We can therefore adjust w2 to [b1, e2], which reduces the search space for q2.
     ///
     /// An analogue reasoning holds for the end of w1.
     ///
@@ -359,7 +391,7 @@ private:
             const u32 count = storage().get_count(leaf);
             for (u32 i = 0; i < count; ++i) {
                 const tree_entry data = storage().get_data(leaf, i);
-                if (data.unit.intersects(q.rect) && contains(q.labels, data.unit.label)) {
+                if (data.unit.intersects(q.rect) && (q.labels.empty() || contains(q.labels, data.unit.label))) {
                     result.push_back(data);
                 }
             }
@@ -373,10 +405,15 @@ private:
         geodb_assert(!boost::empty(candidates), "range must not be empty");
 
         std::vector<trajectory_match> matches;
+        std::vector<boost::sub_range<const std::vector<tree_entry>>> unit_candiates;
+        unit_candiates.reserve(boost::size(candidates));
+
+        // For every potential trajectory match.
         for (trajectory_id_type id : *boost::begin(candidates) | boost::adaptors::map_keys) {
-            u32 unit = 0;
             std::vector<unit_match> unit_matches;
 
+            // Inspect the trajectory unit matches for every simple query.
+            unit_candiates.clear();
             for (const auto& map : candidates) {
                 auto iter = map.find(id);
                 if (iter == map.end()) {
@@ -386,29 +423,61 @@ private:
 
                 const std::vector<tree_entry>& entries = iter->second;
                 geodb_assert(entries.size() > 0, "no matching entries");
+                unit_candiates.emplace_back(entries);
+            }
 
-                // Return the matching trajectory units to the user.
-                for (const tree_entry& e : entries) {
-                    unit_matches.emplace_back(e.unit_index, e.unit);
+            for (size_t i = 0; i < unit_candiates.size(); ++i) {
+                auto& current = unit_candiates[i];
+
+                // The first unit that satisfies queries[i].
+                u32 min = current.front().unit_index;
+
+                // We compute the number of elements until the
+                // next query becomes active.
+                if (i < unit_candiates.size() - 1) {
+                    // Index-wise comparison for tree entries.
+                    auto entry_compare = [](const tree_entry& a, u32 index) {
+                        return a.unit_index < index;
+                    };
+
+                    auto& next = unit_candiates[i + 1];
+                    {
+                        // Find "min" or something greater in the next query.
+                        const auto pos = std::lower_bound(next.begin(), next.end(), min, entry_compare);
+                        if (pos == next.end()) {
+                            goto skip; // Both queries cannot be satisfied at the same time.
+                        }
+                        geodb_assert(pos->unit_index >= min, "invalid result of binary search.");
+
+                        // Shrink the "next" range to only include values >= min.
+                        next = { pos, next.end() };
+                    }
+
+                    // We include every result in the current sequence until we reach the following value,
+                    // at which point the next query will become active.
+                    // Note: max itself is not included anymore in "current", i.e. we prefer the later query
+                    // in case that a unit satisfies more than one query at the same time.
+                    {
+                        u32 max = next.front().unit_index;
+                        const auto pos = std::lower_bound(current.begin(), current.end(), max, entry_compare);
+                        geodb_assert(pos == current.end() || pos->unit_index >= max, "invalid result of binary search");
+
+                        // Shrink the current sequence. The range may become empty as a result,
+                        // which is fine (the overlapping part will be seen in the next iteration).
+                        current = { current.begin(), pos };
+                    }
                 }
 
-                // Find the min & max unit index (for time ordering, later queries must
-                // have higher indices).
-                auto unit_indices = entries | transformed_member(&tree_entry::unit_index);
-                u32 min_unit = *boost::min_element(unit_indices);
-                u32 max_unit = *boost::max_element(unit_indices);
-
-                if (min_unit >= unit) {
-                    unit = max_unit;
-                } else {
-                    // time ordering violated (unit comes before the last max unit index).
-                    goto skip;
+                // Include all units up until the computed end of the candidate list.
+                for (const tree_entry& entry : current) {
+                    unit_matches.emplace_back(entry.unit_index, entry.unit);
                 }
             }
 
+
             // A trajectory only matches if there are matching units for every simple query.
             // This code will be skipped (see the goto above) if that is not the case.
-            matches.push_back({id, std::move(unit_matches)});
+            matches.emplace_back(id, std::move(unit_matches));
 
         skip:
             continue;

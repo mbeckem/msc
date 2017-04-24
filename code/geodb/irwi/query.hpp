@@ -14,11 +14,14 @@
 namespace geodb {
 
 struct simple_query {
-    bounding_box rect;
-    std::unordered_set<label_type> labels;     // TODO: "any"
+    bounding_box rect;                      ///< Query rectangle.
+    std::unordered_set<label_type> labels;  ///< Empty means "any".
 };
 
 struct sequenced_query {
+    /// A list of simple query that have to be satisfied by every
+    /// trajectory in the result set (i.e. the sequenced query is the logical AND
+    /// of all simple queries).
     std::vector<simple_query> queries;
 };
 
@@ -38,8 +41,7 @@ struct unit_match {
     {}
 };
 
-/// Represents a trajectory that (has units that)
-/// satisfy a given sequenced query.
+/// Represents a trajectory that satisfies a given sequenced query.
 /// It contains the concrete set of trajectory units
 /// that matched the query.
 struct trajectory_match {

@@ -8,6 +8,7 @@
 //#include <boost/multi_index/ordered_index.hpp>
 //#include <boost/multi_index/sequenced_index.hpp>
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 #include <tpie/tpie.h>
 #include <tpie/stats.h>
 
@@ -213,7 +214,7 @@ public:
         , m_bytes_written(tpie::get_bytes_written())
         , m_time(clock::now())
     {
-        print("Entering \"{}\".", m_name);
+        print_indented(m_indent, fmt::format("Entering \"{}\".", m_name));
         ++t_indent;
     }
 
@@ -227,16 +228,17 @@ public:
         u64 blocks_written = ceil(written, block_size);
         double duration = std::chrono::duration_cast<double_seconds>(
                     clock::now() - m_time).count();
-        print("Leaving \"{}\".\n"
-              "  * Blocks read: {}\n"
-              "  * Blocks written: {}\n"
-              "  * Blocks total: {}\n"
-              "  * Duration: {:.4f} s",
-              m_name,
-              blocks_read,
-              blocks_written,
-              blocks_read + blocks_written,
-              duration);
+        print_indented(m_indent,
+                       fmt::format("Leaving \"{}\".\n"
+                                   "  * Blocks read: {}\n"
+                                   "  * Blocks written: {}\n"
+                                   "  * Blocks total: {}\n"
+                                   "  * Duration: {:.4f} s",
+                                   m_name,
+                                   blocks_read,
+                                   blocks_written,
+                                   blocks_read + blocks_written,
+                                   duration));
     }
 
     stats_guard(const stats_guard&) = delete;
@@ -245,7 +247,7 @@ public:
 
     template<typename... Args>
     void print(const char* format, Args&&... args) {
-        print_indented(m_indent, fmt::format(format, std::forward<Args>(args)...));
+        print_indented(m_indent + 1, fmt::format(format, std::forward<Args>(args)...));
     }
 
 private:

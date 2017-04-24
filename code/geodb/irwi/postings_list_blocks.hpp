@@ -325,10 +325,13 @@ public:
     void set(const iterator& pos, const posting_type& entry) {
         geodb_assert(pos != end(), "writing to the end iterator");
 
+        m_dirty = true;
         set_entry(pos.node, pos.index, entry);
     }
 
     void push_back(const posting_type& entry) {
+        m_dirty = true;
+
         handle_type block = m_last;
         if (block == invalid || get_count(block) == block_entry_count()) {
             {
@@ -362,6 +365,8 @@ public:
         geodb_assert(m_size > 0, "cannot pop back on an empty list");
         geodb_assert(m_last != invalid, "last block must be valid (invariant)");
 
+        m_dirty = true;
+
         const u32 count = get_count(m_last);
         geodb_assert(count > 0, "data blocks cannot be empty");
 
@@ -388,6 +393,11 @@ public:
     }
 
     void clear() {
+        if (size() == 0) {
+            return;
+        }
+
+        m_dirty = true;
         for (handle_type block = m_first; block != invalid; ) {
             handle_type next = get_next(block);
             m_blocks.free_block(block);
@@ -411,16 +421,23 @@ public:
     {
         if (!first_time) {
             load_state();
+        } else {
+            m_dirty = true;
         }
     }
 
     ~postings_list_blocks_impl() {
-        save_state();
+        if (m_dirty) {
+            save_state();
+        }
     }
 
 private:
     /// The block collection file is shared among all instances.
     block_collection<block_size>& m_blocks;
+
+    /// True if this list was modified since it has been loaded.
+    bool m_dirty = false;
 
     /// Every list has its own base page that never changes.
     /// The base page is used to store the list' size, a reference

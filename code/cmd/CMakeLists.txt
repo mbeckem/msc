@@ -10,6 +10,7 @@ add_subdirectory(inspector)
 add_subdirectory(irwi_examples)
 add_subdirectory(loader)
 add_subdirectory(osm_generator)
+add_subdirectory(query)
 add_subdirectory(stats)
 add_subdirectory(strings)
 

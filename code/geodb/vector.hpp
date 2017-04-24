@@ -5,6 +5,7 @@
 #include "geodb/type_traits.hpp"
 #include "geodb/utility/tuple_utils.hpp"
 
+#include <fmt/format.h>
 #include <tpie/serialization2.h>
 
 #include <algorithm>
@@ -112,16 +113,27 @@ public:
         return result;
     }
 
+    template<typename T, std::enable_if_t<!std::is_floating_point<T>::value>* = nullptr>
+    static void write_value(fmt::Writer& w, const T& v) {
+        w.write("{}", v);
+    }
+
+    template<typename T, std::enable_if_t<std::is_floating_point<T>::value>* = nullptr>
+    static void write_value(fmt::Writer& w, const T& v) {
+        w.write("{:.5f}", v);
+    }
+
     friend std::ostream& operator<<(std::ostream& o, const Derived& d) {
-        o << "(";
+        fmt::MemoryWriter w;
+        w << "(";
         enumerate<size()>([&](auto i) {
             if (i != 0) {
-                o << ", ";
+                w << ", ";
             }
-            o << d.get(i);
+            vector_base::write_value(w, d.get(i));
         });
-        o << ")";
-        return o;
+        w << ")";
+        return o << w.c_str();
     }
 
 private:

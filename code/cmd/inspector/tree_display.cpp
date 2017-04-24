@@ -272,9 +272,9 @@ void TreeDisplay::refreshSummary() {
         return;
     }
 
-    auto insert_summary = [&](auto label, auto summary) {
+    auto insert_summary = [&](auto&& label, auto&& summary) {
         auto* item = new QTreeWidgetItem;
-        item->setData(0, Qt::DisplayRole, qint64(label));
+        item->setData(0, Qt::DisplayRole, label);
         item->setData(1, Qt::DisplayRole, qint64(summary.count));
         item->setData(2, Qt::DisplayRole, to_string(summary.trajectories));
         tree->addTopLevelItem(item);
@@ -283,10 +283,11 @@ void TreeDisplay::refreshSummary() {
     if (m_current->is_internal()) {
         auto index = m_current->inverted_index();
 
+        insert_summary(QString("Total"), index->total()->summarize());
         for (const auto& entry : *index) {
             const auto label = entry.label();
             const auto summary = entry.postings_list()->summarize();
-            insert_summary(label, summary);
+            insert_summary(qint64(label), summary);
         }
     } else {
         struct item {
@@ -294,6 +295,8 @@ void TreeDisplay::refreshSummary() {
             u64 count = 0;
         };
 
+        u64 total_count = 0;
+        std::set<geodb::trajectory_id_type> total_trajectories;
         std::map<geodb::label_type, item> items;
         for (size_t i = 0; i < m_current->size(); ++i) {
             const geodb::tree_entry entry = m_current->value(i);
@@ -301,8 +304,15 @@ void TreeDisplay::refreshSummary() {
             auto& item = items[entry.unit.label];
             ++item.count;
             item.trajectories.insert(entry.trajectory_id);
+
+            ++total_count;
+            total_trajectories.insert(entry.trajectory_id);
         }
 
+        geodb::postings_list_summary<external_tree::lambda()> total_summary;
+        total_summary.count = total_count;
+        total_summary.trajectories.assign(total_trajectories.begin(), total_trajectories.end());
+        insert_summary(QString("Total"), total_summary);
         for (const auto& pair : items) {
             geodb::postings_list_summary<external_tree::lambda()> summary;
             summary.count = pair.second.count;

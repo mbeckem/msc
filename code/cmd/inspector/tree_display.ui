@@ -441,7 +441,7 @@
        <item>
         <widget class="QTabWidget" name="treeTabs">
          <property name="currentIndex">
-          <number>2</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="childrenTab">
           <attribute name="title">
@@ -613,7 +613,7 @@
          </widget>
          <widget class="QWidget" name="summaryTab">
           <attribute name="title">
-           <string>Label Summary</string>
+           <string>Index Summary</string>
           </attribute>
           <attribute name="toolTip">
            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Displays the summary of this node.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
