@@ -838,10 +838,12 @@ private:
     u64 create_internals(const level_files& last_files, const level_files& next_files, size_t height) {
         STATS_GUARD(guard, "Internal level {}", height);
 
+        // Number of cached postings list blocks for every internal node.
+        // TODO: This could be set by the user.
         static constexpr size_t cache_blocks = tree_type::max_internal_entries() * 4;
 
         // Pseudo leaf entries are larger than normal ones.
-        // Therefore, we must reduce the the number of leaf nodes available for the tree.
+        // Therefore, we must reduce the number of leaf nodes available for the tree.
         static constexpr double size_factor = double(sizeof(tree_entry)) / double(sizeof(pseudo_leaf_entry));
 
         last_level_t last_level(last_files, cache_blocks);
