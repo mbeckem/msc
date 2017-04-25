@@ -38,13 +38,13 @@ def run_random_walk(naive_node_building, logfile):
     compile(naive_node_building=naive_node_building)
 
     results = []
-    for entries, labels, entries_path in RANDOM_WALK_VARYING_LABELS:
-        print("entries = {}, labels = {}, path = {}"
-              .format(entries, labels, entries_path))
-        result = build_tree("hilbert", entries_path)
-        result["algorithm"] = "hilbert"
-        result["labels"] = labels
-        results.append(result)
+    for algorithm in ["hilbert", "str-lf", "quickload"]:
+        for entries, labels, entries_path in RANDOM_WALK_VARYING_LABELS:
+            print("random walk: algorithm = {}, entries = {}, labels = {}"
+                  .format(algorithm, entries, labels))
+            result = build_tree(algorithm, entries_path)
+            result["labels"] = labels
+            results.append(result)
     return results
 
 
@@ -71,10 +71,9 @@ with (OUTPUT_PATH / "eval_node_building.log").open("w") as logfile:
         eval_bulk = run_random_walk(naive_node_building=False, logfile=logfile)
 
         table = PrettyTable([
-            "Type", "Labels", "I/O",
-            "Duration", "Index Size", "Tree Size"]
-        )
-        table.align["Type"] = "l"
+            "Type", "Algorithm", "Labels", "I/O",
+            "Duration", "Index Size", "Tree Size"
+        ])
         table.align["Labels"] = "r"
         table.align["I/O"] = "r"
         table.align["Duration"] = "r"
@@ -84,6 +83,7 @@ with (OUTPUT_PATH / "eval_node_building.log").open("w") as logfile:
         def add_result(type, result):
             table.add_row([
                 type,
+                result["algorithm"],
                 result["labels"],
                 result["total_io"],
                 result["duration"],
@@ -118,18 +118,16 @@ with (OUTPUT_PATH / "eval_node_building.log").open("w") as logfile:
                 result["duration"],
             ])
 
-        for naive, bulk in zip(eval_naive, evail_bulk):
+        for naive, bulk in zip(eval_naive, eval_bulk):
             add_result("naive", naive)
             add_result("bulk", bulk)
 
         return table
 
-    t1 = random_walk_table()
-    t2 = others_table()
     with (RESULT_PATH / "eval_node_building.txt").open("w") as outfile:
         print("Random walk dataset with increasing number of labels.\n", file=outfile)
-        print(t1, file=outfile)
-        print("")
+        print(random_walk_table(), file=outfile)
+        print("", file=outfile)
 
         print("Other datasets with different algorithms.\n", file=outfile)
-        print(t2, file=outfile)
+        print(others_table(), file=outfile)

@@ -33,6 +33,7 @@ block_collection::block_collection(std::string fileName, memory_size_type blockS
 	((void)m_writeable);
 #endif
 
+    m_accessor.set_cache_hint(access_random);
 	if(writeable) {
 		m_accessor.open_rw_new(fileName);
 		return;

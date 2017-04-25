@@ -637,10 +637,10 @@ public:
     /// \param tree         The target of the bulk loading operation.
     explicit quick_loader(Tree& tree, size_t blocks_per_internal)
         : common_t(tree)
-        , m_params(tpie::get_memory_manager().available(), blocks_per_internal)
+        , m_leaf_params(tpie::get_memory_manager().available(), blocks_per_internal)
         , m_weight(tree.weight())
     {
-        if (m_params.max_leaves < 2)
+        if (m_leaf_params.max_leaves < 2)
             throw std::logic_error("Must have enough space for at least two leaf nodes.");
     }
 
@@ -655,9 +655,9 @@ private:
                    "    max-leaves: {}\n"
                    "    max-internal: {}\n"
                    "    cache-blocks: {}\n",
-                   m_params.max_leaves,
-                   m_params.max_internal,
-                   m_params.total_cache_blocks);
+                   m_leaf_params.max_leaves,
+                   m_leaf_params.max_internal,
+                   m_leaf_params.total_cache_blocks);
 
         STATS_GUARD(guard, "Quickload");
 
@@ -746,7 +746,7 @@ private:
             ++created_nodes;
         };
 
-        leaf_pass_t pass(m_params.max_leaves, m_params.total_cache_blocks,
+        leaf_pass_t pass(m_leaf_params.max_leaves, m_leaf_params.total_cache_blocks,
                          detail::tree_entry_accessor(), m_weight);
         pass.run(source, node_callback);
         return created_nodes;
@@ -891,7 +891,8 @@ private:
             ++created_nodes;
         };
 
-        internal_pass_t pass(m_params.max_leaves * size_factor, m_params.total_cache_blocks,
+        internal_pass_t pass(m_leaf_params.max_leaves * size_factor,
+                             m_leaf_params.total_cache_blocks * size_factor,
                              pseudo_leaf_entry_accessor(last_level.label_counts), m_weight);
         pass.run(last_level.entries, node_callback);
         return created_nodes;
@@ -904,7 +905,7 @@ private:
 private:
     /// Quickload parameters (derived from the available memory
     /// and the space per internal node).
-    const params_t m_params;
+    const params_t m_leaf_params;
 
     /// beta
     const double m_weight;
