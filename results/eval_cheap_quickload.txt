@@ -1,0 +1,44 @@
++---------+-----------------+---------+--------+---------------+
+| Dataset |    Algorithm    | Entries |    I/O |      Duration |
++---------+-----------------+---------+--------+---------------+
+| geolife |    quickload    |  540000 |  39013 |   9.364964227 |
+| geolife |    quickload    | 1080000 |  76904 |  21.516910575 |
+| geolife |    quickload    | 1620000 | 114894 |  34.042467283 |
+| geolife |    quickload    | 2160000 | 151604 |  45.241331647 |
+| geolife |    quickload    | 2700000 | 189391 |  56.707169387 |
+| geolife |    quickload    | 3240000 | 227048 |  68.488420168 |
+| geolife |    quickload    | 3780000 | 264247 |  80.171382343 |
+| geolife |    quickload    | 4320000 | 302548 |  91.515116332 |
+| geolife |    quickload    | 4860000 | 339594 | 103.629027572 |
+| geolife |    quickload    | 5400000 | 376959 | 118.144782905 |
+|   osm   |    quickload    |  400000 | 158994 |   7.106671783 |
+|   osm   |    quickload    |  800000 | 262949 |  15.827217545 |
+|   osm   |    quickload    | 1200000 | 327898 |  24.953662941 |
+|   osm   |    quickload    | 1600000 | 374985 |  33.481168603 |
+|   osm   |    quickload    | 2000000 | 421190 |  40.858520679 |
+|   osm   |    quickload    | 2400000 | 435671 |  49.251564917 |
+|   osm   |    quickload    | 2800000 | 539744 |   58.25431526 |
+|   osm   |    quickload    | 3200000 | 540101 |  68.065420763 |
+|   osm   |    quickload    | 3600000 | 628651 |  76.469807366 |
+|   osm   |    quickload    | 4000000 | 674992 |  88.068377292 |
+| geolife | quickload-cheap |  540000 |  39013 |   9.339986229 |
+| geolife | quickload-cheap | 1080000 |  76904 |  21.507973121 |
+| geolife | quickload-cheap | 1620000 | 114894 |  33.624321587 |
+| geolife | quickload-cheap | 2160000 | 151604 |  45.363257584 |
+| geolife | quickload-cheap | 2700000 | 189391 |  56.726008714 |
+| geolife | quickload-cheap | 3240000 | 227048 |  69.702126555 |
+| geolife | quickload-cheap | 3780000 | 264247 |  79.969857588 |
+| geolife | quickload-cheap | 4320000 | 302548 |  91.537070975 |
+| geolife | quickload-cheap | 4860000 | 339594 | 104.685909935 |
+| geolife | quickload-cheap | 5400000 | 376959 | 115.744146709 |
+|   osm   | quickload-cheap |  400000 | 158994 |   7.689796255 |
+|   osm   | quickload-cheap |  800000 | 262949 |  15.883059621 |
+|   osm   | quickload-cheap | 1200000 | 327898 |  24.541193727 |
+|   osm   | quickload-cheap | 1600000 | 374985 |  32.745311585 |
+|   osm   | quickload-cheap | 2000000 | 421190 |  40.611996432 |
+|   osm   | quickload-cheap | 2400000 | 435671 |  49.684196352 |
+|   osm   | quickload-cheap | 2800000 | 539744 |  59.394121707 |
+|   osm   | quickload-cheap | 3200000 | 540101 |  67.740826015 |
+|   osm   | quickload-cheap | 3600000 | 628651 |  81.901455618 |
+|   osm   | quickload-cheap | 4000000 | 674992 |  85.687417489 |
++---------+-----------------+---------+--------+---------------+

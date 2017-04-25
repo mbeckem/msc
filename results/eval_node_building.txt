@@ -1,0 +1,63 @@
+Random walk dataset with increasing number of labels.
+
++-------+-----------+--------+---------+--------------+------------+-----------+
+|  Type | Algorithm | Labels |     I/O |     Duration | Index Size | Tree Size |
++-------+-----------+--------+---------+--------------+------------+-----------+
+| naive |  hilbert  |    200 |  492076 |  1.263971276 | 152.61 MiB | 25.70 MiB |
+| naive |  hilbert  |    400 |  591186 |  1.515367703 | 219.16 MiB | 25.68 MiB |
+| naive |  hilbert  |    600 |  649800 |  1.685540108 | 284.51 MiB | 25.70 MiB |
+| naive |  hilbert  |    800 |  695518 |  1.816184182 | 344.69 MiB | 25.70 MiB |
+| naive |  hilbert  |   1000 |  732214 |  1.930720786 | 399.28 MiB | 25.68 MiB |
+| naive |   str-lf  |    200 |  115290 |  6.310040773 |  56.80 MiB | 17.45 MiB |
+| naive |   str-lf  |    400 |  137249 |  6.393205491 |  75.38 MiB | 17.45 MiB |
+| naive |   str-lf  |    600 |  247415 |  6.533978955 |  87.99 MiB | 17.45 MiB |
+| naive |   str-lf  |    800 |  325735 |  6.611587265 |  98.40 MiB | 17.45 MiB |
+| naive |   str-lf  |   1000 |  376925 |  6.679103871 | 107.67 MiB | 17.45 MiB |
+| naive | quickload |    200 |  101852 |  7.975543226 |  32.04 MiB | 26.52 MiB |
+| naive | quickload |    400 |  502677 |  9.321517942 |  62.36 MiB | 26.93 MiB |
+| naive | quickload |    600 |  956755 | 10.791851017 | 100.58 MiB | 27.25 MiB |
+| naive | quickload |    800 | 1455269 | 14.207966694 | 154.07 MiB | 27.45 MiB |
+| naive | quickload |   1000 | 1468467 | 14.182987795 | 137.96 MiB | 27.31 MiB |
+|  bulk |  hilbert  |    200 |  181984 |   0.92343937 | 152.61 MiB | 25.70 MiB |
+|  bulk |  hilbert  |    400 |  220596 |  1.010678144 | 219.36 MiB | 25.68 MiB |
+|  bulk |  hilbert  |    600 |  257640 |  1.092104426 | 284.51 MiB | 25.70 MiB |
+|  bulk |  hilbert  |    800 |  291594 |  1.169140169 | 344.89 MiB | 25.70 MiB |
+|  bulk |  hilbert  |   1000 |  322048 |  1.234598751 | 399.64 MiB | 25.68 MiB |
+|  bulk |   str-lf  |    200 |  118881 |  6.322181201 |  56.80 MiB | 17.45 MiB |
+|  bulk |   str-lf  |    400 |  134822 |  6.365856869 |  75.38 MiB | 17.45 MiB |
+|  bulk |   str-lf  |    600 |  144188 |  6.407253552 |  87.99 MiB | 17.45 MiB |
+|  bulk |   str-lf  |    800 |  151377 |  6.429972957 |  98.40 MiB | 17.45 MiB |
+|  bulk |   str-lf  |   1000 |  157386 |  6.447733291 | 107.71 MiB | 17.45 MiB |
+|  bulk | quickload |    200 |   95019 |  7.984847104 |  32.04 MiB | 26.52 MiB |
+|  bulk | quickload |    400 |  481635 |  9.275398262 |  62.37 MiB | 26.93 MiB |
+|  bulk | quickload |    600 |  913272 | 10.686156687 | 100.63 MiB | 27.25 MiB |
+|  bulk | quickload |    800 | 1379001 | 14.271087215 | 154.20 MiB | 27.45 MiB |
+|  bulk | quickload |   1000 | 1404370 | 14.126410368 | 138.03 MiB | 27.31 MiB |
++-------+-----------+--------+---------+--------------+------------+-----------+
+
+Other datasets with different algorithms.
+
++-------+---------+-----------+--------+---------------+
+|  Type | Dataset | Algorithm |    I/O |      Duration |
++-------+---------+-----------+--------+---------------+
+| naive |   osm   |  hilbert  | 635711 |   5.086823912 |
+|  bulk |   osm   |  hilbert  | 627085 |   5.473961219 |
+| naive |   osm   | str-plain | 543500 |  13.792433739 |
+|  bulk |   osm   | str-plain | 542692 |  13.997864817 |
+| naive |   osm   |   str-lf  | 631027 |  30.352119988 |
+|  bulk |   osm   |   str-lf  | 631566 |  30.270719677 |
+| naive |   osm   |   str-ll  | 639317 |  30.548981397 |
+|  bulk |   osm   |   str-ll  | 637700 |  31.214750102 |
+| naive |   osm   | quickload | 608966 |  98.081852415 |
+|  bulk |   osm   | quickload | 602746 |  98.393432455 |
+| naive | geolife |  hilbert  | 755594 |   5.520896328 |
+|  bulk | geolife |  hilbert  | 755763 |   5.467156528 |
+| naive | geolife | str-plain | 700090 |  17.086203347 |
+|  bulk | geolife | str-plain | 700351 |  16.981792688 |
+| naive | geolife |   str-lf  | 822037 |    38.3166796 |
+|  bulk | geolife |   str-lf  | 822037 |  37.244061417 |
+| naive | geolife |   str-ll  | 828098 |  38.986143692 |
+|  bulk | geolife |   str-ll  | 828375 |  39.293104576 |
+| naive | geolife | quickload | 380374 | 123.691458321 |
+|  bulk | geolife | quickload | 380383 | 123.084055323 |
++-------+---------+-----------+--------+---------------+
