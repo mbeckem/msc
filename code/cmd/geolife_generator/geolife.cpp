@@ -36,16 +36,19 @@ struct geolife_parser {
     fs::path path;
     external_string_map& labels;
     tpie::file_stream<tree_entry>& out;
+    std::ostream& log;
     tpie::progress_indicator_base& progress;
 
     trajectory_id_type next_id = 1;
 
     geolife_parser(const fs::path& path, external_string_map& labels,
                    tpie::file_stream<tree_entry>& out,
+                   std::ostream& log,
                    tpie::progress_indicator_base& progress)
         : path(path)
         , labels(labels)
         , out(out)
+        , log(log)
         , progress(progress)
     {}
 
@@ -148,6 +151,7 @@ struct geolife_parser {
         }
 
         const trajectory_id_type id = next_id++;
+        fmt::print(log, "Trajectory #{}: {}\n", id, path.string());
 
         auto a_pos = activities.begin();
         auto a_end = activities.end();
@@ -200,7 +204,8 @@ struct geolife_parser {
 
 void parse_geolife(const fs::path& path, external_string_map& labels,
                    tpie::file_stream<tree_entry>& out,
+                   std::ostream& log,
                    tpie::progress_indicator_base& progress) {
-    geolife_parser p(path, labels, out, progress);
+    geolife_parser p(path, labels, out, log, progress);
     p.read();
 }

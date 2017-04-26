@@ -10,7 +10,7 @@ from compile import compile
 from datasets import RANDOM_WALK_SMALL
 
 if __name__ == "__main__":
-    compile(internal_fanout=16, leaf_fanout=16, build_inspector=True)
+    compile(internal_fanout=16, leaf_fanout=16)
 
     entries_path = RANDOM_WALK_SMALL[1]
 

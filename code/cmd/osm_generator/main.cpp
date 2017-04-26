@@ -355,7 +355,7 @@ private:
     }
 };
 
-/// Returns a list of city pairs (shuffled).
+/// Returns a list of city pairs.
 static std::vector<std::pair<size_t, size_t>> city_pairs() {
     std::vector<std::pair<size_t, size_t>> result;
 
@@ -366,10 +366,6 @@ static std::vector<std::pair<size_t, size_t>> city_pairs() {
             result.push_back({i, j});
         }
     }
-
-    // Shuffle them.
-    std::mt19937 rng{std::random_device{}()};
-    std::shuffle(result.begin(), result.end(), rng);
 
     return result;
 }
@@ -402,6 +398,9 @@ int main(int argc, char** argv) {
                 tree_entry entry(tid, unit_index++, unit);
                 out.write(entry);
             }
+
+            fmt::print("{} -> {}: Trajectory #{} ({} units)\n",
+                       cities[pair.first].name, cities[pair.second].name, tid, unit_index);
 
             ++tid;
         }

@@ -23,6 +23,7 @@ namespace po = boost::program_options;
 static string input;
 static string output;
 static string labels;
+static string log_path;
 
 void parse_options(int argc, char** argv);
 
@@ -42,7 +43,14 @@ int main(int argc, char** argv) {
         tpie::progress_indicator_arrow arrow("Parsing dataset", 100);
         arrow.set_indicator_length(60);
 
-        parse_geolife(input, label_map, out, arrow);
+        if (!log_path.empty()) {
+            std::ofstream logger;
+            logger.open(log_path);
+            parse_geolife(input, label_map, out, logger, arrow);
+        } else {
+            std::ostream null_logger(nullptr);
+            parse_geolife(input, label_map, out, null_logger, arrow);
+        }
         return 0;
     });
 }
@@ -55,6 +63,8 @@ void parse_options(int argc, char** argv) {
              "Path to the geolife dataset.")
             ("output,o", po::value(&output)->value_name("PATH")->required(),
              "Output file for tree entries.")
+            ("log", po::value(&log_path)->value_name("PATH"),
+             "File for logging trajectory mappings.")
             ("strings,s", po::value(&labels)->value_name("PATH")->required(),
              "String database on disk (for activity labels).");
 

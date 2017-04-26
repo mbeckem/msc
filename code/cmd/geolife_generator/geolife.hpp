@@ -18,6 +18,7 @@
 /// Trajectories are written to `out`.
 void parse_geolife(const geodb::fs::path& path, external_string_map& labels,
                    tpie::file_stream<geodb::tree_entry>& out,
+                   std::ostream& log,
                    tpie::progress_indicator_base& progress);
 
 #endif // GEOLIFE_HPP

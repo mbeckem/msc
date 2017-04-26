@@ -66,6 +66,8 @@ MAKE = "make"
 
 ALGORITHM_EXAMPLES = BUILD_PATH / "algorithm_examples"
 GENERATOR = BUILD_PATH / "generator"
+GEOLIFE_GENERATOR = BUILD_PATH / "geolife_generator"
+OSM_GENERATOR = BUILD_PATH / "osm_generator"
 HILBERT_CURVE = BUILD_PATH / "hilbert_curve"
 LOADER = BUILD_PATH / "loader"
 

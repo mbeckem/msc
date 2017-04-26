@@ -11,7 +11,7 @@ def _times(iterable, num):
 
 
 def walk_generated(entries, labels):
-    return DATA_PATH / "walk-generated-n{}-l{}.entries".format(entries, labels)
+    return DATA_PATH / "random-walk-n{}-l{}.entries".format(entries, labels)
 
 # Random walk with fixed size and growing number of labels (~evenly
 # distributed). More labels == more load in the inverted indices and significantly more
@@ -25,9 +25,9 @@ RANDOM_WALK_VARYING_LABELS = [
 GEOLIFE = (5400000, DATA_PATH / "geolife.entries")
 
 # Entry file with 10 million entries and 100 labels (~evenly distributed).
-RANDOM_WALK = (10000000, walk_generated(10000000, 100))
+RANDOM_WALK = (10000000, DATA_PATH / "random-walk.entries")
 
-RANDOM_WALK_SMALL = (64000, DATA_PATH / "walk-generated-small.entries")
+RANDOM_WALK_SMALL = (64000, DATA_PATH / "random-walk-small.entries")
 
 # 100 million entries (with only 10 labels).
 RANDOM_WALK_LARGE = (100000000, DATA_PATH / "random-walk-large.entries")

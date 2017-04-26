@@ -104,15 +104,15 @@ with (OUTPUT_PATH / "eval_node_building.log").open("w") as logfile:
         eval_bulk = run_others(naive_node_building=False, logfile=logfile)
 
         table = PrettyTable([
-            "Type", "Dataset", "Algorithm", "I/O", "Duration"
+            "Dataset", "Type", "Algorithm", "I/O", "Duration"
         ])
         table.align["I/O"] = "r"
         table.align["Duration"] = "r"
 
         def add_result(type, result):
             table.add_row([
-                type,
                 result["dataset"],
+                type,
                 result["algorithm"],
                 result["total_io"],
                 result["duration"],

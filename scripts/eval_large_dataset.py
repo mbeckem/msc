@@ -13,7 +13,7 @@ if __name__ == "__main__":
     compile()
 
     algorithms = ["hilbert", "quickload"]
-    sizes = [32, 64, 128]  # Megabyte
+    sizes = [32, 128, 256]  # Megabyte
     tree_path = TMP_PATH / "large_dataset_tree"
 
     table = PrettyTable([
@@ -39,5 +39,5 @@ if __name__ == "__main__":
                                result.total_io, result.duration])
 
     with (RESULT_PATH / "eval_large_dataset.txt").open("w") as outfile:
-        print("Using dataset {} with different algoriths and size in memory.")
+        print("Using dataset {} with different algorithms and RAM.")
         print(table, file=outfile)

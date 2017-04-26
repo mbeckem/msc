@@ -61,7 +61,6 @@ def plot_cube(ax, min, max, color, label, labelpos):
     points = np.array(list(product(*zip(min, max))))
 
     backcorner = np.array([min[0], max[1], min[2]])
-    print(backcorner)
 
     # All cube corner pairs
     for a, b in combinations(points, 2):

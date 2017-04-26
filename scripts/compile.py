@@ -23,8 +23,6 @@ def compile(type="Release",
             bloom_filters=False,
             naive_node_building=False,
             cheap_quickload=False,
-            build_inspector=False,
-            build_osm=False,
             debug_stats=False):
     defines = {
         "CMAKE_BUILD_TYPE": type,
@@ -36,8 +34,8 @@ def compile(type="Release",
         "LEAF_FANOUT": str(leaf_fanout),
         "INTERNAL_FANOUT": str(internal_fanout),
         "CHEAP_QUICKLOAD": bool_str(cheap_quickload),
-        "BUILD_INSPECTOR": bool_str(build_inspector),
-        "BUILD_OSM": bool_str(build_osm),
+        "BUILD_INSPECTOR": "1",
+        "BUILD_OSM": "1",
         "DEBUG_STATS": bool_str(debug_stats)
     }
 
@@ -95,16 +93,6 @@ if __name__ == "__main__":
                         action="store_true",
                         default=argparse.SUPPRESS,
                         help="Use the cheap quickload variant.")
-    parser.add_argument("--build-inspector",
-                        dest="build_inspector",
-                        action="store_true",
-                        default=argparse.SUPPRESS,
-                        help="Build the inspector tool.")
-    parser.add_argument("--build-osm",
-                        dest="build_osm",
-                        action="store_true",
-                        default=argparse.SUPPRESS,
-                        help="Build the osm utilities.")
     parser.add_argument("--debug-stats",
                         dest="debug_stats",
                         action="store_true",

@@ -1,63 +1,93 @@
 Random walk dataset with increasing number of labels.
 
-+-------+-----------+--------+---------+--------------+------------+-----------+
-|  Type | Algorithm | Labels |     I/O |     Duration | Index Size | Tree Size |
-+-------+-----------+--------+---------+--------------+------------+-----------+
-| naive |  hilbert  |    200 |  492076 |  1.263971276 | 152.61 MiB | 25.70 MiB |
-| naive |  hilbert  |    400 |  591186 |  1.515367703 | 219.16 MiB | 25.68 MiB |
-| naive |  hilbert  |    600 |  649800 |  1.685540108 | 284.51 MiB | 25.70 MiB |
-| naive |  hilbert  |    800 |  695518 |  1.816184182 | 344.69 MiB | 25.70 MiB |
-| naive |  hilbert  |   1000 |  732214 |  1.930720786 | 399.28 MiB | 25.68 MiB |
-| naive |   str-lf  |    200 |  115290 |  6.310040773 |  56.80 MiB | 17.45 MiB |
-| naive |   str-lf  |    400 |  137249 |  6.393205491 |  75.38 MiB | 17.45 MiB |
-| naive |   str-lf  |    600 |  247415 |  6.533978955 |  87.99 MiB | 17.45 MiB |
-| naive |   str-lf  |    800 |  325735 |  6.611587265 |  98.40 MiB | 17.45 MiB |
-| naive |   str-lf  |   1000 |  376925 |  6.679103871 | 107.67 MiB | 17.45 MiB |
-| naive | quickload |    200 |  101852 |  7.975543226 |  32.04 MiB | 26.52 MiB |
-| naive | quickload |    400 |  502677 |  9.321517942 |  62.36 MiB | 26.93 MiB |
-| naive | quickload |    600 |  956755 | 10.791851017 | 100.58 MiB | 27.25 MiB |
-| naive | quickload |    800 | 1455269 | 14.207966694 | 154.07 MiB | 27.45 MiB |
-| naive | quickload |   1000 | 1468467 | 14.182987795 | 137.96 MiB | 27.31 MiB |
-|  bulk |  hilbert  |    200 |  181984 |   0.92343937 | 152.61 MiB | 25.70 MiB |
-|  bulk |  hilbert  |    400 |  220596 |  1.010678144 | 219.36 MiB | 25.68 MiB |
-|  bulk |  hilbert  |    600 |  257640 |  1.092104426 | 284.51 MiB | 25.70 MiB |
-|  bulk |  hilbert  |    800 |  291594 |  1.169140169 | 344.89 MiB | 25.70 MiB |
-|  bulk |  hilbert  |   1000 |  322048 |  1.234598751 | 399.64 MiB | 25.68 MiB |
-|  bulk |   str-lf  |    200 |  118881 |  6.322181201 |  56.80 MiB | 17.45 MiB |
-|  bulk |   str-lf  |    400 |  134822 |  6.365856869 |  75.38 MiB | 17.45 MiB |
-|  bulk |   str-lf  |    600 |  144188 |  6.407253552 |  87.99 MiB | 17.45 MiB |
-|  bulk |   str-lf  |    800 |  151377 |  6.429972957 |  98.40 MiB | 17.45 MiB |
-|  bulk |   str-lf  |   1000 |  157386 |  6.447733291 | 107.71 MiB | 17.45 MiB |
-|  bulk | quickload |    200 |   95019 |  7.984847104 |  32.04 MiB | 26.52 MiB |
-|  bulk | quickload |    400 |  481635 |  9.275398262 |  62.37 MiB | 26.93 MiB |
-|  bulk | quickload |    600 |  913272 | 10.686156687 | 100.63 MiB | 27.25 MiB |
-|  bulk | quickload |    800 | 1379001 | 14.271087215 | 154.20 MiB | 27.45 MiB |
-|  bulk | quickload |   1000 | 1404370 | 14.126410368 | 138.03 MiB | 27.31 MiB |
-+-------+-----------+--------+---------+--------------+------------+-----------+
++-------+-----------+--------+---------+--------------+------------+------------+
+|  Type | Algorithm | Labels |     I/O |     Duration | Index Size |  Tree Size |
++-------+-----------+--------+---------+--------------+------------+------------+
+| naive |  hilbert  |    200 | 2089077 |  5.473392662 | 629.24 MiB | 105.16 MiB |
+| naive |  hilbert  |    400 | 2507309 |  6.503131496 | 901.04 MiB | 105.25 MiB |
+| naive |  hilbert  |    600 | 2749680 |  8.721943038 |   1.14 GiB | 105.28 MiB |
+| naive |  hilbert  |    800 | 2920319 |  8.716347029 |   1.37 GiB | 105.17 MiB |
+| naive |  hilbert  |   1000 | 3071107 | 10.408329717 |   1.59 GiB | 105.28 MiB |
+| naive |  hilbert  |   1200 | 3194674 | 12.841153693 |   1.77 GiB | 105.08 MiB |
+| naive |  hilbert  |   1400 | 3301920 | 13.424731506 |   1.93 GiB | 105.24 MiB |
+| naive |  hilbert  |   1600 | 3389494 | 11.924511706 |   2.07 GiB | 105.34 MiB |
+| naive |  hilbert  |   1800 | 3469495 | 13.784401055 |   2.19 GiB | 105.28 MiB |
+| naive |  hilbert  |   2000 | 3529949 | 13.745103666 |   2.29 GiB | 105.06 MiB |
+| naive |   str-lf  |    200 |  462086 | 18.883557855 | 189.74 MiB |  69.77 MiB |
+| naive |   str-lf  |    400 |  531051 | 19.178698703 | 264.15 MiB |  69.77 MiB |
+| naive |   str-lf  |    600 |  629314 | 19.347789106 | 310.07 MiB |  69.77 MiB |
+| naive |   str-lf  |    800 |  960410 | 19.670511484 | 343.51 MiB |  69.77 MiB |
+| naive |   str-lf  |   1000 | 1217850 | 20.037670841 | 373.33 MiB |  69.77 MiB |
+| naive |   str-lf  |   1200 | 1406593 | 20.267553556 | 399.35 MiB |  69.77 MiB |
+| naive |   str-lf  |   1400 | 1558281 | 20.384856921 | 425.21 MiB |  69.77 MiB |
+| naive |   str-lf  |   1600 | 1678607 | 20.614855494 | 449.17 MiB |  69.77 MiB |
+| naive |   str-lf  |   1800 | 1773983 | 20.701264942 | 472.88 MiB |  69.77 MiB |
+| naive |   str-lf  |   2000 | 1854025 | 20.814945439 | 495.13 MiB |  69.77 MiB |
+| naive | quickload |    200 |  397038 | 39.622007372 |  74.37 MiB | 105.09 MiB |
+| naive | quickload |    400 | 1167071 | 42.173249606 | 117.56 MiB | 105.80 MiB |
+| naive | quickload |    600 | 2289198 | 46.486544679 | 187.20 MiB | 106.52 MiB |
+| naive | quickload |    800 | 2939761 | 56.235902968 | 215.02 MiB | 106.57 MiB |
+| naive | quickload |   1000 | 3880835 | 60.700516349 | 287.70 MiB | 106.84 MiB |
+| naive | quickload |   1200 | 4493554 | 61.556301842 | 356.25 MiB | 107.42 MiB |
+| naive | quickload |   1400 | 5012072 | 64.199096855 | 393.59 MiB | 107.45 MiB |
+| naive | quickload |   1600 | 5474670 | 67.761767964 | 402.79 MiB | 107.48 MiB |
+| naive | quickload |   1800 | 6056681 | 72.709509795 | 471.69 MiB | 108.79 MiB |
+| naive | quickload |   2000 | 6975386 | 75.135582223 | 605.52 MiB | 108.59 MiB |
+|  bulk |  hilbert  |    200 |  794889 |  3.920621653 | 629.24 MiB | 105.16 MiB |
+|  bulk |  hilbert  |    400 |  952982 |  4.313399274 | 901.86 MiB | 105.25 MiB |
+|  bulk |  hilbert  |    600 | 1102971 |  5.832548896 |   1.14 GiB | 105.28 MiB |
+|  bulk |  hilbert  |    800 | 1238170 |  5.501413831 |   1.38 GiB | 105.17 MiB |
+|  bulk |  hilbert  |   1000 | 1360998 |  5.916356032 |   1.59 GiB | 105.28 MiB |
+|  bulk |  hilbert  |   1200 | 1463698 |  8.970266062 |   1.77 GiB | 105.08 MiB |
+|  bulk |  hilbert  |   1400 | 1556719 |  9.802085172 |   1.93 GiB | 105.24 MiB |
+|  bulk |  hilbert  |   1600 | 1634002 | 10.772786018 |   2.07 GiB | 105.34 MiB |
+|  bulk |  hilbert  |   1800 | 1702754 | 12.935597301 |   2.19 GiB | 105.28 MiB |
+|  bulk |  hilbert  |   2000 | 1758150 | 10.954246096 |   2.29 GiB | 105.06 MiB |
+|  bulk |   str-lf  |    200 |  469712 | 18.916603775 | 189.74 MiB |  69.77 MiB |
+|  bulk |   str-lf  |    400 |  547004 | 19.606267916 | 264.15 MiB |  69.77 MiB |
+|  bulk |   str-lf  |    600 |  585057 | 19.644558303 | 310.07 MiB |  69.77 MiB |
+|  bulk |   str-lf  |    800 |  609935 | 19.764228217 | 343.51 MiB |  69.77 MiB |
+|  bulk |   str-lf  |   1000 |  631155 | 19.459843103 | 373.32 MiB |  69.77 MiB |
+|  bulk |   str-lf  |   1200 |  648482 | 19.482953147 | 399.35 MiB |  69.77 MiB |
+|  bulk |   str-lf  |   1400 |  665555 | 19.525406521 | 425.28 MiB |  69.77 MiB |
+|  bulk |   str-lf  |   1600 |  680736 | 19.139737768 | 449.17 MiB |  69.77 MiB |
+|  bulk |   str-lf  |   1800 |  695437 | 19.690716785 | 472.87 MiB |  69.77 MiB |
+|  bulk |   str-lf  |   2000 |  709155 | 19.647797498 | 495.11 MiB |  69.77 MiB |
+|  bulk | quickload |    200 |  386812 | 39.780124132 |  74.37 MiB | 105.09 MiB |
+|  bulk | quickload |    400 | 1140454 | 42.326290057 | 117.58 MiB | 105.80 MiB |
+|  bulk | quickload |    600 | 2232774 | 46.256194462 | 186.45 MiB | 106.40 MiB |
+|  bulk | quickload |    800 | 2871152 | 57.970545489 | 215.04 MiB | 106.57 MiB |
+|  bulk | quickload |   1000 | 3781060 | 62.868691792 | 287.72 MiB | 106.84 MiB |
+|  bulk | quickload |   1200 | 4356886 | 65.434493624 | 356.36 MiB | 107.42 MiB |
+|  bulk | quickload |   1400 | 4861941 | 65.841210588 | 393.72 MiB | 107.45 MiB |
+|  bulk | quickload |   1600 | 5317511 | 67.538047602 | 402.89 MiB | 107.48 MiB |
+|  bulk | quickload |   1800 | 5866217 | 71.882319208 | 471.90 MiB | 108.79 MiB |
+|  bulk | quickload |   2000 | 6712317 | 76.424758992 | 605.90 MiB | 108.59 MiB |
++-------+-----------+--------+---------+--------------+------------+------------+
 
 Other datasets with different algorithms.
 
-+-------+---------+-----------+--------+---------------+
-|  Type | Dataset | Algorithm |    I/O |      Duration |
-+-------+---------+-----------+--------+---------------+
-| naive |   osm   |  hilbert  | 635711 |   5.086823912 |
-|  bulk |   osm   |  hilbert  | 627085 |   5.473961219 |
-| naive |   osm   | str-plain | 543500 |  13.792433739 |
-|  bulk |   osm   | str-plain | 542692 |  13.997864817 |
-| naive |   osm   |   str-lf  | 631027 |  30.352119988 |
-|  bulk |   osm   |   str-lf  | 631566 |  30.270719677 |
-| naive |   osm   |   str-ll  | 639317 |  30.548981397 |
-|  bulk |   osm   |   str-ll  | 637700 |  31.214750102 |
-| naive |   osm   | quickload | 608966 |  98.081852415 |
-|  bulk |   osm   | quickload | 602746 |  98.393432455 |
-| naive | geolife |  hilbert  | 755594 |   5.520896328 |
-|  bulk | geolife |  hilbert  | 755763 |   5.467156528 |
-| naive | geolife | str-plain | 700090 |  17.086203347 |
-|  bulk | geolife | str-plain | 700351 |  16.981792688 |
-| naive | geolife |   str-lf  | 822037 |    38.3166796 |
-|  bulk | geolife |   str-lf  | 822037 |  37.244061417 |
-| naive | geolife |   str-ll  | 828098 |  38.986143692 |
-|  bulk | geolife |   str-ll  | 828375 |  39.293104576 |
-| naive | geolife | quickload | 380374 | 123.691458321 |
-|  bulk | geolife | quickload | 380383 | 123.084055323 |
-+-------+---------+-----------+--------+---------------+
++---------+-------+-----------+--------+---------------+
+| Dataset |  Type | Algorithm |    I/O |      Duration |
++---------+-------+-----------+--------+---------------+
+|   osm   | naive |  hilbert  | 635711 |   4.803277516 |
+|   osm   |  bulk |  hilbert  | 627085 |   4.897603078 |
+|   osm   | naive | str-plain | 543499 |  13.646928498 |
+|   osm   |  bulk | str-plain | 542692 |  13.872096769 |
+|   osm   | naive |   str-lf  | 631026 |  29.441907765 |
+|   osm   |  bulk |   str-lf  | 631566 |  29.314903374 |
+|   osm   | naive |   str-ll  | 639317 |  30.275591503 |
+|   osm   |  bulk |   str-ll  | 637700 |  30.417114185 |
+|   osm   | naive | quickload | 608966 |  93.922195205 |
+|   osm   |  bulk | quickload | 602746 |  97.740326329 |
+| geolife | naive |  hilbert  | 755594 |   5.351221898 |
+| geolife |  bulk |  hilbert  | 755763 |   5.357709502 |
+| geolife | naive | str-plain | 700090 |  17.363619855 |
+| geolife |  bulk | str-plain | 700351 |  17.448766127 |
+| geolife | naive |   str-lf  | 822037 |  38.175301735 |
+| geolife |  bulk |   str-lf  | 822058 |  38.552272956 |
+| geolife | naive |   str-ll  | 828097 |  37.750040449 |
+| geolife |  bulk |   str-ll  | 828375 |  37.887779433 |
+| geolife | naive | quickload | 380374 | 123.094077843 |
+| geolife |  bulk | quickload | 380382 | 121.803980386 |
++---------+-------+-----------+--------+---------------+
