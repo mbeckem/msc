@@ -5,6 +5,7 @@
 
 import collections
 import itertools
+import json
 
 import common
 import commands
@@ -36,15 +37,8 @@ if __name__ == "__main__":
         "quickload"
     ]
 
-    table = PrettyTable(["Algorithm", "Dataset", "Entries",
-                         "Total I/O", "Reads", "Writes", "Duration"])
-    table.align["Entries"] = "r"
-    table.align["Total I/O"] = "r"
-    table.align["Reads"] = "r"
-    table.align["Writes"] = "r"
-    table.align["Duration"] = "r"
-
-    with (OUTPUT_PATH / "eval_tree_building.log").open("w") as logfile:
+    results = []
+    with (OUTPUT_PATH / "tree_building.log").open("w") as logfile:
         dataset = [("geolife", *GEOLIFE),
                    ("osm", *OSM_ROUTES),
                    ("random-walk", *RANDOM_WALK)]
@@ -53,30 +47,34 @@ if __name__ == "__main__":
 
         # Create trees using all algorithms, with increasing step size.
         for algorithm in algorithms:
-            for data_kind, entries, data_path in dataset_steps:
+            for dataset_name, entries, data_path in dataset_steps:
                 # Overwrite earlier trees with less entries.
-                basename = "{}-{}".format(data_kind, algorithm)
+                basename = "{}-{}".format(dataset_name, algorithm)
                 tree_path = OUTPUT_PATH / basename
 
                 print("Running {} on {} entries from {}"
-                      .format(algorithm, entries, data_kind))
+                      .format(algorithm, entries, dataset_name))
                 result = commands.build_tree(algorithm, tree_path,
                                              data_path, logfile, limit=entries)
-                table.add_row([
-                    algorithm, data_kind, entries,
-                    result.total_io, result.read_io, result.write_io,
-                    result.duration
-                ])
+                results.append({
+                    "dataset": dataset_name,
+                    "algorithm": algorithm,
+                    "entries": entries,
+                    "total_io": result.total_io,
+                    "read_io": result.read_io,
+                    "write_io": result.write_io,
+                    "duration": result.duration,
+                })
 
         # Incremetally build a tree using one-by-one insertion.
         # Insert a given batch of items, take stats, insert the next batch.
         # This does not influence the results in a meaningful way because
         # one by one insertion works on a the unit of a single entry.
-        for data_kind, entries, data_path in dataset:
-            basename = "{}-obo".format(data_kind, entries)
+        for dataset_name, entries, data_path in dataset:
+            basename = "{}-obo".format(dataset_name, entries)
             tree_path = OUTPUT_PATH / basename
 
-            print("Running one by one insertion on entries from {}".format(data_kind))
+            print("Running one by one insertion on entries from {}".format(dataset_name))
             last_size = 0
             total_io = 0
             read_io = 0
@@ -92,17 +90,43 @@ if __name__ == "__main__":
                 result = commands.build_tree("obo", tree_path,
                                              data_path, logfile,
                                              offset=offset, limit=step_size,
-                                             keep_existing=True)
+                                             keep_existing=(last_size > 0))
                 total_io += result.total_io
                 read_io += result.read_io
                 write_io += result.write_io
                 duration += result.duration
 
-                table.add_row([
-                    "obo", data_kind, size,
-                    total_io, read_io, write_io,
-                    duration
-                ])
+                results.append({
+                    "dataset": dataset_name,
+                    "algorithm": "obo",
+                    "entries": size,
+                    "total_io": total_io,
+                    "read_io": read_io,
+                    "write_io": write_io,
+                    "duration": duration,
+                })
 
-    with (RESULT_PATH / "eval_tree_building.txt").open("w") as outfile:
+    with (RESULT_PATH / "tree_building.txt").open("w") as outfile:
+        table = PrettyTable(["Algorithm", "Dataset", "Entries",
+                             "Total I/O", "Reads", "Writes", "Duration"])
+        table.align["Entries"] = "r"
+        table.align["Total I/O"] = "r"
+        table.align["Reads"] = "r"
+        table.align["Writes"] = "r"
+        table.align["Duration"] = "r"
+
+        for result in results:
+            table.add_row([
+                result["algorithm"],
+                result["dataset"],
+                result["entries"],
+                result["total_io"],
+                result["read_io"],
+                result["write_io"],
+                result["duration"],
+            ])
+
         print(table, file=outfile)
+
+    with (RESULT_PATH / "tree_building.json").open("w") as outfile:
+        json.dump(results, outfile, sort_keys=True, indent=4)

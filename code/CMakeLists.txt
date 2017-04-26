@@ -10,6 +10,7 @@ option(USE_BLOOM "Use bloom filters instead of interval sets in the inverted ind
 option(USE_NAIVE_NODE_BUILDING, "Use the unoptimized node loading algorithm." OFF)
 option(BUILD_OSM "Build the openstreetmaps generator." OFF)
 option(BUILD_INSPECTOR "Build the inspector tool. Requires Qt5 and libopenscenegraph." OFF)
+option(BUILD_TESTS "Build the unit tests." OFF)
 
 # set(<variable> <value>... CACHE <type> <docstring> [FORCE])
 set(BLOCK_SIZE "4096" CACHE STRING "The block size.")
@@ -119,5 +120,8 @@ message(STATUS "Using lambda ${LAMBDA}")
 add_subdirectory(doc)
 add_subdirectory(geodb)
 add_subdirectory(cmd)
-add_subdirectory(test)
+
+if (BUILD_TESTS)
+    add_subdirectory(test)
+endif()
 

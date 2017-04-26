@@ -1,14 +1,26 @@
-EVAL_NODE_BUILDING := results/eval_node_building.txt
-EVAL_TREE_BUILDING := results/eval_tree_building.txt
-# EVAL_LARGE_DATASET := results/eval_large_dataset.txt
+MAKEFLAGS := $(MAKEFLAGS) --no-print-directory
+
+EVAL_NODE_BUILDING := \
+	results/node_building_random_walk.txt \
+	results/node_building_random_walk.json \
+	results/node_building_others.txt \
+	results/node_building_others.json
+
+EVAL_TREE_BUILDING := results/tree_building.txt results/tree_building.json
+EVAL_LARGE_DATASET := results/large_dataset.txt results/large_dataset.json
 
 QUICKLOAD_PROFILE_GEOLIFE_16M := results/quickload-geolife-16.txt
 QUICKLOAD_PROFILE_GEOLIFE_256M := results/quickload-geolife-256.txt
 QUICKLOAD_PROFILE_OSM_16M := results/quickload-osm-16.txt
 QUICKLOAD_PROFILE_OSM_256M := results/quickload-osm-256.txt
 
-HILBERT_CURVE := results/hilbert_curves.pdf
-HILBERT_LEAVES := results/hilbert_leaves.pdf
+DATASET_STRINGS := \
+	output/geolife.strings.txt \
+	output/geolife.strings.json \
+	output/osm.strings.txt \
+	output/osm.strings.json
+
+EXAMPLE_LEAVES := results/hilbert_leaves.pdf results/str_leaves.pdf
 STR_LEAVES := results/str_leaves.pdf
 IRWI_EXAMPLE_BOXES := results/irwi_example_boxes.pdf
 
@@ -21,9 +33,12 @@ RESULTS := \
 	$(QUICKLOAD_PROFILE_OSM_16M) \
 	$(QUICKLOAD_PROFILE_OSM_256M) \
 	$(HILBERT_CURVE) \
-	$(HILBERT_LEAVES) \
-	$(STR_LEAVES) \
-	$(IRWI_EXAMPLE_BOXES)
+	$(EXAMPLE_LEAVES) \
+	$(IRWI_EXAMPLE_BOXES) \
+	$(DATASET_STRINGS)
+
+
+all: $(RESULTS)
 
 # Generate a rule that produces multiple outputs.
 # Args: 1. The list of output files.
@@ -39,16 +54,11 @@ $(3).intermediate.tmp:
 .INTERMEDIATE: $(3).intermediate.tmp
 endef
 
-all: $(RESULTS)
+$(eval $(call multi_target,$(EVAL_NODE_BUILDING),scripts/eval_node_building.py,node-building))
 
-$(EVAL_NODE_BUILDING):
-	scripts/eval_node_building.py
+$(eval $(call multi_target,$(EVAL_TREE_BUILDING),scripts/eval_tree_building.py,tree-building))
 
-$(EVAL_TREE_BUILDING):
-	scripts/eval_tree_building.py
-
-$(EVAL_LARGE_DATASET):
-	scripts/eval_large_dataset.py
+$(eval $(call multi_target,$(EVAL_LARGE_DATASET),scripts/eval_large_dataset.py,large-dataset))
 
 $(HILBERT_CURVE):
 	scripts/hilbert_curve.py
@@ -56,7 +66,13 @@ $(HILBERT_CURVE):
 $(IRWI_EXAMPLE_BOXES):
 	scripts/irwi_example.py
 
-$(eval $(call multi_target,$(STR_LEAVES) $(HILBERT_LEAVES),scripts/leaves.py,leaves))
+$(filter %.txt,$(DATASET_STRINGS)): output/%.txt: data/%
+	build/strings --input "$<" > "$@"
+
+$(filter %.json,$(DATASET_STRINGS)): output/%.json: data/%
+	build/strings --input "$<" --json > "$@"	
+
+$(eval $(call multi_target,$(EXAMPLE_LEAVES),scripts/leaves.py,leaves))
 
 # 1: max memory
 # 2: entry file
@@ -84,12 +100,20 @@ $(QUICKLOAD_PROFILE_OSM_256M):
 	$(call quickload_profile,256,data/osm.entries,$@)
 
 # All results depend on the presence of the datasets.
-$(RESULTS): | dataset
+$(RESULTS): | dataset compile-once
+
+dataset: | compile-once
 
 dataset: FORCE
 	@scripts/generate_datasets.py
 
 .PHONY: dataset
+
+compile-once: FORCE
+	@mkdir -p build
+	@cd build && cmake ../code && $(MAKE) -j5
+
+.PHONY: compile-once
 
 # Always out of date.
 FORCE:

@@ -14,13 +14,16 @@ using namespace geodb;
 namespace po = boost::program_options;
 
 static std::string input;
+static bool json_format = false;
 
 static void parse_options(int argc, char** argv) {
     po::options_description options;
     options.add_options()
             ("help,h", "Show this message.")
             ("input", po::value(&input)->value_name("PATH")->required(),
-             "Path to the strings database.");
+             "Path to the strings database.")
+            ("json", po::bool_switch(&json_format),
+             "Enable json output format.");
 
     po::variables_map vm;
     try {
@@ -50,6 +53,16 @@ int main(int argc, char** argv) {
         parse_options(argc, argv);
 
         external_string_map string_map({input});
+
+        if (json_format) {
+            json result = json::object();
+            for (const auto& mapping : string_map) {
+                result[mapping.name] = mapping.id;
+            }
+
+            fmt::print("{}\n", result.dump(4));
+            return 0;
+        }
 
         fmt::print(cout, "Content of {}:\n", input);
         for (const auto& mapping : string_map) {

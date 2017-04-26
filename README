@@ -51,7 +51,8 @@ im Ordner "deps". Die Unittests für die Bibliothek befinden sich in "test".
 Für nähere Informationen über die Implementierung siehe Doxygen in build/doc/html/index.html.
 
 Einige Dependencies werden als vorinstalliert vorausgesetzt:
-    - Boost (1.61 bzw. 1.62 wurden zur Entwicklung benutzt)
+    - Boost (1.61 bzw. 1.62 wurden zur Entwicklung benutzt,
+      das ist neuer als die Version in den Paketquellen von Ubuntu 16.04)
     - Qt5 (nur wenn das "inspector" Tool gebaut werden soll
     - OpenSceneGraph (unter Ubuntu das Paket libopenscenegraph-dev), auch nur für die GUI
     - Doxygen für die Dokumentation ("make doc"). Doxygen ist so konfiguriert dass es

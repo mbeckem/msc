@@ -5,6 +5,7 @@
 
 
 import collections
+import json
 
 import common
 import commands
@@ -14,6 +15,14 @@ from common import DATA_PATH, TMP_PATH, OUTPUT_PATH, RESULT_PATH, LOADER
 from compile import compile
 from datasets import RANDOM_WALK_VARYING_LABELS, OSM_ROUTES, GEOLIFE
 from lib.prettytable import PrettyTable
+
+
+# Get the specified keys in the dictionary as a list.
+def keys(d, *args):
+    result = []
+    for key in args:
+        result.append(d[key])
+    return result
 
 
 def build_tree(algorithm, entries_path):
@@ -43,6 +52,8 @@ def run_random_walk(naive_node_building, logfile):
             print("random walk: algorithm = {}, entries = {}, labels = {}"
                   .format(algorithm, entries, labels))
             result = build_tree(algorithm, entries_path)
+            result["type"] = "naive" if naive_node_building else "bulk"
+            result["dataset"] = "random-walk"
             result["labels"] = labels
             results.append(result)
     return results
@@ -59,75 +70,60 @@ def run_others(naive_node_building, logfile):
             print("dataset = {}, algorithm = {}".format(name, algorithm))
 
             result = build_tree(algorithm, entries_path)
+            result["type"] = "naive" if naive_node_building else "bulk"
             result["dataset"] = name
-            result["algorithm"] = algorithm
             results.append(result)
 
     return results
 
-with (OUTPUT_PATH / "eval_node_building.log").open("w") as logfile:
-    def random_walk_table():
-        eval_naive = run_random_walk(naive_node_building=True, logfile=logfile)
-        eval_bulk = run_random_walk(naive_node_building=False, logfile=logfile)
+with (OUTPUT_PATH / "node_building.log").open("w") as logfile:
+    random_walk_naive = run_random_walk(
+        naive_node_building=True, logfile=logfile)
+    others_naive = run_others(naive_node_building=True, logfile=logfile)
+    random_walk_bulk = run_random_walk(
+        naive_node_building=False, logfile=logfile)
+    others_bulk = run_others(naive_node_building=False, logfile=logfile)
 
-        table = PrettyTable([
-            "Type", "Algorithm", "Labels", "I/O",
-            "Duration", "Index Size", "Tree Size"
-        ])
-        table.align["Labels"] = "r"
-        table.align["I/O"] = "r"
-        table.align["Duration"] = "r"
-        table.align["Index Size"] = "r"
-        table.align["Tree Size"] = "r"
+    random_walk = random_walk_naive + random_walk_bulk
+    others = others_naive + others_bulk
 
-        def add_result(type, result):
-            table.add_row([
-                type,
-                result["algorithm"],
-                result["labels"],
-                result["total_io"],
-                result["duration"],
-                format.bytes(result["index_size"]),
-                format.bytes(result["tree_size"]),
-            ])
+with (RESULT_PATH / "node_building_random_walk.txt").open("w") as tablefile:
+    table = PrettyTable([
+        "Type", "Algorithm", "Labels", "I/O",
+        "Duration", "Index Size", "Tree Size"
+    ])
+    table.align["Labels"] = "r"
+    table.align["I/O"] = "r"
+    table.align["Duration"] = "r"
+    table.align["Index Size"] = "r"
+    table.align["Tree Size"] = "r"
 
-        for result_naive in eval_naive:
-            add_result("naive", result_naive)
+    for result in random_walk:
+        table.add_row(
+            keys(result,
+                 "type", "algorithm", "labels",
+                 "total_io", "duration",
+                 "index_size", "tree_size"))
 
-        for result_bulk in eval_bulk:
-            add_result("bulk", result_bulk)
+    print(table, file=tablefile)
 
-        return table
+with (RESULT_PATH / "node_building_others.txt").open("w") as tablefile:
+    table = PrettyTable([
+        "Dataset", "Type", "Algorithm", "I/O", "Duration"
+    ])
+    table.align["I/O"] = "r"
+    table.align["Duration"] = "r"
 
-    def others_table():
-        eval_naive = run_others(naive_node_building=True, logfile=logfile)
-        eval_bulk = run_others(naive_node_building=False, logfile=logfile)
+    for result in others:
+        table.add_row(
+            keys(result,
+                 "dataset", "type", "algorithm",
+                 "total_io", "duration"))
 
-        table = PrettyTable([
-            "Dataset", "Type", "Algorithm", "I/O", "Duration"
-        ])
-        table.align["I/O"] = "r"
-        table.align["Duration"] = "r"
+    print(table, file=tablefile)
 
-        def add_result(type, result):
-            table.add_row([
-                result["dataset"],
-                type,
-                result["algorithm"],
-                result["total_io"],
-                result["duration"],
-            ])
+with (RESULT_PATH / "node_building_random_walk.json").open("w") as outfile:
+    json.dump(random_walk, outfile, sort_keys=True, indent=4)
 
-        for naive, bulk in zip(eval_naive, eval_bulk):
-            add_result("naive", naive)
-            add_result("bulk", bulk)
-
-        return table
-
-    with (RESULT_PATH / "eval_node_building.txt").open("w") as outfile:
-        print("Random walk dataset with increasing number of labels.\n", file=outfile)
-        print(random_walk_table(), file=outfile)
-        print("", file=outfile)
-
-        print("Other datasets with different algorithms.\n", file=outfile)
-        print(others_table(), file=outfile)
+with (RESULT_PATH / "node_building_others.json").open("w") as outfile:
+    json.dump(others, outfile, sort_keys=True, indent=4)

@@ -9,7 +9,6 @@ import numpy as np
 import subprocess
 
 from common import HILBERT_CURVE, RESULT_PATH
-from compile import compile
 
 curves = json.loads(subprocess.check_output(
     str(HILBERT_CURVE)).decode("utf-8"))
@@ -82,8 +81,6 @@ def plot3d(fig, id, precision, title):
     ax.set_ylim(0, MAX)
     ax.set_zlim(0, MAX)
     ax.set_title(title)
-
-compile()
 
 fig = plt.figure(figsize=(16, 16))
 plot2d(fig, 221, 1, "2D, Precision = 1")

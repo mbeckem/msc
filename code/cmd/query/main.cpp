@@ -191,6 +191,11 @@ int main(int argc, char** argv) {
 
 
         fmt::print(cout, "Opening tree at \"{}\".\n", tree_path);
+        if (!fs::exists(tree_path)) {
+            fmt::print(cerr, "Tree {} does not exist.", tree_path);
+            throw exit_main(1);
+        }
+
         external_tree tree{external_storage(tree_path)};
         fmt::print(cout, "Tree contains {} entries.\n", tree.size());
         fmt::print(cout, "\n");

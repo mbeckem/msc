@@ -28,8 +28,6 @@ def generate_random_walk(entries, labels, path, log, units_per_trajectory=None, 
     subprocess.check_call(args, stdout=log)
 
 if __name__ == "__main__":
-    compile()
-
     with (OUTPUT_PATH / "generate_datasets.log").open("w") as logfile:
         for entries, labels, path in RANDOM_WALK_VARYING_LABELS:
             generate_random_walk(entries, labels, path, log=logfile)

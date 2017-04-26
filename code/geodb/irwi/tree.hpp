@@ -250,17 +250,29 @@ private:
                 STATS_PRINT(query_guard, "trimmed time window: {}.", state.time_window);
 
                 state.nodes.clear();
+
+                size_t time_window_filtered = 0;
+                size_t shared_id_filtered = 0;
                 for (const candidate_entry& c : state.candidates) {
                     // Keep an entry when its time interval overlaps and
                     // it contains relevant ids.
-                    if (state.time_window.overlaps({c.mbb.min().t(), c.mbb.max().t()})
-                            && !c.ids.intersection_with(shared_ids).empty()) {
-                        state.nodes.push_back(c.ptr);
+                    if (!state.time_window.overlaps({c.mbb.min().t(), c.mbb.max().t()})) {
+                        ++time_window_filtered;
+                        continue;
                     }
+                    if (c.ids.intersection_with(shared_ids).empty()) {
+                        ++shared_id_filtered;
+                        continue;
+                    }
+                    state.nodes.push_back(c.ptr);
                 }
-                STATS_PRINT(query_guard, "{} nodes remain, {} filtered.",
+                STATS_PRINT(query_guard,
+                            "{} nodes remain, {} filtered.\n"
+                            "  {} due to the time window, {} due to shared ids.",
                             state.nodes.size(),
-                            state.candidates.size() - state.nodes.size());
+                            state.candidates.size() - state.nodes.size(),
+                            time_window_filtered,
+                            shared_id_filtered);
 
                 if (state.nodes.empty()) {
                     STATS_PRINT(query_guard, "No more nodes.");

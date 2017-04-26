@@ -80,8 +80,6 @@ def plot_cube(ax, min, max, color, label, labelpos):
 def plot_trajectory(ax, points, color, label):
     ax.plot3D(*zip(*points), color=color, marker="o", label=label)
 
-compile()
-
 fig = plt.figure(figsize=(8, 8))
 
 ax = fig.add_subplot(111, projection="3d")
