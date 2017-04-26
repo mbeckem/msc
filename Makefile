@@ -44,7 +44,7 @@ all: $(RESULTS)
 # Args: 1. The list of output files.
 #		2. The command to produce the output files.
 #		3. A unique filename prefix for an intermediate target.
-define multi_target = 
+define multi_target =
 $(1): $(3).intermediate.tmp
 
 $(3).intermediate.tmp:
@@ -70,7 +70,7 @@ $(filter %.txt,$(DATASET_STRINGS)): output/%.txt: data/%
 	build/strings --input "$<" > "$@"
 
 $(filter %.json,$(DATASET_STRINGS)): output/%.json: data/%
-	build/strings --input "$<" --json > "$@"	
+	build/strings --input "$<" --json > "$@"
 
 $(eval $(call multi_target,$(EXAMPLE_LEAVES),scripts/leaves.py,leaves))
 
