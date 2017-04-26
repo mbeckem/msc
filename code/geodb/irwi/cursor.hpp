@@ -21,7 +21,7 @@ namespace geodb {
 ///
 /// Instances of this class can be obtained by calling \ref tree::root().
 ///
-/// Warning: The tree must not be modified while it is being inspected using a cursor.
+/// \warning The tree must not be modified while it is being inspected using a cursor.
 template<typename State>
 class tree_cursor {
 private:
@@ -128,7 +128,6 @@ public:
 
     /// Returns a cursor for the current internal node's inverted index.
     /// \pre `is_internal()`.
-    /// \warning Every inverted index may only be opened once.
     index_ptr inverted_index() const {
         geodb_assert(is_internal(), "must be an internal node");
         internal_ptr p = storage().to_internal(current());
