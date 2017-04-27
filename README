@@ -18,6 +18,19 @@ Grobe Struktur
 Das Projekt bauen
 ===========================
 
+Make generiert alle benötigten Datensets (sofern nicht schon vorhanden).
+Für das Geolife Datenset und Openstreetmaps werden die Rohdaten benötigt.
+
+Geolife: https://www.microsoft.com/en-us/download/details.aspx?id=52367
+    Das Projekt erwartet die Präsenz des Ordners "data/Geolife Trajectories 1.3/Data".
+
+Openstreetmaps:
+    Siehe data/osm/README.
+
+Alles auf einmal bauen (funktioniert hoffentlich sofort, siehe "Benötigte Komponenten" unten).
+Im Projektverzeichnis:
+    $ make
+
 Der build Ordner enthält die build-Artefakte inklusive
 CMake Konfiguration und die fertigen Commands bzw. die Bibliothek.
 Er kann jederzeit vollständig gelöscht werden.
@@ -40,6 +53,19 @@ Siehe auch "scripts/compile.py --help".
 Für die Parameter zur build-Zeit siehe weiter unten.
 
 
+Benötigte Komponenten:
+===========================
+
+Einige Dependencies werden als vorinstalliert vorausgesetzt:
+    - Boost (1.61 bzw. 1.62 wurden zur Entwicklung benutzt,
+      das ist neuer als die Version in den Paketquellen von Ubuntu 16.04.
+      Ich weiß nicht ob die Standardversion ausreicht).
+    - Qt5 
+    - OpenSceneGraph (unter Ubuntu das Paket libopenscenegraph-dev)
+    - Python3 (inkl. matplotlib, numpy)
+    - Doxygen für die Dokumentation ("make doc"). Doxygen ist so konfiguriert dass es
+      zum Parsen libclang benötigt. Die Ubuntu version von Doxygen hat dieses Feature aktiviert.
+
 Quellcode
 ===========================
 
@@ -49,14 +75,6 @@ Die gebündelten 3rd-Party Abhängigkeiten (Unittests, String-Formatierung,
 OpenStreetMaps, eine modifizierte Version von TPIE, etc.) befinden sich
 im Ordner "deps". Die Unittests für die Bibliothek befinden sich in "test".
 Für nähere Informationen über die Implementierung siehe Doxygen in build/doc/html/index.html.
-
-Einige Dependencies werden als vorinstalliert vorausgesetzt:
-    - Boost (1.61 bzw. 1.62 wurden zur Entwicklung benutzt,
-      das ist neuer als die Version in den Paketquellen von Ubuntu 16.04)
-    - Qt5 (nur wenn das "inspector" Tool gebaut werden soll
-    - OpenSceneGraph (unter Ubuntu das Paket libopenscenegraph-dev), auch nur für die GUI
-    - Doxygen für die Dokumentation ("make doc"). Doxygen ist so konfiguriert dass es
-      zum Parsen libclang benötigt. Die Ubuntu version von Doxygen hat dieses Feature aktiviert.
 
 CMake-Konfigurationsparameter:
     -DBUILD_INSPECTOR

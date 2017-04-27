@@ -7,7 +7,7 @@ EVAL_NODE_BUILDING := \
 	results/node_building_others.json
 
 EVAL_TREE_BUILDING := results/tree_building.txt results/tree_building.json
-# EVAL_LARGE_DATASET := results/large_dataset.txt results/large_dataset.json
+EVAL_LARGE_DATASET := results/large_dataset.txt results/large_dataset.json
 EVAL_QUERIES := \
 	results/queries_geolife.txt results/queries_geolife.json \
 	results/queries_osm.txt results/queries_osm.json
@@ -140,3 +140,11 @@ compile-once: FORCE
 FORCE:
 
 .PHONY: FORCE
+
+clean:
+	rm -rf results/*
+	rm -rf output/*
+	rm -rf tmp/*
+	@echo "Datasets will not be deleted. Delete files in data/ manually instead."
+
+.PHONY: clean
