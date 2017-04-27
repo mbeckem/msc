@@ -159,15 +159,24 @@ namespace geodb {
 //};
 
 #ifdef GEODB_DEBUG_STATS
-    // Define a stats guard instance with the given variable name and
-    // a format specifier. Example: STATS_GUARD(guard, "Hello {}", "World");
+    /// Define a stats guard instance with the given variable name and
+    /// a format specifier. Example: STATS_GUARD(guard, "Hello {}", "World");
     #define STATS_GUARD(Name, ...) stats_guard Name(fmt::format(__VA_ARGS__))
+
+    /// Print a message associated with a stats guard of the given `Name`.
     #define STATS_PRINT(Name, ...) (Name).print(__VA_ARGS__)
 #else
-    #define STATS_GUARD(Name, ...) unused(__VA_ARGS__)
-    #define STATS_PRINT(Name, ...) unused(__VA_ARGS__)
+    // When debug stats are disabled, these macros do nothing
+    // and their arguments will not be evaluated.
+    #define STATS_GUARD(Name, ...)
+    #define STATS_PRINT(Name, ...)
 #endif
 
+/// A stats guard tracks the execution of a code block.
+/// It is created using a name (with the macro above) and 
+/// prints a message that a code block with that name is now active.
+/// When destroyed, it prints the number of seconds and the number of IO operations
+/// spent in the code block.
 class stats_guard {
     using clock = std::chrono::steady_clock;
     using time_point = clock::time_point;
@@ -251,7 +260,6 @@ public:
     }
 
 private:
-
     u64 ceil(u64 n, u64 div) {
         geodb_assert(div > 1, "");
         return (n + div - 1) / div;

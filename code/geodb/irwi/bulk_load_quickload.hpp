@@ -160,12 +160,12 @@ private:
     }
 
     template<typename Callback>
-    void for_each_leaf(internal_ptr n, size_t height, Callback&& cb) {
-        geodb_assert(height < storage().get_height(), "must not reach leaf level");
+    void for_each_leaf(internal_ptr n, size_t level, Callback&& cb) {
+        geodb_assert(level < storage().get_height(), "must not reach leaf level");
 
         const u32 count = storage().get_count(n);
 
-        if (height + 1 == storage().get_height()) {
+        if (level + 1 == storage().get_height()) {
             // Next level is the leaf level.
             for (u32 i = 0; i < count; ++i) {
                 cb(storage().to_leaf(storage().get_child(n, i)));
@@ -175,7 +175,7 @@ private:
 
         // Next level contains internal nodes.
         for (u32 i = 0; i < count; ++i) {
-            for_each_leaf(storage().to_internal(storage().get_child(n, i)), height + 1, cb);
+            for_each_leaf(storage().to_internal(storage().get_child(n, i)), level + 1, cb);
         }
     }
 };

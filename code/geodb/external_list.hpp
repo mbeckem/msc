@@ -24,6 +24,9 @@ namespace geodb {
 /// be modified using the constructor.
 ///
 /// TODO: The last block should not be allowed to leave the cache (?).
+/// TODO: It would make some algorithms more efficient (for example 
+/// bulk loading of inverted indices and quickload) if one could/
+/// pin blocks in the middle of the list into the cache.
 template<typename Value, size_t block_size>
 class external_list {
 private:
