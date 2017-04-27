@@ -39,7 +39,9 @@ if __name__ == "__main__":
         generate_random_walk(entries, 100, path, log=logfile)
 
         entries, path = RANDOM_WALK_LARGE
-        generate_random_walk(entries, 10, path, log=logfile)
+        generate_random_walk(entries, 10, path,
+                             maxx=200000, maxy=200000,
+                             units_per_trajectory=20000, log=logfile)
 
         entries, path = OSM_ROUTES
         if not path.exists():

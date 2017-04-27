@@ -29,8 +29,8 @@ RANDOM_WALK = (10000000, DATA_PATH / "random-walk.entries")
 
 RANDOM_WALK_SMALL = (64000, DATA_PATH / "random-walk-small.entries")
 
-# 100 million entries (with only 10 labels).
-RANDOM_WALK_LARGE = (100000000, DATA_PATH / "random-walk-large.entries")
+# 200 million entries (with only 10 labels).
+RANDOM_WALK_LARGE = (200000000, DATA_PATH / "random-walk-large.entries")
 
 # 4 million entries (about 4,5k routes).
 # The labels are street names.

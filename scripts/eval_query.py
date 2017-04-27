@@ -6,6 +6,7 @@ import subprocess
 import common
 from common import OUTPUT_PATH, RESULT_PATH, TMP_PATH, QUERY
 from compile import compile
+from lib.prettytable import PrettyTable
 
 
 # Returns a closure that looks up the key in a dict loaded
@@ -48,13 +49,15 @@ class SimpleQuery:
 # will be returned.
 class Query:
 
-    def __init__(self, *queries):
+    def __init__(self, name, *queries):
+        self.name = name
         self.queries = list(queries)
 
     def count():
         return len(self.queries)
 
 
+# Constructs a set set queries for the geolife dataset.
 def geolife_queries():
     # mbb for the entire dataset.
     all = BoundingBox((18, -180, 0), (400, 180, 2**32 - 1))
@@ -79,7 +82,10 @@ def geolife_queries():
 
     small_queries = [
         # ~ 14k units (labels are very rare, this is the logical OR of the labels).
-        SimpleQuery(all, [7, 8, 10, 11]),
+        SimpleQuery(all, [
+            label("boat"), label("run"),
+            label("airplane"), label("motorcycle")
+        ]),
 
         # ~ 4k
         SimpleQuery(all.with_time(1250805600, 1250892000), []),
@@ -149,17 +155,21 @@ def geolife_queries():
     ]
 
     # Queries that return a large result set (400k - 900k units of ~5.4m).
-    large_results = [Query(sq) for sq in large_queries]
+    large_results = [Query("LARGE-{}".format(i), sq)
+                     for i, sq in enumerate(large_queries)]
 
     # Queries that select only few units.
-    small_results = [Query(sq) for sq in small_queries]
+    small_results = [Query("SMALL-{}".format(i), sq)
+                     for i, sq in enumerate(small_queries)]
 
     # Sequenced query, i.e. multiple simple queries that have to be satisfied.
-    sequenced = [Query(*sq) for sq in sequenced_queries]
+    sequenced = [Query("SEQUENCED-{}".format(i), *sq)
+                 for i, sq in enumerate(sequenced_queries)]
 
-    return large_results, small_results, sequenced
+    return {"large": large_results, "small": small_results, "sequenced": sequenced}
 
 
+# Constructs a set of queries for the osm dataset.
 def osm_queries():
     label = osm_label
 
@@ -244,18 +254,39 @@ def osm_queries():
             SimpleQuery(all, [label("A 9")]),
             SimpleQuery(BoundingBox((47.334, 5.273, 0),
                                     (49.848, 15.447, 35000)), [label("A 3"), label("A 6")]),
-        ]
-        # TODO MORE
+        ],
+
+        # München -> Autobahn
+        [
+            SimpleQuery(BoundingBox((48.027, 11.371, 0),
+                                    (48.237, 11.783, 35000)), []),
+            SimpleQuery(all, [label("A 8"), label("A 9")]),
+            SimpleQuery(all, [label("A 3"), label("A 4"), label("A 1")])
+
+        ],
+
+        # München -> Autobahn -> Kiel
+        [
+            SimpleQuery(BoundingBox((48.027, 11.371, 0),
+                                    (48.237, 11.783, 35000)), []),
+            SimpleQuery(all, [label("A 8"), label("A 9")]),
+            SimpleQuery(all, [label("A 3"), label("A 4"), label("A 1")]),
+            SimpleQuery(BoundingBox((54.275, 10.009, 10000),
+                                    (54.386, 10.242, 35000)), [])
+        ],
     ]
 
-    large_results = [Query(sq) for sq in large_queries]
-    small_results = [Query(sq) for sq in small_queries]
-    sequenced = [Query(*sq) for sq in sequenced_queries]
+    large_results = [Query("LARGE-{}".format(i), sq)
+                     for i, sq in enumerate(large_queries)]
+    small_results = [Query("SMALL-{}".format(i), sq)
+                     for i, sq in enumerate(small_queries)]
+    sequenced = [Query("SEQUENCED-{}".format(i), *sq)
+                 for i, sq in enumerate(sequenced_queries)]
+    return {"large": large_results, "small": small_results, "sequenced": sequenced}
 
-    return large_results, small_results, sequenced
 
-
-def run_query(tree, query, results=None):
+# Runs a single query for a given tree and returns the stats.
+def run_query(tree, query, results=None, logfile=None):
     stats_path = TMP_PATH / "query-stats.json"
     common.remove(stats_path)
 
@@ -274,27 +305,127 @@ def run_query(tree, query, results=None):
         labels = ",".join(map(str, sq.labels))
         args.extend(["-r", mbb, "-l", labels])
 
-    print(args)
+    print("Running query {} on tree {}:".format(
+        query.name, tree), file=logfile, flush=True)
+    print("============================\n", file=logfile, flush=True)
+    subprocess.check_call(args, stdout=logfile)
+    print("\n\n", file=logfile, flush=True)
 
-    subprocess.check_call(args)
     with stats_path.open("r") as stats_file:
         return json.load(stats_file)
 
 
+# Runs the given queries for every tree and stores the number of IOs.
+# Returns dict Query -> Tree -> Stats.
+def run_queries(trees, queries, logfile=None):
+    d = {q: dict() for q in queries}
+    for tree in trees:
+        for query in queries:
+            stats = run_query(tree, query,
+                              logfile=logfile)
+            d[query][tree] = stats["total_io"]
+    return d
+
+
+# Runs an entire suite for a number of tres and a number of query lists.
+# The first tree should be the tree constructed via OBO-Insertion.
+def run_suite(outpath, trees, query_set, logfile=None):
+    table_out = outpath.with_suffix(".txt")
+    json_out = outpath.with_suffix(".json")
+
+    # Run the queries and compute average io operations.
+    def run(queries):
+        query_stats = run_queries(trees, queries, logfile=logfile)
+        average = {tree: sum(query_stats[q][tree]
+                             for q in queries) / len(queries)
+                   for tree in trees}
+        return {"stats": query_stats, "avg": average}
+
+    result = {
+        name: run(queries) for name, queries in query_set.items()
+    }
+
+    def map_json(result):
+        def map_trees(trees):
+            return {tree.name: stats for tree, stats in trees.items()}
+
+        def map_queries(queries):
+            return {
+                "avg": map_trees(queries["avg"]),
+                "stats": {
+                    query.name: map_trees(stats)
+                    for query, stats in queries["stats"].items()
+                }
+            }
+        return {key: map_queries(value) for key, value in result.items()}
+
+    with json_out.open("w") as outfile:
+        json.dump(map_json(result), outfile, indent=4, sort_keys=True)
+
+    with table_out.open("w") as outfile:
+        print("Query results", file=outfile)
+        print("===================\n", file=outfile)
+
+        # One table for every query set
+        for query_set_name, queries in query_set.items():
+            query_set_results = result[query_set_name]
+
+            table = PrettyTable(
+                ["Query"] + [tree.name for tree in geolife_trees])
+            table.align = "r"
+
+            # One row for every query
+            stats = query_set_results["stats"]
+            for query in queries:
+                query_stats = stats[query]
+
+                obo_io = query_stats[trees[0]]
+                row = [query.name]
+                for tree in trees:
+                    io = query_stats[tree]
+                    row.append("{:7.0f} ({:3.3f})".format(io, io / obo_io))
+                table.add_row(row)
+
+            # And one additional row for the average.
+            obo_avg = query_set_results["avg"][trees[0]]
+            row = ["avg"]
+            for tree in trees:
+                io = query_set_results["avg"][tree]
+                row.append("{:7.0f} ({:3.3f})".format(io, io / obo_avg))
+            table.add_row(row)
+
+            print("Query set {}:".format(query_set_name), file=outfile)
+            print(table, file=outfile)
+            print("", file=outfile)
+
 if __name__ == "__main__":
     compile(debug_stats=True)
 
-    geolife_queries()
-    osm_queries()
+    geolife_trees = [
+        OUTPUT_PATH / "geolife-obo",
+        OUTPUT_PATH / "geolife-hilbert",
+        OUTPUT_PATH / "geolife-str-lf",
+        OUTPUT_PATH / "geolife-quickload",
+    ]
 
-    # for q in GEOLIFE_SINGLE_LARGE_RESULTS:
-    #    print(run_query(OUTPUT_PATH / "geolife-obo", q))
+    osm_trees = [
+        OUTPUT_PATH / "osm-obo",
+        OUTPUT_PATH / "osm-hilbert",
+        OUTPUT_PATH / "osm-str-lf",
+        OUTPUT_PATH / "osm-quickload",
+    ]
 
-    # for q in GEOLIFE_SINGLE_SMALL_RESULTS:
-    #    print(run_query(OUTPUT_PATH / "geolife-obo", q))
+    with (OUTPUT_PATH / "eval_query.log").open("w") as logfile:
+        print("Running queries.")
+        datasets = [
+            ("geolife",
+             RESULT_PATH / "queries_geolife",
+             geolife_trees, geolife_queries()),
+            ("osm",
+             RESULT_PATH / "queries_osm",
+             osm_trees, osm_queries())
+        ]
+        for name, outpath, trees, queries in datasets:
+            print("Dataset {} ...".format(name))
 
-    # for q in GEOLIFE_SEQUENCED:
-    #    print(run_query(OUTPUT_PATH / "geolife-obo", q))
-
-    print(run_query("/home/michael/Projects/msc/osm-hilbert",
-                    osm_queries()[0][2], results=TMP_PATH / "results.txt"))
+            run_suite(outpath, trees, queries, logfile=logfile)

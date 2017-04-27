@@ -7,7 +7,14 @@ EVAL_NODE_BUILDING := \
 	results/node_building_others.json
 
 EVAL_TREE_BUILDING := results/tree_building.txt results/tree_building.json
-EVAL_LARGE_DATASET := results/large_dataset.txt results/large_dataset.json
+# EVAL_LARGE_DATASET := results/large_dataset.txt results/large_dataset.json
+EVAL_QUERIES := \
+	results/queries_geolife.txt results/queries_geolife.json \
+	results/queries_osm.txt results/queries_osm.json
+
+EVAL_CHEAP_QUICKLOAD := results/cheap_quickload.txt results/cheap_quickload.json
+
+TREE_VARIANTS := output/variants
 
 QUICKLOAD_PROFILE_GEOLIFE_16M := results/quickload-geolife-16.txt
 QUICKLOAD_PROFILE_GEOLIFE_256M := results/quickload-geolife-256.txt
@@ -28,6 +35,9 @@ RESULTS := \
 	$(EVAL_NODE_BUILDING) \
 	$(EVAL_TREE_BUILDING) \
 	$(EVAL_LARGE_DATASET) \
+	$(EVAL_QUERIES) 	 \
+	$(EVAL_CHEAP_QUICKLOAD) \
+	$(TREE_VARIANTS) \
 	$(QUICKLOAD_PROFILE_GEOLIFE_16M) \
 	$(QUICKLOAD_PROFILE_GEOLIFE_256M) \
 	$(QUICKLOAD_PROFILE_OSM_16M) \
@@ -60,17 +70,28 @@ $(eval $(call multi_target,$(EVAL_TREE_BUILDING),scripts/eval_tree_building.py,t
 
 $(eval $(call multi_target,$(EVAL_LARGE_DATASET),scripts/eval_large_dataset.py,large-dataset))
 
+$(eval $(call multi_target,$(EVAL_QUERIES),scripts/eval_query.py,queries))
+
+$(eval $(call multi_target,$(EVAL_CHEAP_QUICKLOAD),scripts/eval_cheap_quickload.py, cheap-quickload))
+
+$(TREE_VARIANTS):
+	scripts/build_tree_variants.py
+
+$(EVAL_QUERIES): $(EVAL_TREE_BUILDING) $(TREE_VARIANTS) $(DATASET_STRINGS)
+
 $(HILBERT_CURVE):
 	scripts/hilbert_curve.py
 
 $(IRWI_EXAMPLE_BOXES):
 	scripts/irwi_example.py
 
-$(filter %.txt,$(DATASET_STRINGS)): output/%.txt: data/%
+$(filter %.txt,$(DATASET_STRINGS)): output/%.txt:
 	build/strings --input "$<" > "$@"
 
-$(filter %.json,$(DATASET_STRINGS)): output/%.json: data/%
+$(filter %.json,$(DATASET_STRINGS)): output/%.json:
 	build/strings --input "$<" --json > "$@"
+
+$(DATASET_STRINGS): | dataset
 
 $(eval $(call multi_target,$(EXAMPLE_LEAVES),scripts/leaves.py,leaves))
 

@@ -11,9 +11,9 @@ BuildStats = collections.namedtuple("BuildStats", [
 ])
 
 # Make sure that we can open enough files (quickload requires many
-# buckets). This is equivalent to `ulimit -Sn 16384` in the shell.
+# buckets). This is equivalent to `ulimit -Sn 64000` in the shell.
 limits = resource.getrlimit(resource.RLIMIT_NOFILE)
-resource.setrlimit(resource.RLIMIT_NOFILE, (2 ** 15, limits[1]))
+resource.setrlimit(resource.RLIMIT_NOFILE, (64000, limits[1]))
 
 
 # Builds a tree using the specified parameters.

@@ -14,7 +14,7 @@ from lib.prettytable import PrettyTable
 if __name__ == "__main__":
     compile()
 
-    algorithms = ["hilbert", "str-lf", "str-plain", "quickload"]
+    algorithms = ["quickload"]
     sizes = [64, 128, 256]  # Megabyte
     tree_path = TMP_PATH / "large_dataset_tree"
 

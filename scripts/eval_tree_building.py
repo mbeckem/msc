@@ -69,7 +69,7 @@ if __name__ == "__main__":
         # Incremetally build a tree using one-by-one insertion.
         # Insert a given batch of items, take stats, insert the next batch.
         # This does not influence the results in a meaningful way because
-        # one by one insertion works on a the unit of a single entry.
+        # one by one insertion works on the unit of a single entry.
         for dataset_name, entries, data_path in dataset:
             basename = "{}-obo".format(dataset_name, entries)
             tree_path = OUTPUT_PATH / basename

@@ -9,7 +9,6 @@ import json
 
 import common
 import commands
-import format
 
 from common import DATA_PATH, TMP_PATH, OUTPUT_PATH, RESULT_PATH, LOADER
 from compile import compile
