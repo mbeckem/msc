@@ -45,9 +45,6 @@ void unused(Args&&...) {}
         }                                                       \
     } while (0)
 
-/// The next statement (or block) will be exected only when
-/// debugging is enabled.
-
 #define GEODB_DEBUG
 
 #else

@@ -24,7 +24,7 @@ namespace geodb {
 /// The order of the comparsion objects defines the order in
 /// which tiles are sorted.
 ///
-/// In example, str_impl<Comp1, Comp2> will sort the entire sequence
+/// For example, str_impl<Comp1, Comp2> will sort the entire sequence
 /// by Comp1 first, tile it into subsequences and then sort those
 /// using Comp2.
 template<typename... Comparators>
@@ -105,7 +105,7 @@ private:
     }
 
 private:
-    // Returns the first comparator for the hightest dimension and so on.
+    // Returns the comparator for the given dimension.
     template<u32 Dimension>
     decltype(auto) comparator() {
         return std::get<dimensions - Dimension>(m_comps);
