@@ -837,6 +837,7 @@ private:
     /// level to the quick_load_pass class.
     u64 create_internals(const level_files& last_files, const level_files& next_files, size_t height) {
         STATS_GUARD(guard, "Internal level {}", height);
+        (void) height;
 
         // Number of cached postings list blocks for every internal node.
         // TODO: This could be set by the user.
