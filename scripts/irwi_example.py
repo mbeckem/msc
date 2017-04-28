@@ -10,7 +10,7 @@ import subprocess
 
 from itertools import combinations, product
 from common import RESULT_PATH
-from compile import compile
+from common import compile
 
 
 def color(a, b, c):

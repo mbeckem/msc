@@ -14,41 +14,99 @@ EVAL_QUERIES := \
 
 EVAL_CHEAP_QUICKLOAD := results/cheap_quickload.txt results/cheap_quickload.json
 
-TREE_VARIANTS := output/variants
-
 QUICKLOAD_PROFILE_GEOLIFE_16M := results/quickload-geolife-16.txt
 QUICKLOAD_PROFILE_GEOLIFE_256M := results/quickload-geolife-256.txt
 QUICKLOAD_PROFILE_OSM_16M := results/quickload-osm-16.txt
 QUICKLOAD_PROFILE_OSM_256M := results/quickload-osm-256.txt
-
-DATASET_STRINGS := \
-	output/geolife.strings.txt \
-	output/geolife.strings.json \
-	output/osm.strings.txt \
-	output/osm.strings.json
-
-EXAMPLE_LEAVES := results/hilbert_leaves.pdf results/str_leaves.pdf
-STR_LEAVES := results/str_leaves.pdf
-IRWI_EXAMPLE_BOXES := results/irwi_example_boxes.pdf
-
-RESULTS := \
-	$(EVAL_NODE_BUILDING) \
-	$(EVAL_TREE_BUILDING) \
-	$(EVAL_LARGE_DATASET) \
-	$(EVAL_QUERIES) 	 \
-	$(EVAL_CHEAP_QUICKLOAD) \
-	$(TREE_VARIANTS) \
+QUICKLOAD_PROFILES := \
 	$(QUICKLOAD_PROFILE_GEOLIFE_16M) \
 	$(QUICKLOAD_PROFILE_GEOLIFE_256M) \
 	$(QUICKLOAD_PROFILE_OSM_16M) \
-	$(QUICKLOAD_PROFILE_OSM_256M) \
+	$(QUICKLOAD_PROFILE_OSM_256M)
+
+EXAMPLE_LEAVES := results/hilbert_leaves.pdf results/str_leaves.pdf
+IRWI_EXAMPLE_BOXES := results/irwi_example_boxes.pdf
+
+RESULTS := \
 	$(HILBERT_CURVE) \
 	$(EXAMPLE_LEAVES) \
-	$(IRWI_EXAMPLE_BOXES) \
-	$(DATASET_STRINGS)
+	$(IRWI_EXAMPLE_BOXES)
 
 
-all: $(RESULTS)
+# Note: delete any of the result files (e.g. results/tree_building.txt)
+# to repeat the associated experiment. 
+all:
+	@rm -f make.log
+	@echo "Note: Step output will be written into make.log"
+
+	@echo "Making sure that the project is compiled ..."
+	@$(MAKE) compile >> make.log
+
+	@echo "Generating dataset ..."
+	@$(MAKE) dataset >> make.log
+
+	@echo "Creating trees ..."
+	@$(MAKE) create_trees >> make.log
+
+	@echo "Evaluating cheap quickload variant ..."
+	@$(MAKE) $(EVAL_CHEAP_QUICKLOAD) >> make.log
+
+	@echo "Evaluating quickload memory scaling ..."
+	@$(MAKE) $(EVAL_LARGE_DATASET) >> make.log
+
+	@echo "Creating quickload trace files ..."
+	@$(MAKE) $(QUICKLOAD_PROFILES) >> make.log
+
+	@echo "Evaluating scalable node building algorithm ..."
+	@$(MAKE) $(EVAL_NODE_BUILDING) >> make.log
+
+	@echo "Running queries ..."
+	@$(MAKE) queries >> make.log
+
+	@echo "Creating graphics ..."
+	@$(MAKE) graphics >> make.log
+
+.PHONY: all
+
+dataset:
+	scripts/generate_datasets.py
+
+.PHONY: dataset
+
+compile:
+	mkdir -p build
+	cd build && cmake -DCMAKE_BUILD_TYPE=Release ../code && $(MAKE) -j5
+
+.PHONY: compile
+
+create_trees:
+	@$(MAKE) $(EVAL_TREE_BUILDING)
+	scripts/build_tree_variants.py
+
+.PHONY: create_trees
+
+queries:
+	# Files for the translation of label string <-> label index.
+	build/strings --input "data/geolife.strings" > "output/geolife.strings.txt"
+	build/strings --input "data/geolife.strings" > "output/geolife.strings.txt"
+	build/strings --input "data/osm.strings" --json > "output/osm.strings.json"
+	build/strings --input "data/osm.strings" --json > "output/osm.strings.json"
+	$(MAKE) $(EVAL_QUERIES)
+
+.PHONY: queries
+
+graphics: $(RESULTS)
+
+.PHONY: graphics
+
+clean:
+	rm -rf build/*
+	rm -rf results/*
+	rm -rf output/*
+	rm -rf tmp/*
+	@echo "Datasets will not be deleted. Delete files in data/ manually instead."
+
+.PHONY: clean
 
 # Generate a rule that produces multiple outputs.
 # Args: 1. The list of output files.
@@ -74,24 +132,11 @@ $(eval $(call multi_target,$(EVAL_QUERIES),scripts/eval_query.py,queries))
 
 $(eval $(call multi_target,$(EVAL_CHEAP_QUICKLOAD),scripts/eval_cheap_quickload.py, cheap-quickload))
 
-$(TREE_VARIANTS):
-	scripts/build_tree_variants.py
-
-$(EVAL_QUERIES): $(EVAL_TREE_BUILDING) $(TREE_VARIANTS) $(DATASET_STRINGS)
-
 $(HILBERT_CURVE):
 	scripts/hilbert_curve.py
 
 $(IRWI_EXAMPLE_BOXES):
 	scripts/irwi_example.py
-
-$(filter %.txt,$(DATASET_STRINGS)): output/%.txt:
-	build/strings --input "$<" > "$@"
-
-$(filter %.json,$(DATASET_STRINGS)): output/%.json:
-	build/strings --input "$<" --json > "$@"
-
-$(DATASET_STRINGS): | dataset
 
 $(eval $(call multi_target,$(EXAMPLE_LEAVES),scripts/leaves.py,leaves))
 
@@ -119,32 +164,3 @@ $(QUICKLOAD_PROFILE_OSM_16M):
 
 $(QUICKLOAD_PROFILE_OSM_256M):
 	$(call quickload_profile,256,data/osm.entries,$@)
-
-# All results depend on the presence of the datasets.
-$(RESULTS): | dataset compile-once
-
-dataset: | compile-once
-
-dataset: FORCE
-	@scripts/generate_datasets.py
-
-.PHONY: dataset
-
-compile-once: FORCE
-	@mkdir -p build
-	@cd build && cmake ../code && $(MAKE) -j5
-
-.PHONY: compile-once
-
-# Always out of date.
-FORCE:
-
-.PHONY: FORCE
-
-clean:
-	rm -rf results/*
-	rm -rf output/*
-	rm -rf tmp/*
-	@echo "Datasets will not be deleted. Delete files in data/ manually instead."
-
-.PHONY: clean

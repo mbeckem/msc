@@ -4,11 +4,9 @@
 
 import json
 
-import commands
 import common
-from common import TMP_PATH, OUTPUT_PATH, RESULT_PATH
-from compile import compile
-from datasets import RANDOM_WALK_LARGE
+from common import TMP_PATH, OUTPUT_PATH, RESULT_PATH, RANDOM_WALK_LARGE
+from common import compile
 from lib.prettytable import PrettyTable
 
 if __name__ == "__main__":
@@ -29,13 +27,12 @@ if __name__ == "__main__":
                     algorithm, size))
 
                 _, data_path = dataset
-                result = commands.build_tree(algorithm, tree_path, data_path, logfile,
-                                             memory=size)
+                result = common.build_tree(algorithm, tree_path, data_path, logfile,
+                                           memory=size)
                 results.append({
                     "algorithm": algorithm,
                     "memory": size,
-                    "total_io": result.total_io,
-                    "duration": result.duration,
+                    **result
                 })
 
     with (RESULT_PATH / "large_dataset.txt").open("w") as outfile:

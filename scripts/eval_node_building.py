@@ -8,11 +8,10 @@ import collections
 import json
 
 import common
-import commands
 
 from common import DATA_PATH, TMP_PATH, OUTPUT_PATH, RESULT_PATH, LOADER
-from compile import compile
-from datasets import RANDOM_WALK_VARYING_LABELS, OSM_ROUTES, GEOLIFE
+from common import RANDOM_WALK_VARYING_LABELS, OSM_ROUTES, GEOLIFE
+from common import compile
 from lib.prettytable import PrettyTable
 
 
@@ -26,8 +25,8 @@ def keys(d, *args):
 
 def build_tree(algorithm, entries_path):
     tree_path = TMP_PATH / "node_building_tmp_tree"
-    stats = commands.build_tree(algorithm, tree_path,
-                                entries_path, logfile)
+    stats = common.build_tree(algorithm, tree_path,
+                              entries_path, logfile)
 
     total_size = common.file_size(tree_path)
     tree_size = common.file_size(tree_path / "tree.blocks")
@@ -38,7 +37,7 @@ def build_tree(algorithm, entries_path):
         "tree_size": tree_size,
         "index_size": index_size,
         "total_size": total_size,
-        **stats._asdict()
+        **stats
     }
 
 

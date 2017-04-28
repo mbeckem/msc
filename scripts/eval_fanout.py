@@ -4,10 +4,9 @@
 import collections
 import itertools
 
-import commands
-import datasets
+import common
 from common import LOADER, RESULT_PATH, OUTPUT_PATH, TMP_PATH, DATA_PATH
-from compile import compile
+from common import compile
 from lib.prettytable import PrettyTable
 
 
@@ -31,7 +30,9 @@ if __name__ == "__main__":
     # TODO Measure query performance as well.
     with (OUTPUT_PATH / "eval_fanout.log").open("w") as logfile:
         entries = 1000000
-        data_path = datasets.osm_generated(entries)
+
+        # FIXME
+        # data_path = datasets.osm_generated(entries)
 
         results = collections.defaultdict(dict)
 
@@ -44,15 +45,16 @@ if __name__ == "__main__":
 
                 tree_path = TMP_PATH / "eval_fanout_tree"
 
-                result = commands.build_tree(algorithm, tree_path,
-                                             data_path, logfile)
+                result = common.build_tree(algorithm, tree_path,
+                                           data_path, logfile)
                 results[algorithm][fanout] = result
 
         for algorithm, fanout in itertools.product(algorithms, fanouts):
             result = results[algorithm][fanout]
             table.add_row([
-                algorithm, entries, result.leaf_fanout, result.internal_fanout,
-                result.total_io, result.duration
+                algorithm, entries,
+                common.values(result, "leaf_fanout",
+                              "internal_fanout", "total_io", "duration")
             ])
 
     with (RESULT_PATH / "eval_fanout.txt").open("w") as outfile:

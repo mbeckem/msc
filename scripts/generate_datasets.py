@@ -3,8 +3,8 @@
 import subprocess
 
 from common import GENERATOR, GEOLIFE_GENERATOR, OSM_GENERATOR, DATA_PATH, OUTPUT_PATH
-from compile import compile
-from datasets import RANDOM_WALK_VARYING_LABELS, OSM_ROUTES, GEOLIFE, RANDOM_WALK, RANDOM_WALK_SMALL, RANDOM_WALK_LARGE
+from common import RANDOM_WALK_VARYING_LABELS, OSM_ROUTES, GEOLIFE, RANDOM_WALK, RANDOM_WALK_SMALL, RANDOM_WALK_LARGE
+from common import compile
 
 
 def generate_random_walk(entries, labels, path, log, units_per_trajectory=None, maxx=None, maxy=None):

@@ -8,11 +8,10 @@ import itertools
 import json
 
 import common
-import commands
 
 from common import LOADER, RESULT_PATH, OUTPUT_PATH, TMP_PATH, DATA_PATH
-from compile import compile
-from datasets import GEOLIFE, OSM_ROUTES, RANDOM_WALK
+from common import GEOLIFE, OSM_ROUTES, RANDOM_WALK
+from common import compile
 from lib.prettytable import PrettyTable
 
 
@@ -54,16 +53,13 @@ if __name__ == "__main__":
 
                 print("Running {} on {} entries from {}"
                       .format(algorithm, entries, dataset_name))
-                result = commands.build_tree(algorithm, tree_path,
-                                             data_path, logfile, limit=entries)
+                result = common.build_tree(algorithm, tree_path,
+                                           data_path, logfile, limit=entries)
                 results.append({
                     "dataset": dataset_name,
                     "algorithm": algorithm,
                     "entries": entries,
-                    "total_io": result.total_io,
-                    "read_io": result.read_io,
-                    "write_io": result.write_io,
-                    "duration": result.duration,
+                    **result
                 })
 
         # Incremetally build a tree using one-by-one insertion.
@@ -87,14 +83,14 @@ if __name__ == "__main__":
 
                 print("-- Entries from {} to {}".format(
                     offset, offset + step_size))
-                result = commands.build_tree("obo", tree_path,
-                                             data_path, logfile,
-                                             offset=offset, limit=step_size,
-                                             keep_existing=(last_size > 0))
-                total_io += result.total_io
-                read_io += result.read_io
-                write_io += result.write_io
-                duration += result.duration
+                result = common.build_tree("obo", tree_path,
+                                           data_path, logfile,
+                                           offset=offset, limit=step_size,
+                                           keep_existing=(last_size > 0))
+                total_io += result["total_io"]
+                read_io += result["read_io"]
+                write_io += result["write_io"]
+                duration += result["duration"]
 
                 results.append({
                     "dataset": dataset_name,

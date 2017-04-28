@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 
-import commands
 import common
 
-from common import OUTPUT_PATH
-from compile import compile
-from datasets import GEOLIFE, OSM_ROUTES
-
+from common import OUTPUT_PATH, GEOLIFE, OSM_ROUTES
+from common import compile
 
 # Build trees for different values of beta.
 if __name__ == "__main__":
@@ -19,9 +16,9 @@ if __name__ == "__main__":
             print("{} exists, skipping ...".format(tree_path))
 
         print("Building {}".format(tree_path))
-        commands.build_tree(algorithm,
-                            tree_path=tree_path, entries_path=entries_path,
-                            logfile=logfile, beta=beta, limit=limit)
+        common.build_tree(algorithm,
+                          tree_path=tree_path, entries_path=entries_path,
+                          logfile=logfile, beta=beta, limit=limit)
 
     with (OUTPUT_PATH / "tree_variants.log").open("w") as logfile:
         def build_beta_values():

@@ -5,7 +5,7 @@ import subprocess
 
 import common
 from common import OUTPUT_PATH, RESULT_PATH, TMP_PATH, QUERY
-from compile import compile
+from common import compile
 from lib.prettytable import PrettyTable
 
 

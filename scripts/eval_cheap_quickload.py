@@ -4,11 +4,10 @@
 
 import json
 
-import commands
 import common
 from common import DATA_PATH, TMP_PATH, RESULT_PATH, OUTPUT_PATH
-from compile import compile
-from datasets import GEOLIFE, OSM_ROUTES, RANDOM_WALK
+from common import GEOLIFE, OSM_ROUTES, RANDOM_WALK
+from common import compile
 from lib.prettytable import PrettyTable
 
 if __name__ == "__main__":
@@ -29,14 +28,14 @@ if __name__ == "__main__":
                 print("quickload (cheap: {}) on {} entries from {}".format(
                     cheap, entries, dataset_name))
 
-                result = commands.build_tree("quickload",
-                                             tree_path(dataset_name, cheap),
-                                             data_path, logfile)
+                result = common.build_tree("quickload",
+                                           tree_path(dataset_name, cheap),
+                                           data_path, logfile)
                 results.append({
                     "algorithm": "quickload" if not cheap else "quickload-cheap",
                     "entries": entries,
                     "dataset": dataset_name,
-                    **result._asdict()
+                    **result
                 })
             return results
 

@@ -10,88 +10,88 @@ Quickload parameters:
 -- Entering "Quickload".
 Creating leaf nodes.
 --   Entering "Leaf level".
---     Entering "Main run (4000964 entries)".
+--     Entering "Main run (4001377 entries)".
 --       Entering "Creating leaves".
 --       Leaving "Creating leaves".
---         * Blocks read: 41611
---         * Blocks written: 82479
---         * Blocks total: 124090
---         * Duration: 81.7786 s
---     Leaving "Main run (4000964 entries)".
---       * Blocks read: 41611
---       * Blocks written: 82479
---       * Blocks total: 124090
---       * Duration: 81.7786 s
+--         * Blocks read: 39336
+--         * Blocks written: 81267
+--         * Blocks total: 120603
+--         * Duration: 107.1104 s
+--     Leaving "Main run (4001377 entries)".
+--       * Blocks read: 39336
+--       * Blocks written: 81267
+--       * Blocks total: 120603
+--       * Duration: 107.1104 s
 --   Leaving "Leaf level".
---     * Blocks read: 41611
---     * Blocks written: 82489
---     * Blocks total: 124100
---     * Duration: 81.7791 s
+--     * Blocks read: 39336
+--     * Blocks written: 81276
+--     * Blocks total: 120612
+--     * Duration: 107.1120 s
 Creating internal nodes at height 2.
 --   Entering "Internal level 2".
---     Entering "Main run (53944 entries)".
+--     Entering "Main run (53629 entries)".
 --       Entering "Creating leaves".
 --       Leaving "Creating leaves".
---         * Blocks read: 56147
---         * Blocks written: 30780
---         * Blocks total: 86927
---         * Duration: 1.8607 s
---     Leaving "Main run (53944 entries)".
---       * Blocks read: 56147
---       * Blocks written: 30780
---       * Blocks total: 86927
---       * Duration: 1.8607 s
+--         * Blocks read: 53548
+--         * Blocks written: 31161
+--         * Blocks total: 84709
+--         * Duration: 2.6870 s
+--     Leaving "Main run (53629 entries)".
+--       * Blocks read: 53548
+--       * Blocks written: 31161
+--       * Blocks total: 84709
+--       * Duration: 2.6870 s
 --   Leaving "Internal level 2".
---     * Blocks read: 56147
---     * Blocks written: 30790
---     * Blocks total: 86937
---     * Duration: 1.8616 s
+--     * Blocks read: 53548
+--     * Blocks written: 31171
+--     * Blocks total: 84719
+--     * Duration: 2.6888 s
 Creating internal nodes at height 3.
 --   Entering "Internal level 3".
---     Entering "Main run (646 entries)".
+--     Entering "Main run (647 entries)".
 --       Entering "Creating leaves".
 --       Leaving "Creating leaves".
---         * Blocks read: 12590
---         * Blocks written: 7101
---         * Blocks total: 19691
---         * Duration: 0.1388 s
---     Leaving "Main run (646 entries)".
---       * Blocks read: 12590
---       * Blocks written: 7101
---       * Blocks total: 19691
---       * Duration: 0.1389 s
+--         * Blocks read: 12759
+--         * Blocks written: 7142
+--         * Blocks total: 19901
+--         * Duration: 0.2520 s
+--     Leaving "Main run (647 entries)".
+--       * Blocks read: 12759
+--       * Blocks written: 7142
+--       * Blocks total: 19901
+--       * Duration: 0.2520 s
 --   Leaving "Internal level 3".
---     * Blocks read: 12590
---     * Blocks written: 7110
---     * Blocks total: 19700
---     * Duration: 0.1396 s
+--     * Blocks read: 12759
+--     * Blocks written: 7151
+--     * Blocks total: 19910
+--     * Duration: 0.2532 s
 Creating internal nodes at height 4.
 --   Entering "Internal level 4".
 --     Entering "Main run (7 entries)".
 --       Entering "Creating leaves".
 --       Leaving "Creating leaves".
---         * Blocks read: 6753
---         * Blocks written: 3415
---         * Blocks total: 10168
---         * Duration: 0.0216 s
+--         * Blocks read: 6617
+--         * Blocks written: 3337
+--         * Blocks total: 9954
+--         * Duration: 0.0303 s
 --     Leaving "Main run (7 entries)".
---       * Blocks read: 6753
---       * Blocks written: 3415
---       * Blocks total: 10168
---       * Duration: 0.0216 s
+--       * Blocks read: 6617
+--       * Blocks written: 3337
+--       * Blocks total: 9954
+--       * Duration: 0.0303 s
 --   Leaving "Internal level 4".
---     * Blocks read: 6753
---     * Blocks written: 3423
---     * Blocks total: 10176
---     * Duration: 0.0222 s
+--     * Blocks read: 6617
+--     * Blocks written: 3345
+--     * Blocks total: 9962
+--     * Duration: 0.0315 s
 -- Leaving "Quickload".
---   * Blocks read: 117100
---   * Blocks written: 123811
---   * Blocks total: 240911
---   * Duration: 83.8150 s
+--   * Blocks read: 112259
+--   * Blocks written: 122942
+--   * Blocks total: 235201
+--   * Duration: 110.0988 s
 Done.
 
-Blocks read: 117099
-Blocks written: 123810
-Blocks total: 240909
-Seconds: 83.8151
+Blocks read: 112258
+Blocks written: 122941
+Blocks total: 235199
+Seconds: 110.099
