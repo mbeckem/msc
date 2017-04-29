@@ -91,6 +91,7 @@ MAKE = "make"
 ALGORITHM_EXAMPLES = BUILD_PATH / "algorithm_examples"
 GENERATOR = BUILD_PATH / "generator"
 GEOLIFE_GENERATOR = BUILD_PATH / "geolife_generator"
+ID_SHUFFLE = BUILD_PATH / "id_shuffle"
 OSM_GENERATOR = BUILD_PATH / "osm_generator"
 HILBERT_CURVE = BUILD_PATH / "hilbert_curve"
 LOADER = BUILD_PATH / "loader"
@@ -107,6 +108,8 @@ RANDOM_WALK_VARYING_LABELS = [
 # Geolife dataset has ~5.4 million entries with ~10 labels.
 GEOLIFE = (5400000, DATA_PATH / "geolife.entries")
 
+GEOLIFE_SHUFFLED = (5400000, DATA_PATH / "geolife-shuffled.entries")
+
 # Entry file with 10 million entries and 100 labels (~evenly distributed).
 RANDOM_WALK = (10000000, DATA_PATH / "random-walk.entries")
 
@@ -118,6 +121,8 @@ RANDOM_WALK_LARGE = (200000000, DATA_PATH / "random-walk-large.entries")
 # 4 million entries (about 4,5k routes).
 # The labels are street names.
 OSM_ROUTES = (4000000, DATA_PATH / "osm.entries")
+
+OSM_ROUTES_SHUFFLED = (4000000, DATA_PATH / "osm-shuffled.entries")
 
 # Make sure that we can open enough files (quickload requires many
 # buckets). This is equivalent to `ulimit -Sn 64000` in the shell.
@@ -134,8 +139,6 @@ resource.setrlimit(resource.RLIMIT_NOFILE, (64000, limits[1]))
 # None means "insert everything up to EOF").
 def build_tree(algorithm, tree_path, entries_path, logfile, beta=0.5,
                memory=64, offset=None, limit=None, keep_existing=False):
-
-    limit = 1
 
     if not keep_existing:
         # Make sure the tree does not exist yet.

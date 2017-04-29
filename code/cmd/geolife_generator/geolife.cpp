@@ -139,7 +139,6 @@ struct geolife_parser {
         progress.done();
     }
 
-    // FIXME: 1 trajectory per file
     void parse_trajectory_units(const fs::path& path, const std::vector<activity>& activities) {
         std::vector<geolife_point> list;
         try {

@@ -2,8 +2,9 @@
 
 import subprocess
 
-from common import GENERATOR, GEOLIFE_GENERATOR, OSM_GENERATOR, DATA_PATH, OUTPUT_PATH
+from common import GENERATOR, GEOLIFE_GENERATOR, OSM_GENERATOR, ID_SHUFFLE, DATA_PATH, OUTPUT_PATH
 from common import RANDOM_WALK_VARYING_LABELS, OSM_ROUTES, GEOLIFE, RANDOM_WALK, RANDOM_WALK_SMALL, RANDOM_WALK_LARGE
+from common import GEOLIFE_SHUFFLED, OSM_ROUTES_SHUFFLED
 from common import compile
 
 
@@ -55,6 +56,15 @@ if __name__ == "__main__":
                     "-n", str(entries)
                 ], stdout=out)
 
+        entries, path = OSM_ROUTES_SHUFFLED
+        if not path.exists():
+            print("Generating {}".format(path))
+            subprocess.check_call([
+                str(ID_SHUFFLE),
+                "--input", str(OSM_ROUTES[1]),
+                "--output", str(path),
+            ])
+
         entries, path = GEOLIFE
         if not path.exists():
             print("Generating {}".format(path))
@@ -67,3 +77,12 @@ if __name__ == "__main__":
                     "--data", str(DATA_PATH /
                                   "Geolife Trajectories 1.3" / "Data")
                 ])
+
+        entries, path = GEOLIFE_SHUFFLED
+        if not path.exists():
+            print("Generating {}".format(path))
+            subprocess.check_call([
+                str(ID_SHUFFLE),
+                "--input", str(GEOLIFE[1]),
+                "--output", str(path),
+            ], stdout=out)

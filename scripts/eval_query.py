@@ -9,6 +9,12 @@ from common import compile
 from lib.prettytable import PrettyTable
 
 
+# Maps the keys of the dictionary d using the given function.
+# Make sure that keys are still unique!
+def map_keys(d, func):
+    return {func(key): value for key, value in d.items()}
+
+
 # Returns a closure that looks up the key in a dict loaded
 # from the given path.
 def load_strings(path):
@@ -21,6 +27,7 @@ def load_strings(path):
     def lookup(key):
         return strings[key]
     return lookup
+
 
 geolife_label = load_strings(OUTPUT_PATH / "geolife.strings.json")
 osm_label = load_strings(OUTPUT_PATH / "osm.strings.json")
@@ -58,7 +65,7 @@ class Query:
 
 
 # Constructs a set set queries for the geolife dataset.
-def geolife_queries():
+def get_geolife_queries():
     # mbb for the entire dataset.
     all = BoundingBox((18, -180, 0), (400, 180, 2**32 - 1))
     label = geolife_label
@@ -77,7 +84,7 @@ def geolife_queries():
         SimpleQuery(BoundingBox((39.94, 115.9, 1216599837),
                                 (40.1, 116.35, 1324606738)), [label("bike")]),
         # ~ 500k units
-        SimpleQuery(all, [1, 4]),
+        SimpleQuery(all, [label("subway"), label("taxi")]),
     ]
 
     small_queries = [
@@ -104,7 +111,11 @@ def geolife_queries():
 
         # ~ 6k
         SimpleQuery(BoundingBox((39.9717, 116.415, 1220007200),
-                                (39.9743, 116.4199, 1228867298)), [label("bike")])
+                                (39.9743, 116.4199, 1228867298)), [label("bike")]),
+
+        # ~ 12k
+        SimpleQuery(BoundingBox((39.910, 116.012, 1239502600),
+                                (39.936, 116.327, 1317827900)), [label("walk")]),
     ]
 
     sequenced_queries = [
@@ -155,22 +166,22 @@ def geolife_queries():
     ]
 
     # Queries that return a large result set (400k - 900k units of ~5.4m).
-    large_results = [Query("LARGE-{}".format(i), sq)
+    large_results = [Query("GEOLIFE-LARGE-{}".format(i), sq)
                      for i, sq in enumerate(large_queries)]
 
     # Queries that select only few units.
-    small_results = [Query("SMALL-{}".format(i), sq)
+    small_results = [Query("GEOLIFE-SMALL-{}".format(i), sq)
                      for i, sq in enumerate(small_queries)]
 
     # Sequenced query, i.e. multiple simple queries that have to be satisfied.
-    sequenced = [Query("SEQUENCED-{}".format(i), *sq)
+    sequenced = [Query("GEOLIFE-SEQUENCED-{}".format(i), *sq)
                  for i, sq in enumerate(sequenced_queries)]
 
     return {"large": large_results, "small": small_results, "sequenced": sequenced}
 
 
 # Constructs a set of queries for the osm dataset.
-def osm_queries():
+def get_osm_queries():
     label = osm_label
 
     # Bounding box for all entries in the osm dataset.
@@ -197,7 +208,11 @@ def osm_queries():
 
         # ~ 430k
         SimpleQuery(BoundingBox((48.5, 6.1, 15000),
-                                (52.5, 13.8, 35000)), [])
+                                (52.5, 13.8, 35000)), []),
+
+        #  ~ 430k (Ruhrgebiet)
+        SimpleQuery(BoundingBox((50.646, 6.311, 0),
+                                (51.635, 7.810, 5000)), [])
     ]
 
     small_queries = [
@@ -222,6 +237,10 @@ def osm_queries():
         # ~ 14k
         SimpleQuery(BoundingBox((47.334, 5.273, 0),
                                 (49.848, 15.447, 2000)), [label("A 8")]),
+
+        #  ~ 10k (Ruhrgebiet, A1)
+        SimpleQuery(BoundingBox((50.646, 6.311, 0),
+                                (51.635, 7.810, 5000)), [label("A1")])
     ]
 
     sequenced_queries = [
@@ -265,6 +284,15 @@ def osm_queries():
 
         ],
 
+        # Berlin -> A1 -> Ruhgebiet.
+        [
+            SimpleQuery(BoundingBox((52.493, 13.351, 0),
+                                    (52.545, 13.435, 35000)), []),
+            SimpleQuery(all, [label("A 1")]),
+            SimpleQuery(BoundingBox((50.646, 6.311, 0),
+                                    (51.635, 7.810, 5000)), [])
+        ],
+
         # München -> Autobahn -> Kiel
         [
             SimpleQuery(BoundingBox((48.027, 11.371, 0),
@@ -274,13 +302,24 @@ def osm_queries():
             SimpleQuery(BoundingBox((54.275, 10.009, 10000),
                                     (54.386, 10.242, 35000)), [])
         ],
+
+        # Raum München -> Raum Frankfurt -> Düsseldorf
+        [
+            SimpleQuery(BoundingBox((47.63, 10.711, 0),
+                                    (48.63, 12.42, 20000)), []),
+            SimpleQuery(BoundingBox((49.51, 7.58, 5000),
+                                    (50.67, 9.73, 20000)), []),
+            SimpleQuery(BoundingBox((50.958, 6.317, 5000),
+                                    (51.457, 7.471, 25000)), []),
+            SimpleQuery(all, [label("A 1")]),
+        ],
     ]
 
-    large_results = [Query("LARGE-{}".format(i), sq)
+    large_results = [Query("OSM-LARGE-{}".format(i), sq)
                      for i, sq in enumerate(large_queries)]
-    small_results = [Query("SMALL-{}".format(i), sq)
+    small_results = [Query("OSM-SMALL-{}".format(i), sq)
                      for i, sq in enumerate(small_queries)]
-    sequenced = [Query("SEQUENCED-{}".format(i), *sq)
+    sequenced = [Query("OSM-SEQUENCED-{}".format(i), *sq)
                  for i, sq in enumerate(sequenced_queries)]
     return {"large": large_results, "small": small_results, "sequenced": sequenced}
 
@@ -298,7 +337,7 @@ def run_query(tree, query, results=None, logfile=None):
     if results is not None:
         args.extend(["--results", str(results)])
     for sq in query.queries:
-        mbb = "({}, {}, {}, {}, {}, {})" \
+        mbb = "{}, {}, {}, {}, {}, {}" \
             .format(sq.mbb.min[0], sq.mbb.max[0],
                     sq.mbb.min[1], sq.mbb.max[1],
                     sq.mbb.min[2], sq.mbb.max[2])
@@ -371,7 +410,7 @@ def run_suite(outpath, trees, query_set, logfile=None):
             query_set_results = result[query_set_name]
 
             table = PrettyTable(
-                ["Query"] + [tree.name for tree in geolife_trees])
+                ["Query"] + [tree.name for tree in trees])
             table.align = "r"
 
             # One row for every query
@@ -398,6 +437,24 @@ def run_suite(outpath, trees, query_set, logfile=None):
             print(table, file=outfile)
             print("", file=outfile)
 
+
+def measure_queries(tree, query_set, logfile=None):
+    # Evaluate every query for the given tree and return the individual
+    # results as well as the average.
+    def measure_set(queries):
+        query_stats = {
+            query: run_query(tree, query, logfile=logfile)["total_io"]
+            for query in queries
+        }
+        average = sum(query_stats[query] for query in queries) / len(queries)
+        return {"stats": map_keys(query_stats, lambda q: q.name), "avg": average}
+
+    # For every query set: Evaluate every query.
+    return {
+        set_name: measure_set(queries) for set_name, queries in query_set.items()
+    }
+
+
 if __name__ == "__main__":
     compile(debug_stats=True)
 
@@ -406,26 +463,71 @@ if __name__ == "__main__":
         OUTPUT_PATH / "geolife-hilbert",
         OUTPUT_PATH / "geolife-str-lf",
         OUTPUT_PATH / "geolife-quickload",
+        OUTPUT_PATH / "variants" / "geolife-str-plain",
+        OUTPUT_PATH / "variants" / "geolife-str-ll",
+        OUTPUT_PATH / "variants" / "geolife-obo-beta-increasing",
+        OUTPUT_PATH / "variants" / "geolife-obo-beta-decreasing",
+        OUTPUT_PATH / "variants" / "geolife-quickload-beta-increasing",
+        OUTPUT_PATH / "variants" / "geolife-quickload-beta-decreasing",
+        OUTPUT_PATH / "variants" / "geolife-obo-beta-0.25",
+        OUTPUT_PATH / "variants" / "geolife-obo-beta-0.75",
+        OUTPUT_PATH / "variants" / "geolife-obo-beta-1.0",
+        OUTPUT_PATH / "variants" / "geolife-quickload-beta-0.25",
+        OUTPUT_PATH / "variants" / "geolife-quickload-beta-0.75",
+        OUTPUT_PATH / "variants" / "geolife-quickload-beta-1.0",
+        OUTPUT_PATH / "variants" / "geolife-shuffled-quickload",
     ]
+    geolife_queries = get_geolife_queries()
 
     osm_trees = [
         OUTPUT_PATH / "osm-obo",
         OUTPUT_PATH / "osm-hilbert",
         OUTPUT_PATH / "osm-str-lf",
         OUTPUT_PATH / "osm-quickload",
+        OUTPUT_PATH / "variants" / "osm-str-plain",
+        OUTPUT_PATH / "variants" / "osm-str-ll",
+        OUTPUT_PATH / "variants" / "osm-obo-beta-increasing",
+        OUTPUT_PATH / "variants" / "osm-obo-beta-decreasing",
+        OUTPUT_PATH / "variants" / "osm-quickload-beta-increasing",
+        OUTPUT_PATH / "variants" / "osm-quickload-beta-decreasing",
+        OUTPUT_PATH / "variants" / "osm-obo-beta-0.25",
+        OUTPUT_PATH / "variants" / "osm-obo-beta-0.75",
+        OUTPUT_PATH / "variants" / "osm-obo-beta-1.0",
+        OUTPUT_PATH / "variants" / "osm-quickload-beta-0.25",
+        OUTPUT_PATH / "variants" / "osm-quickload-beta-0.75",
+        OUTPUT_PATH / "variants" / "osm-quickload-beta-1.0",
+        OUTPUT_PATH / "variants" / "osm-shuffled-quickload",
     ]
+    osm_queries = get_osm_queries()
+
+    def handle_tree(tree, query_set, results):
+        tree_name = tree.name
+        print("Running queries on tree {}.".format(tree_name))
+        results[tree_name] = measure_queries(tree, query_set, logfile)
 
     with (OUTPUT_PATH / "eval_query.log").open("w") as logfile:
-        print("Running queries.")
         datasets = [
-            ("geolife",
-             RESULT_PATH / "queries_geolife",
-             geolife_trees, geolife_queries()),
-            ("osm",
-             RESULT_PATH / "queries_osm",
-             osm_trees, osm_queries())
+            ("geolife", geolife_trees, geolife_queries),
+            ("osm", osm_trees, osm_queries),
         ]
-        for name, outpath, trees, queries in datasets:
-            print("Dataset {} ...".format(name))
 
-            run_suite(outpath, trees, queries, logfile=logfile)
+        result = {
+            "geolife": {},
+            "osm": {}
+        }
+        for dataset_name, tree_set, query_set in datasets:
+            for tree in tree_set:
+                handle_tree(tree, query_set, result[dataset_name])
+
+        # bloom filters need special treatment.
+        compile(bloom_filters=True, debug_stats=True)
+        for tree in [OUTPUT_PATH / "variants" / "geolife-obo-bloom",
+                     OUTPUT_PATH / "variants" / "geolife-quickload-bloom"]:
+            handle_tree(tree, geolife_queries, result["geolife"])
+
+        for tree in [OUTPUT_PATH / "variants" / "osm-obo-bloom",
+                     OUTPUT_PATH / "variants" / "osm-quickload-bloom"]:
+            handle_tree(tree, osm_queries, result["osm"])
+
+    with (RESULT_PATH / "queries.json").open("w") as outfile:
+        json.dump(result, outfile, sort_keys=True, indent=4)

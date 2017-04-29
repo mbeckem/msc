@@ -36,14 +36,14 @@ BOOST_FUSION_ADAPT_STRUCT(
 namespace grammar {
     using namespace boost::spirit::x3;
 
-    const auto bounding_box = lit('(')
-            > double_ > lit(',')        // x min
-            > double_ > lit(',')        // x max
-            > double_ > lit(',')        // y min
-            > double_ > lit(',')        // y max
-            > uint32 > lit(',')         // t min
-            > uint32                    // t max
-            > lit(')');
+    const auto bounding_box =
+            double_ > lit(',')      // x min
+            > double_ > lit(',')    // x max
+            > double_ > lit(',')    // y min
+            > double_ > lit(',')    // y max
+            > uint32 > lit(',')     // t min
+            > uint32;               // t max
+
 }
 
 static std::string tree_path;
@@ -111,7 +111,7 @@ static void parse_options(int argc, char** argv) {
              "The path to the stats file on disk (optional).")
             ("rect,r", po::value(&rects)->value_name("RECT"),
              "Add a rectangle to the query."
-             "The syntax is \"(xmin, xmax, ymin, ymax, tmin, tmax)\".")
+             "The syntax is \"xmin, xmax, ymin, ymax, tmin, tmax\".")
             ("label,l", po::value(&labels)->value_name("LIST"),
              "Add a list of comma separated labels to the query. Use zero labels to express \"any\".")
             ;

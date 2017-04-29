@@ -585,11 +585,6 @@ private:
         }
     }
 
-    static size_t list_cache_size(size_t max_leaves) {
-        // FIXME
-        return max_leaves;
-    }
-
 private:
     temp_dir m_directory;
 

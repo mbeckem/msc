@@ -8,9 +8,7 @@ EVAL_NODE_BUILDING := \
 
 EVAL_TREE_BUILDING := results/tree_building.txt results/tree_building.json
 EVAL_LARGE_DATASET := results/large_dataset.txt results/large_dataset.json
-EVAL_QUERIES := \
-	results/queries_geolife.txt results/queries_geolife.json \
-	results/queries_osm.txt results/queries_osm.json
+EVAL_QUERIES := results/queries.json
 
 EVAL_CHEAP_QUICKLOAD := results/cheap_quickload.txt results/cheap_quickload.json
 
@@ -46,7 +44,7 @@ all:
 	@$(MAKE) dataset >> make.log
 
 	@echo "Creating trees ..."
-	@$(MAKE) create_trees >> make.log
+	@$(MAKE) trees >> make.log
 
 	@echo "Evaluating cheap quickload variant ..."
 	@$(MAKE) $(EVAL_CHEAP_QUICKLOAD) >> make.log
@@ -79,17 +77,17 @@ compile:
 
 .PHONY: compile
 
-create_trees:
+trees:
 	@$(MAKE) $(EVAL_TREE_BUILDING)
 	scripts/build_tree_variants.py
 
-.PHONY: create_trees
+.PHONY: trees
 
 queries:
 	# Files for the translation of label string <-> label index.
 	build/strings --input "data/geolife.strings" > "output/geolife.strings.txt"
-	build/strings --input "data/geolife.strings" > "output/geolife.strings.txt"
-	build/strings --input "data/osm.strings" --json > "output/osm.strings.json"
+	build/strings --input "data/geolife.strings" --json > "output/geolife.strings.json"
+	build/strings --input "data/osm.strings" > "output/osm.strings.txt"
 	build/strings --input "data/osm.strings" --json > "output/osm.strings.json"
 	$(MAKE) $(EVAL_QUERIES)
 
@@ -130,7 +128,7 @@ $(eval $(call multi_target,$(EVAL_LARGE_DATASET),scripts/eval_large_dataset.py,l
 
 $(eval $(call multi_target,$(EVAL_QUERIES),scripts/eval_query.py,queries))
 
-$(eval $(call multi_target,$(EVAL_CHEAP_QUICKLOAD),scripts/eval_cheap_quickload.py, cheap-quickload))
+$(eval $(call multi_target,$(EVAL_CHEAP_QUICKLOAD),scripts/eval_cheap_quickload.py,cheap-quickload))
 
 $(HILBERT_CURVE):
 	scripts/hilbert_curve.py
