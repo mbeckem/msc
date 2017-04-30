@@ -494,25 +494,25 @@ osg::Node* TreeDisplay::createScene(const external_tree::cursor& node) {
     return group.release();
 }
 
-static void count_nodes(external_tree::cursor& node, size_t& count) {
-    count += 1;
+// Counts the direct children of `c` and their direct children.
+static size_t count_nodes(const external_tree::cursor& c) {
+    external_tree::cursor node = c;
+    size_t count = node.size();
     if (node.is_internal()) {
         for (size_t i = 0; i < node.size(); ++i) {
             node.move_child(i);
-            count_nodes(node, count);
+            count += node.size();
             node.move_parent();
         }
     }
-}
-
-static size_t count_nodes(const external_tree::cursor& node) {
-    size_t count = 0;
-    external_tree::cursor copy = node;
-    count_nodes(copy, count);
     return count;
 }
 
-static osg::Node* make_tree(external_tree::cursor& node, const osg::Matrix& global, const std::vector<QColor> colors, size_t& index) {
+static osg::Node* make_tree(external_tree::cursor& node,
+                            const osg::Matrix& global)
+{
+    std::vector<QColor> colors = get_colors(node.id(), node.size() + 1);
+    size_t index = 0;
     QColor color = colors[index++];
     osg::ref_ptr<osg::Group> group = new osg::Group;
 
@@ -521,7 +521,14 @@ static osg::Node* make_tree(external_tree::cursor& node, const osg::Matrix& glob
             group->addChild(make_box(node.mbb(i), global, color));
 
             node.move_child(i);
-            group->addChild(make_tree(node, global, colors, index));
+            {
+                osg::ref_ptr<osg::Group> child_group = new osg::Group;
+                QColor child_color = colors[index++];
+                for (size_t j = 0; j < node.size(); ++j) {
+                    child_group->addChild(make_box(node.mbb(j), global, child_color));
+                }
+                group->addChild(child_group);
+            }
             node.move_parent();
         }
     } else {
@@ -535,6 +542,5 @@ static osg::Node* make_tree(external_tree::cursor& node, const osg::Matrix& glob
 osg::Node* TreeDisplay::createRecursiveScene(const external_tree::cursor& node) {
     std::vector<QColor> colors = get_colors(node.id(), count_nodes(node));
     external_tree::cursor copy = node;
-    size_t index = 0;
-    return make_tree(copy, global_transform(node.mbb()), colors, index);
+    return make_tree(copy, global_transform(node.mbb()));
 }

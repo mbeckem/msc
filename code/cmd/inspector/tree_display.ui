@@ -718,8 +718,11 @@
          </item>
          <item>
           <widget class="QCheckBox" name="recurseBox">
+           <property name="toolTip">
+            <string>Include the content of direct children.</string>
+           </property>
            <property name="text">
-            <string>Recurse</string>
+            <string>Children</string>
            </property>
           </widget>
          </item>
