@@ -47,7 +47,7 @@ if __name__ == "__main__":
         # Create trees using all algorithms, with increasing step size.
         for algorithm in algorithms:
             for dataset_name, entries, data_path in dataset_steps:
-                # Overwrite earlier trees with less entries.
+                # Overwrite earlier trees with fewer entries.
                 basename = "{}-{}".format(dataset_name, algorithm)
                 tree_path = OUTPUT_PATH / basename
 

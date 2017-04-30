@@ -22,6 +22,7 @@ static std::string output;
 static u64 trajectory_units = 0;
 static u32 trajectory_size = 0;
 static u32 labels = 0;
+static u32 seed = 0;
 static double highx = 1000;
 static double highy = 1000;
 
@@ -31,6 +32,8 @@ static void parse_options(int argc, char** argv) {
             ("help,h", "Show this message.")
             ("output", po::value(&output)->required()->value_name("PATH"),
              "Path to the output file.")
+            ("seed", po::value(&seed)->value_name("S"),
+             "The seed for the random number generator. Defaults to a truly random value.")
             (",n", po::value(&trajectory_units)->required()->value_name("N"),
              "The number of trajectory units.")
             (",m", po::value(&trajectory_size)->value_name("M")->default_value(1000),
@@ -61,6 +64,10 @@ static void parse_options(int argc, char** argv) {
             throw exit_main(0);
         }
 
+        if (!vm.count("seed")) {
+            seed = std::random_device{}();
+        }
+
         po::notify(vm);
     } catch (const po::error& e) {
         fmt::print(cerr, "Failed to parse arguments: {}.\n", e.what());
@@ -70,7 +77,7 @@ static void parse_options(int argc, char** argv) {
 
 using dist_t = std::uniform_real_distribution<double>;
 
-static std::mt19937_64 rng{std::random_device{}()};
+static std::mt19937_64 rng{};
 
 /// Returns a value in [0, 1).
 static double get_random() {
@@ -129,6 +136,7 @@ static void generate_walk(u64 id, u32 size, tpie::file_stream<tree_entry>& out) 
 int main(int argc, char** argv) {
     return tpie_main([&]{
         parse_options(argc, argv);
+        rng.seed(seed);
 
         tpie::file_stream<tree_entry> out;
         out.open(output);

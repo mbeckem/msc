@@ -6,7 +6,9 @@ import numpy as np
 import matplotlib
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
+from colorsys import hls_to_rgb
 
+import common
 from common import OUTPUT_PATH, RESULT_PATH
 
 
@@ -18,6 +20,38 @@ def ordered_unique(seq):
             result.append(i)
             s.add(i)
     return result
+
+
+# http://stackoverflow.com/a/4382138/4928144
+kelly_colors_hex = [
+    0xFFB300,  # Vivid Yellow
+    0x803E75,  # Strong Purple
+    0xFF6800,  # Vivid Orange
+    0xA6BDD7,  # Very Light Blue
+    0xC10020,  # Vivid Red
+    0xCEA262,  # Grayish Yellow
+    0x817066,  # Medium Gray
+
+    # The following don't work well for people with defective color vision
+    0x007D34,  # Vivid Green
+    0xF6768E,  # Strong Purplish Pink
+    0x00538A,  # Strong Blue
+    0xFF7A5C,  # Strong Yellowish Pink
+    0x53377A,  # Strong Violet
+    0xFF8E00,  # Vivid Orange Yellow
+    0xB32851,  # Strong Purplish Red
+    0xF4C800,  # Vivid Greenish Yellow
+    0x7F180D,  # Strong Reddish Brown
+    0x93AA00,  # Vivid Yellowish Green
+    0x593315,  # Deep Yellowish Brown
+    0xF13A13,  # Vivid Reddish Orange
+    0x232C16,  # Dark Olive Green
+]
+kelly_colors = [
+    (((v >> 16) & 255) / 255,
+     ((v >> 8) & 255) / 255,
+     ((v >> 0) & 255) / 255) for v in kelly_colors_hex
+]
 
 
 # Taken from
@@ -50,7 +84,7 @@ def barplot(ax, dpoints):
         vals = dpoints[dpoints[:, 1] == cond][:, 2].astype(np.float)
         pos = [j - (1 - space) / 2. + i * width for j in indeces]
         ax.bar(pos, vals, width=width, label=cond,
-               color=cm.Accent(float(i) / n))
+               color=kelly_colors[i])
 
     tickpos = [j - (1 - space) / 2. + (len(algorithms) / 2)
                * width - (width / 2) for j in indeces]
@@ -65,11 +99,10 @@ def barplot(ax, dpoints):
     # Add a legend
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(reversed(handles[::-1]),
-              reversed(labels[::-1]), loc='upper right')
+              reversed(labels[::-1]), loc='best')
 
 
 def load_results():
-    # FIXME
     with (RESULT_PATH / "queries.json").open("r") as file:
         return json.load(file)
 
@@ -103,7 +136,7 @@ def plot_querysets(axes, datasets):
 
 
 def plot_main_algorithms(output_path):
-    fig, axes = plt.subplots(1, 3, figsize=(12, 5))
+    fig, axes = plt.subplots(1, 3, figsize=(14, 5))
 
     datasets = [
         (("Geolife", "geolife"), [
@@ -117,7 +150,13 @@ def plot_main_algorithms(output_path):
             ("str-lf", "osm-str-lf"),
             ("quickload", "osm-quickload"),
             ("obo", "osm-obo")
-        ])
+        ]),
+        (("Random-Walk", "random-walk"), [
+            ("hilbert", "random-walk-hilbert"),
+            ("str-lf", "random-walk-str-lf"),
+            ("quickload", "random-walk-quickload"),
+            ("obo", "random-walk-obo")
+        ]),
     ]
     plot_querysets(axes, datasets)
 
@@ -221,15 +260,17 @@ def plot_str_variants(output_path):
 
 
 def plot_bloom_filters(output_path):
-    fig, ax = plt.subplots(1, 1, figsize=(4, 3))
+    fig, ax = plt.subplots(1, 1, figsize=(5, 4))
 
     datasets = [
         (("Geolife", "geolife"), [
             ("interval sets", "geolife-quickload"),
+            ("interval sets (rnd. ids)", "geolife-shuffled-quickload"),
             ("bloom filters", "geolife-quickload-bloom"),
         ]),
         (("OSM", "osm"), [
             ("interval sets", "osm-quickload"),
+            ("interval sets (rnd. ids)", "osm-shuffled-quickload"),
             ("bloom filters", "osm-quickload-bloom"),
         ]),
     ]
@@ -245,12 +286,67 @@ def plot_bloom_filters(output_path):
     ax.set_title("Queryset {}".format("sequenced"))
 
     fig.tight_layout()
-    fig.suptitle("Vergleich von Intervall-Sets und Bloom-Filter (Quickload)")
+    fig.suptitle("Vergleich von Intervall-Set und Bloom-Filter (Quickload)")
     fig.subplots_adjust(top=0.85)
     fig.savefig(str(output_path), bbox_inches="tight")
+
+
+def plot_fanout(output_path):
+    def avg_result(dataset, tree):
+        querysets = ["small", "large", "sequenced"]
+        s = sum(tree_result(dataset, tree, queryset)
+                for queryset in querysets)
+        return s / len(querysets)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(9, 4))
+
+    trees = ["geolife-quickload-fanout-32",
+             "geolife-quickload-fanout-50",
+             "geolife-quickload-fanout-64",
+             "geolife-quickload"]
+
+    querysets = ["small", "large", "sequenced"]
+    markers = ["o", "^", "*"]
+    x = [32, 50, 64, 113]
+    for queryset, marker in zip(querysets, markers):
+        y = [tree_result("geolife", tree, queryset) for tree in trees]
+        ax1.plot(x, y, label=queryset, marker=marker, linestyle="dashed")
+
+    ax1.set_title("Query Performance.")
+    ax1.set_xticks(x)
+    ax1.set_xlabel("Fan-out")
+    ax1.set_ylabel("Average IO Operations")
+    ax1.legend(loc="best")
+
+    tree_paths = [
+        OUTPUT_PATH / "variants" / "geolife-quickload-fanout-{}".format(fanout)
+        for fanout in [32, 50, 64]
+    ]
+    tree_paths.append(OUTPUT_PATH / "geolife-quickload")
+
+    total_size = [common.file_size(p) / 2 ** 20 for p in tree_paths]
+    rtree_size = [common.file_size(
+        p / "tree.blocks") / 2 ** 20 for p in tree_paths]
+    index_size = [ts - rs for ts, rs in zip(total_size, rtree_size)]
+
+    ax2.plot(x, rtree_size, marker="o", linestyle="dashed", label="R-Baum")
+    ax2.plot(x, index_size, marker="^", linestyle="dashed", label="Index")
+
+    ax2.set_title("Größe des Baums.")
+    ax2.set_xticks(x)
+    ax2.set_xlabel("Fan-out")
+    ax2.set_ylabel("Megabyte")
+    ax2.legend(loc="best")
+
+    fig.tight_layout()
+    fig.suptitle("Performance mit variierendem Fan-out. Quickload / Geolife.")
+    fig.subplots_adjust(top=0.88)
+    fig.savefig(str(output_path), bbox_inches="tight")
+
 
 plot_main_algorithms(RESULT_PATH / "query.pdf")
 plot_beta_values(RESULT_PATH / "query_beta_values.pdf")
 plot_beta_strategies(RESULT_PATH / "query_beta_strategies.pdf")
 plot_str_variants(RESULT_PATH / "query_str_variants.pdf")
 plot_bloom_filters(RESULT_PATH / "query_bloom_filters.pdf")
+plot_fanout(RESULT_PATH / "query_fanout.pdf")

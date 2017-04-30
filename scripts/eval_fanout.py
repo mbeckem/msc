@@ -3,59 +3,52 @@
 
 import collections
 import itertools
+import json
 
 import common
 from common import LOADER, RESULT_PATH, OUTPUT_PATH, TMP_PATH, DATA_PATH
 from common import compile
+from common import GEOLIFE
 from lib.prettytable import PrettyTable
 
 
 if __name__ == "__main__":
-    table = PrettyTable(["Algorithm", "Entries", "Leaf fanout", "Internal fanout",
-                         "I/O", "Duration"])
-    table.align["Leaf fanout"] = "r"
-    table.align["Internal fanout"] = "r"
-    table.align["Entries"] = "r"
-    table.align["I/O"] = "r"
-    table.align["Duration"] = "r"
-
     fanouts = [32, 50, 64, 0]
     algorithms = [
         "hilbert",
         "str-lf",
         "quickload",
-        #  "obo", # TODO SOO SLOW
+        "obo"
     ]
 
     # TODO Measure query performance as well.
-    with (OUTPUT_PATH / "eval_fanout.log").open("w") as logfile:
-        entries = 1000000
+    with (OUTPUT_PATH / "fanouts.log").open("w") as logfile:
+        dataset = ("geolife", *GEOLIFE)
 
-        # FIXME
-        # data_path = datasets.osm_generated(entries)
-
-        results = collections.defaultdict(dict)
-
+        # fanout -> algorithm -> list of results
+        results = collections.defaultdict(
+            lambda: collections.defaultdict(list))
         for fanout in fanouts:
             compile(leaf_fanout=fanout, internal_fanout=fanout)
 
             for algorithm in algorithms:
-                print("Running algorithm {} for fanout {}"
-                      .format(algorithm, fanout))
-
+                dataset_name, entries, data_path = dataset
                 tree_path = TMP_PATH / "eval_fanout_tree"
 
+                # Reduced number of entries
+                entries = entries // 10
+
+                print("Running {} on {} entries from {} (fanout = {})"
+                      .format(algorithm, entries, dataset_name, fanout))
                 result = common.build_tree(algorithm, tree_path,
-                                           data_path, logfile)
-                results[algorithm][fanout] = result
+                                           data_path, logfile, limit=entries)
+                results[fanout][algorithm].append({
+                    "dataset": dataset_name,
+                    "algorithm": algorithm,
+                    "entries": entries,
+                    "fanout": fanout,
+                    **result
+                })
 
-        for algorithm, fanout in itertools.product(algorithms, fanouts):
-            result = results[algorithm][fanout]
-            table.add_row([
-                algorithm, entries,
-                common.values(result, "leaf_fanout",
-                              "internal_fanout", "total_io", "duration")
-            ])
-
-    with (RESULT_PATH / "eval_fanout.txt").open("w") as outfile:
-        print(table, file=outfile)
+    with (RESULT_PATH / "fanouts.json").open("w") as outfile:
+        json.dump(results, outfile, indent=4, sort_keys=True)

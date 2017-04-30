@@ -11,20 +11,19 @@ if __name__ == "__main__":
     datasets = [("geolife", *GEOLIFE), ("osm", *OSM_ROUTES)]
     algorithms = ["obo", "quickload"]
 
-    def build_if_missing(algorithm, tree_path, entries_path, logfile, beta=0.5, limit=None):
+    def build_if_missing(algorithm, tree_path, entries_path, logfile, beta=0.5, limit=None, compile_flags={}):
         if tree_path.exists():
             print("{} exists, skipping ...".format(tree_path))
             return
 
         print("Building {}".format(tree_path))
+        compile(**compile_flags)
         common.build_tree(algorithm,
                           tree_path=tree_path, entries_path=entries_path,
                           logfile=logfile, beta=beta, limit=limit)
 
     with (OUTPUT_PATH / "tree_variants.log").open("w") as logfile:
         def build_shuffled():
-            compile()
-
             def tree_path(dataset):
                 return tree_dir / "{}-{}".format(dataset, "quickload")
 
@@ -35,8 +34,6 @@ if __name__ == "__main__":
                                  entries_path=data_path, logfile=logfile, limit=entries)
 
         def build_str_variants():
-            compile()
-
             def tree_path(dataset, algorithm):
                 return tree_dir / "{}-{}".format(dataset, algorithm)
 
@@ -46,8 +43,6 @@ if __name__ == "__main__":
                                      entries_path=data_path, logfile=logfile, limit=entries)
 
         def build_beta_values():
-            compile()
-
             def tree_path(dataset, algorithm, beta):
                 return tree_dir / "{}-{}-beta-{}".format(dataset, algorithm, beta)
 
@@ -66,26 +61,41 @@ if __name__ == "__main__":
                 return tree_dir / "{}-{}-beta-{}".format(dataset, algorithm, mode)
 
             for mode in ["increasing", "decreasing"]:
-                compile(beta=mode)
-
                 for dataset, entries, data_path in datasets:
                     for algorithm in algorithms:
                         build_if_missing(algorithm, tree_path=tree_path(dataset, algorithm, mode),
-                                         entries_path=data_path, logfile=logfile, limit=entries)
+                                         entries_path=data_path, logfile=logfile, limit=entries,
+                                         compile_flags=dict(beta=mode))
 
         def build_bloom_filters():
-            compile(bloom_filters=True)
-
             def tree_path(dataset, algorithm):
                 return tree_dir / "{}-{}-bloom".format(dataset, algorithm)
 
             for dataset, entries, data_path in datasets:
                 for algorithm in algorithms:
                     build_if_missing(algorithm, tree_path=tree_path(dataset, algorithm),
-                                     entries_path=data_path, logfile=logfile, limit=entries)
+                                     entries_path=data_path, logfile=logfile, limit=entries,
+                                     compile_flags=dict(bloom_filters=True))
 
-        build_shuffled()
-        build_str_variants()
-        build_beta_values()
-        build_beta_modes()
+        def build_fanout_trees():
+            # Only quickload, different fanouts. Dataset: geolife.
+            algorithm = "quickload"
+            dataset, entries, data_path = ("geolife", *GEOLIFE)
+
+            def tree_path(fanout):
+                return tree_dir / "{}-{}-fanout-{}".format(dataset, algorithm, fanout)
+
+            for fanout in [32, 50, 64]:
+                build_if_missing(algorithm, tree_path=tree_path(fanout),
+                                 entries_path=data_path, logfile=logfile, limit=entries,
+                                 compile_flags=dict(leaf_fanout=fanout, internal_fanout=fanout))
+
+        # These require special compile options.
         build_bloom_filters()
+        build_beta_modes()
+        build_fanout_trees()
+
+        # These restore the normal compile options.
+        build_shuffled()
+        build_beta_values()
+        build_str_variants()

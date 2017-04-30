@@ -66,7 +66,7 @@ Einige Dependencies werden als vorinstalliert vorausgesetzt:
 
     - Python3 (inkl. matplotlib, numpy)
     - Doxygen für die Dokumentation ("make doc"). Doxygen ist so konfiguriert dass es
-      zum Parsen libclang benötigt. Die Ubuntu version von Doxygen hat dieses Feature standadmäßig aktiviert.
+      zum Parsen libclang benötigt. Die Ubuntu-Version von Doxygen hat dieses Feature standardmäßig aktiviert.
 
 Quellcode
 ===========================
@@ -91,7 +91,7 @@ CMake-Konfigurationsparameter:
         Schaltet die Verwendung von Bloom-Filtern anstatt von Intervall-Sets ein oder aus.
     -DUSE_NAIVE_NODE_BUILDING
         Schaltet bulkloading individueller interner Knoten (bzw. deren Indizes)
-        ein oder aus.
+        ein oder aus. Standard: aus (== bulk loading aktiviert).
     -DBETA  ("normal", "increasing", "decreasing")
         Legt die Strategie für den Parameter "beta" (die Gewichtung von räumlichen
         und textuellen Kosten) fest.
@@ -105,7 +105,7 @@ CMake-Konfigurationsparameter:
     -DINTERNAL_FANOUT
         Analog für interne Knoten.
     -DLAMBDA
-        Die Größe der einzelnen Intervall-Sets im invertierten Index.
+        Die Größe der einzelnen Intervall-Sets im invertierten Index. Standard: 40.
     
     Alle Parameter können auch über das Python-Script gesetzt werden.
     Im Gegensatz zu CMake setzt das Python-Script immer für alle nicht angegebenen
@@ -151,7 +151,7 @@ OSM:
     Dieses implementiert einen Routenplaner auf einem OSM-Datenset.
     Es wurden Routen zwischen den 100 größten Deutschen Städten generiert und
     in kleine Stücke "zerhackt", um trajectory units zu erhalten.
-    Ein Stück ist höchstens ca. ~20 Sekunden lang. Die jeweiligen Straßennahmen
+    Ein Stück ist höchstens ca. 20 Sekunden lang. Die jeweiligen Straßennahmen
     der Route dienen als Label.
 
     Quellcode in cmd/osm_generator.

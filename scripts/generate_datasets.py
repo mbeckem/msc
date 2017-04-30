@@ -7,6 +7,8 @@ from common import RANDOM_WALK_VARYING_LABELS, OSM_ROUTES, GEOLIFE, RANDOM_WALK,
 from common import GEOLIFE_SHUFFLED, OSM_ROUTES_SHUFFLED
 from common import compile
 
+RANDOM_SEED = 1624827567
+
 
 def generate_random_walk(entries, labels, path, log, units_per_trajectory=None, maxx=None, maxy=None):
     if path.exists():
@@ -16,6 +18,7 @@ def generate_random_walk(entries, labels, path, log, units_per_trajectory=None, 
     args = [
         str(GENERATOR),
         "--output", str(path),
+        "--seed", str(RANDOM_SEED),
         "-n", str(entries),
         "-l", str(labels),
     ]

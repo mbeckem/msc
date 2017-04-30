@@ -2,6 +2,7 @@
 
 import json
 import subprocess
+import random
 
 import common
 from common import OUTPUT_PATH, RESULT_PATH, TMP_PATH, QUERY
@@ -324,6 +325,73 @@ def get_osm_queries():
     return {"large": large_results, "small": small_results, "sequenced": sequenced}
 
 
+def get_random_walk_queries():
+    # Bounding box for all entries in the osm dataset.
+    all = BoundingBox((-1000, -1000, 0), (2000, 2000, 200000))
+
+    rng = random.Random()
+    rng.seed(1234567)
+
+    # Around 1000 results each
+    small_queries = []
+    for i in range(20):
+        xmin = rng.uniform(0, 1000)
+        ymin = rng.uniform(0, 1000)
+        tmin = rng.randint(5000, 50000)
+        xmax = xmin + rng.uniform(100, 500)
+        ymax = ymin + rng.uniform(100, 500)
+        tmax = tmin + rng.randint(5000, 10000)
+        label = rng.randint(0, 99)
+        small_queries.append(SimpleQuery(BoundingBox((xmin, ymin, tmin),
+                                                     (xmax, ymax, tmax)),
+                                         [label]))
+
+    # Up to 300k results each
+    large_queries = []
+    for i in range(20):
+        xmin = rng.uniform(0, 1000)
+        ymin = rng.uniform(0, 1000)
+        tmin = rng.randint(5000, 10000)
+        xmax = xmin + rng.uniform(400, 600)
+        ymax = ymin + rng.uniform(400, 600)
+        tmax = tmin + 40000
+        labels = []
+        for i in range(rng.randint(30, 60)):
+            labels.append(rng.randint(0, 99))
+        large_queries.append(SimpleQuery(BoundingBox((xmin, ymin, tmin),
+                                                     (xmax, ymax, tmax)),
+                                         labels))
+
+    sequenced_queries = []
+    for i in range(20):
+        seq = []
+
+        xmin = rng.uniform(0, 800)
+        ymin = rng.uniform(0, 800)
+        tmin = rng.randint(5000, 10000)
+        xmax = xmin + 1000
+        ymax = ymin + 1000
+        tmax = tmin + 40000
+        for j in range(rng.randint(3, 6)):
+            dist = j * 100
+            duration = j * 200
+            labels = []
+            for i in range(rng.randint(30, 60)):
+                labels.append(rng.randint(0, 99))
+            seq.append(SimpleQuery(BoundingBox((xmin + dist, ymin + dist, tmin + duration),
+                                               (xmax + dist, ymax + dist, tmax + duration)),
+                                   labels))
+        sequenced_queries.append(seq)
+
+    large_results = [Query("RANDOM-WALK-LARGE-{}".format(i), sq)
+                     for i, sq in enumerate(large_queries)]
+    small_results = [Query("RANDOM-WALK-SMALL-{}".format(i), sq)
+                     for i, sq in enumerate(small_queries)]
+    sequenced = [Query("RANDOM-WALK-SEQUENCED-{}".format(i), *sq)
+                 for i, sq in enumerate(sequenced_queries)]
+    return {"large": large_results, "small": small_results, "sequenced": sequenced}
+
+
 # Runs a single query for a given tree and returns the stats.
 def run_query(tree, query, results=None, logfile=None):
     stats_path = TMP_PATH / "query-stats.json"
@@ -362,7 +430,8 @@ def measure_queries(tree, query_set, logfile=None):
             query: run_query(tree, query, logfile=logfile)["total_io"]
             for query in queries
         }
-        average = sum(query_stats[query] for query in queries) / len(queries)
+        average = sum(query_stats[query]
+                      for query in queries) / (max(len(queries), 1))
         return {"stats": map_keys(query_stats, lambda q: q.name), "avg": average}
 
     # For every query set: Evaluate every query.
@@ -416,6 +485,14 @@ if __name__ == "__main__":
     ]
     osm_queries = get_osm_queries()
 
+    random_walk_trees = [
+        OUTPUT_PATH / "random-walk-obo",
+        OUTPUT_PATH / "random-walk-hilbert",
+        OUTPUT_PATH / "random-walk-str-lf",
+        OUTPUT_PATH / "random-walk-quickload",
+    ]
+    random_walk_queries = get_random_walk_queries()
+
     def handle_tree(tree, query_set, results):
         tree_name = tree.name
         print("Running queries on tree {}.".format(tree_name))
@@ -425,11 +502,13 @@ if __name__ == "__main__":
         datasets = [
             ("geolife", geolife_trees, geolife_queries),
             ("osm", osm_trees, osm_queries),
+            ("random-walk", random_walk_trees, random_walk_queries)
         ]
 
         result = {
             "geolife": {},
-            "osm": {}
+            "osm": {},
+            "random-walk": {},
         }
         for dataset_name, tree_set, query_set in datasets:
             for tree in tree_set:
@@ -444,6 +523,15 @@ if __name__ == "__main__":
         for tree in [OUTPUT_PATH / "variants" / "osm-obo-bloom",
                      OUTPUT_PATH / "variants" / "osm-quickload-bloom"]:
             handle_tree(tree, osm_queries, result["osm"])
+
+        # as do trees with different fanout.
+        for fanout in [32, 50, 64]:
+            compile(leaf_fanout=fanout, internal_fanout=fanout, debug_stats=True)
+            handle_tree(OUTPUT_PATH / "variants" / "geolife-quickload-fanout-{}".format(fanout),
+                        geolife_queries, result["geolife"])
+
+        # Destore default config to avoid errors.
+        compile()
 
     with (RESULT_PATH / "queries.json").open("w") as outfile:
         json.dump(result, outfile, sort_keys=True, indent=4)

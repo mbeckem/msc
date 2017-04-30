@@ -32,7 +32,7 @@ def get_sequence(dataset, algorithm):
 
 
 def plot_tree_construction(logscale, output_path):
-    fig, (axis) = plt.subplots(3, 2, figsize=(14, 8))
+    fig, axis = plt.subplots(3, 2, figsize=(14, 8))
 
     datasets = ["geolife", "osm", "random-walk"]
     algorithms = ["hilbert", "str-lf", "quickload", "obo"]
@@ -72,10 +72,43 @@ def plot_tree_construction(logscale, output_path):
          "Seconds", "Random walk (Duration)")
 
     fig.tight_layout()
-    fig.suptitle("Building a tree from stratch with different algorithms.")
+    fig.suptitle("Building a tree from scratch with different algorithms.")
     fig.subplots_adjust(top=0.93)
+    fig.savefig(str(output_path), bbox_inches="tight")
+
+
+def plot_fanout_construction(output_path):
+    with (RESULT_PATH / "fanouts.json").open() as f:
+        fanout_results = json.load(f)
+
+    algorithms = ["hilbert", "str-lf", "quickload"]  # , obo (außer konkurrenz)
+    markers = ["*", "o", "^", "+"]
+
+    def plot(ax, key, ylabel, title):
+        for algorithm, marker in zip(algorithms, markers):
+            seq = [fanout_results[str(f)][algorithm][0]
+                   for f in [32, 50, 64, 0]]
+            x = [32, 50, 64, 113]
+            y = [s[key] for s in seq]
+            ax.plot(x, y, marker=marker, label=algorithm, linestyle="dashed")
+        ax.set_xticks([32, 50, 64, 113])
+        ax.set_xlabel("Fan-out")
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+        ax.legend(loc="best", fancybox=True, ncol=1)
+
+    fig, axis = plt.subplots(2, 2, figsize=(12, 9))
+    plot(axis[0][0], "total_io", "IO Operations", "Fanout -> IO Operations")
+    plot(axis[0][1], "duration", "Seconds", "Fanout -> Duration")
+    plot_index(axis[1][0])
+
+    fig.tight_layout()
+    fig.suptitle("Building a tree with different algorithms and different values for \"fan-out\". "
+                 "Dataset: Geolife (10%).")
+    fig.subplots_adjust(top=0.85)
     fig.savefig(str(output_path), bbox_inches="tight")
 
 
 plot_tree_construction(True, RESULT_PATH / "construction_logscale.pdf")
 plot_tree_construction(False, RESULT_PATH / "construction.pdf")
+plot_fanout_construction(RESULT_PATH / "construction_fanout.pdf")
