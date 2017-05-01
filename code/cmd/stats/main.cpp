@@ -62,7 +62,7 @@ static void parse_options(int argc, char** argv) {
     po::options_description options;
     options.add_options()
             ("help,h", "Show this message.")
-            ("input", po::value(&input)->value_name("PATH")->required(),
+            ("tree", po::value(&input)->value_name("PATH")->required(),
              "Path to the tree directory on disk.");
 
     po::variables_map vm;
