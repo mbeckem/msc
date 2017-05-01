@@ -11,13 +11,21 @@ if __name__ == "__main__":
     datasets = [("geolife", *GEOLIFE), ("osm", *OSM_ROUTES)]
     algorithms = ["obo", "quickload"]
 
+    current_compile_flags = None
+
     def build_if_missing(algorithm, tree_path, entries_path, logfile, beta=0.5, limit=None, compile_flags={}):
         if tree_path.exists():
             print("{} exists, skipping ...".format(tree_path))
             return
 
         print("Building {}".format(tree_path))
-        compile(**compile_flags)
+
+        # Rebuild if the flags differ.
+        global current_compile_flags
+        if current_compile_flags is None or current_compile_flags != compile_flags:
+            compile(**compile_flags)
+            current_compile_flags = compile_flags
+
         common.build_tree(algorithm,
                           tree_path=tree_path, entries_path=entries_path,
                           logfile=logfile, beta=beta, limit=limit)

@@ -96,6 +96,7 @@ OSM_GENERATOR = BUILD_PATH / "osm_generator"
 HILBERT_CURVE = BUILD_PATH / "hilbert_curve"
 LOADER = BUILD_PATH / "loader"
 QUERY = BUILD_PATH / "query"
+STATS = BUILD_PATH / "stats"
 
 # Random walk with fixed size and growing number of labels (~evenly
 # distributed). More labels == more load in the inverted indices and significantly more
@@ -116,7 +117,7 @@ RANDOM_WALK = (10000000, DATA_PATH / "random-walk.entries")
 RANDOM_WALK_SMALL = (64000, DATA_PATH / "random-walk-small.entries")
 
 # 200 million entries (with only 10 labels).
-RANDOM_WALK_LARGE = (200000000, DATA_PATH / "random-walk-large.entries")
+RANDOM_WALK_LARGE = (100000000, DATA_PATH / "random-walk-large.entries")
 
 # 4 million entries (about 4,5k routes).
 # The labels are street names.
@@ -139,7 +140,6 @@ resource.setrlimit(resource.RLIMIT_NOFILE, (64000, limits[1]))
 # None means "insert everything up to EOF").
 def build_tree(algorithm, tree_path, entries_path, logfile, beta=0.5,
                memory=64, offset=None, limit=None, keep_existing=False):
-
     if not keep_existing:
         # Make sure the tree does not exist yet.
         remove(tree_path)

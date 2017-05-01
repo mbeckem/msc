@@ -8,7 +8,7 @@ EVAL_NODE_BUILDING := \
 
 EVAL_TREE_BUILDING := results/tree_building.txt results/tree_building.json
 EVAL_LARGE_DATASET := results/large_dataset.txt results/large_dataset.json
-EVAL_QUERIES := results/queries.json
+EVAL_QUERIES := results/queries.json results/tree_stats.json
 
 EVAL_CHEAP_QUICKLOAD := results/cheap_quickload.txt results/cheap_quickload.json
 EVAL_FANOUT_CONSTRUCTION = results/fanouts.json
@@ -54,6 +54,9 @@ all:
 	@truncate -s 0 make.log
 	@echo "Note: Log will be written into make.log"
 
+	@echo "Creating directory structure"
+	@$(MAKE) folders >> make.log
+
 	@echo "Making sure that the project is compiled ..."
 	@$(MAKE) compile >> make.log
 
@@ -96,6 +99,11 @@ compile:
 	cd build && cmake -DCMAKE_BUILD_TYPE=Release ../code && $(MAKE) -j5
 
 .PHONY: compile
+
+folders:
+	mkdir -p build data output results tmp
+
+.PHONY: folders
 
 trees:
 	@$(MAKE) $(EVAL_TREE_BUILDING)

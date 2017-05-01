@@ -88,4 +88,4 @@ if __name__ == "__main__":
                 str(ID_SHUFFLE),
                 "--input", str(GEOLIFE[1]),
                 "--output", str(path),
-            ], stdout=out)
+            ])
