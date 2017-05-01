@@ -8,7 +8,7 @@ EVAL_NODE_BUILDING := \
 
 EVAL_TREE_BUILDING := results/tree_building.txt results/tree_building.json
 EVAL_LARGE_DATASET := results/large_dataset.txt results/large_dataset.json
-EVAL_QUERIES := results/queries.json
+EVAL_QUERIES := results/queries.json results/tree_stats.json
 
 EVAL_CHEAP_QUICKLOAD := results/cheap_quickload.txt results/cheap_quickload.json
 EVAL_FANOUT_CONSTRUCTION = results/fanouts.json

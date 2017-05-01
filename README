@@ -1,4 +1,4 @@
-Grobe Struktur 
+Grobe Struktur
 ===========================
 
 ├── build
@@ -34,10 +34,10 @@ Im Projektverzeichnis:
 Der build Ordner enthält die build-Artefakte inklusive
 CMake Konfiguration und die fertigen Commands bzw. die Bibliothek.
 Er kann jederzeit vollständig gelöscht werden.
-Wegen der vielen zur Compile-Zeit festzulegenden Parameter ist der 
+Wegen der vielen zur Compile-Zeit festzulegenden Parameter ist der
 Compilierungsprozess mithilfe von Python scriptbar.
 
-Standardkonfiguration bauen: 
+Standardkonfiguration bauen:
     $ mkdir build && cd build && cmake ../code && make -j5
 
 Äquivalent:
@@ -67,6 +67,7 @@ Einige Dependencies werden als vorinstalliert vorausgesetzt:
     - Python3 (inkl. matplotlib, numpy)
     - Doxygen für die Dokumentation ("make doc"). Doxygen ist so konfiguriert dass es
       zum Parsen libclang benötigt. Die Ubuntu-Version von Doxygen hat dieses Feature standardmäßig aktiviert.
+      "make doc" ist nur verfügbar wenn CMake feststellt, dass Doxygen installiert ist.
 
 Quellcode
 ===========================
@@ -86,11 +87,11 @@ CMake-Konfigurationsparameter:
     -DBUILD_TESTS
         Ob die Unit-Tests gebaut werden sollen.
     -DCMAKE_BUILD_TYPE
-        Sollte aus Performancegründen unbedingt "Release" sein (der Standardwert).
+        Sollte aus Performance-Gründen unbedingt "Release" sein (der Standardwert).
     -DUSE_BLOOM
         Schaltet die Verwendung von Bloom-Filtern anstatt von Intervall-Sets ein oder aus.
     -DUSE_NAIVE_NODE_BUILDING
-        Schaltet bulkloading individueller interner Knoten (bzw. deren Indizes)
+        Schaltet bulk loading individueller interner Knoten (bzw. deren Indizes)
         ein oder aus. Standard: aus (== bulk loading aktiviert).
     -DBETA  ("normal", "increasing", "decreasing")
         Legt die Strategie für den Parameter "beta" (die Gewichtung von räumlichen
@@ -106,7 +107,7 @@ CMake-Konfigurationsparameter:
         Analog für interne Knoten.
     -DLAMBDA
         Die Größe der einzelnen Intervall-Sets im invertierten Index. Standard: 40.
-    
+
     Alle Parameter können auch über das Python-Script gesetzt werden.
     Im Gegensatz zu CMake setzt das Python-Script immer für alle nicht angegebenen
     Optionen den Standardwert.
@@ -121,7 +122,7 @@ Daten
 
 Im Order "data" sind die zum Testen der Implementierung verwendeten Datensätze.
 Rohdaten befinden sich in "Geolife Trajectories 1.3" bzw. in "osm" (OpenStreetMaps).
-Die daraus generierten Dateien tragen die Endung ".entries". Es sind 
+Die daraus generierten Dateien tragen die Endung ".entries". Es sind
 tpie::file_stream<tree_entry>-Dateien wobei tree_entry ein Blatteintrag eines IRWI-Baumes ist.
 Intern werden Label als einfache Integer repräsentiert. Das Mapping von Strings zu Integern
 findet bei der Generierung der .entries-Dateien statt.
@@ -131,7 +132,7 @@ Die Einträge können mit dem Kommando "strings" ausgelesen werden:
 
 
 Neben den "normalen" Datensets "geolife" und "osm" gibt es noch die zufällig generierten
-Dateien (Quellcode dazu in cmd/generator). 
+Dateien (Quellcode dazu in cmd/generator).
 Neben der Anzahl der Einträge kann hier auch die Anzahl der verschiedenen Label
 variiert werden. Dies is wichtig für die Evaluation vom Bulkloading der Indizes.
 
@@ -159,19 +160,171 @@ OSM:
 
 Random-Walk:
     Von einem zufälligen Startpunkt innerhalb einer vordefinierten Box ausgehende
-    Trajektorien. In kleinen Schritten wird zufällig weitergelaufen.    
+    Trajektorien. In kleinen Schritten wird zufällig weitergelaufen.
     Vom Zufall bestimmt wird mit einer bestimmten Wahrscheinlichkeit nach jedem
-    Punkt das aktuelle Label gewechselt und aus einem Pool von L Labels 
-    zufällig ausgewählt.
-   
+    Punkt das aktuelle Label gewechselt und aus einem Pool von L Labels
+    zufällig ausgewählt. Der Seed für den Zufallsgenerator ist in den Experimenten
+    (Python Quellcode in scripts/) festgelegt, sodass die Ergebnisse immer identisch sein sollten.
+
     Quellcode in cmd/generator.
 
 
-Scripts
+Scripts und Experimente
 ===========================
 
 Die Python-Scripts in scripts/ benötigen alle Python3. Sie sollten immer
 vom Projektverzeichnis aus aufgerufen werden (z.B. "scripts/compile.py")
 da sie sich auf die relativen Pfade verlassen.
 
+Wenn nach "make all" alle Experimente durchgelaufen sind, werden automatisch
+im Ordner "results" die Ergebnisse abgelegt. Dazu zählen Grafiken, Tabellen
+und maschinell lesbare Daten im .json-Format.
 
+Im Ordner "output" befinden sich alle generierten Bäume (viele davon im Unterordner "variants").
+
+    !!! WICHTIG: Wenn die Experimente erfolgreich durchgelaufen sind empfiehlt sich ein Backup
+    des "output"-Ordners. Falls eines der Tools (unwahrscheinlicherweise) crashen sollte,
+    ist der jeweilige Baum korrupt. Ursache ist ein Feature von TPIE, welches vermerkt dass ein file_stream<T>
+    nicht erfolgreich geschlossen wurde, und zwar anscheinend selbst dann wenn der Inhalt nicht verändert wurde ...
+
+Die Namen der Bäume folgen dem Schema "DATASET-ALGO-ATTRIBUTE", mit den folgenden Möglichkeiten für jeden Wert:
+
+DATASET:
+    - geolife
+    - osm (OpenStreetMaps-Routen)
+    - random-walk
+    - *-shuffled: Das identische Datenset, aber die IDs der Trajektorien wurden auf den Bereich [0, 2^31 - 1] zufällig
+      verteilt. Ansonsten liegen sie dicht in [1, N] (N: Anzahl der Trajektorien).
+
+ALGO:
+    - hilbert: Trajectory units werden nach dem Hilbert Index ihres Mittelpunkts (der Mitte des 3d-Liniensegments)
+      sortiert und in Blättern zusammengefasst. Sobald die Blätter halbvoll sind, werden nur solange weitere
+      Einträge hinzugenommen, bis die Bounding Box des Blattes zu groß wird.
+      Hier werden die Label bei der Konstruktion des Baumes vollkommen ignoriert (der Index wird natürlich trotzdem angelegt).
+      Implementiert in code/irwi/bulk_load_hilbert.hpp
+
+    - str: Sort-Tile-Recursive mit drei Varianten:
+        - plain: Sortiert und Kachelt die Trajectory Units in 3 Dimensionen (Reihenfolge: x -> y -> t).
+        - lf ("labels first"): ___________________________ in 4 Dimensionen (Reihenfolge: label -> x -> y -> t).
+          Damit ist die Anzahl der verschiedenen Label in den Teilbäumen sehr gering (meistens 1).
+        - ll ("labels last"): Reihenfolge x->y->t->label.
+      Die Blätter werden immer zu 100% gefüllt. Nur das letzte Blatt ist ggf. nicht voll.
+      Implementiert in code/geodb/irwi/bulk_load_str.hpp. Der generische STR-Sortieralgorithmis ist in code/geodb/str.hpp.
+
+    - quickload: Wie beschrieben in [1]. Implementiert in code/geodb/bulk_load_quickload. Sehr komplex..
+
+    - obo ("one-by-one"): Jede trajectory unit wird einzeln eingefügt. Implementiert in code/geodb/irwi/tree.hpp
+      bzw. in tree_insertion.hpp / tree_partition.hpp.
+
+ATTRIBUTE:
+    - beta-[increasing, decreasing]:
+      Der Wert von beta in einem Knoten ist von dessen Level im Baum abhängig.
+      increasing: Je höher der Knoten, desto höher ist beta -> räumliche Kosten werden höher gewichtet.
+      decreasing: umgekehrt.
+      ("normal") ist der Standardwert und hat keinen besonderen Baum.
+    - beta-[0.25, 0.75, 1.0]:
+      Der Wert von beta ist für alle Knoten fix. 0.5 ist der Standardwert.
+    - bloom: Benutzt Bloom-Filter anstatt von Interval-Sets.
+    - fanout-[32, 50, 64]: Fan-out des Baums auf diesen Wert festgelegt. Der Standardwert ist ansonsten (blatt: 113, intern: 127),
+      damit werden die Blöcke der Größe 4KB voll ausgenutzt.
+
+Mit den Tools "loader" und "query" können Bäume manuell erzeugt oder durchsucht werden. "inspector" ist die GUI
+mit der ein Baum untersucht werden kann.
+
+    !! WICHTIG: Die Tools müssen mit den zu den Bäumen passenden Einstellungen kompiliert werden.
+    Die Standardeinstellungen (wiederhergestellt mit "scripts/compile.py") passen für alle Bäume
+    mit der Ausnahme von "-bloom" und "-fanout-N":
+        "-bloom" benötigt "scripts/compile.py --bloom-filters",
+        "-fanout-N" benötigt "scripts/compile.py --internal-fanout N --leaf-fanout N".
+
+
+Experimente:
+
+Zu den Bäumen im Ordner "output" (nicht im Unterordner "variants") wurde erfasst, wie viele IOs bzw. Sekunden
+die Konstruktion mit N trajectory units benötigt. Die konkreten Zahlen befinden sich in "tree_building.txt" (bzw. json)
+und geplottet in construction.pdf bzw. construction_logscale.pdf (obo ist so langsam dass es die anderen Graphen
+nutzlos macht). Ein interessanter Punkt ist hier, dass Quickload zwar immer am wenigsten IOs braucht,
+aber trotzdem am langsamsten ist. Deshalb immer zwei Plots pro Datenset.
+
+Außerdem habe ich die Konstruktionsdauer mit verschiedenen Fan-out-Werten untersucht; allerdings
+nur mit den ersten 10 % des Geolife Datensets (die Bäume verschwenden viel Platz und werden sehr groß).
+Für die Algorithmen str und hilbert sind die Ergebnisse wenig überraschend (höherer Fan-out -> weniger IOs).
+Obwohl die Anzahl der IOs im Fall von Quickload aber noch stärker abnimmt,
+steigt dessen Dauer mit zunehmendem Fan-out an.
+Ursache ist vermutlich, dass die Berechnung der Kostenfunktion deutlich aufwändiger wird: beim Einfügen in den
+Baum im internen Speicher muss in jedem internen Knoten für jeden Kindeintrag die Kostenfunktion ausgewertet werden.
+
+Von jedem Baum befinden sich die Werte zur Query-Performance in der (unübersichtlichen) Datei queries.json,
+geplottet in den verschiedenen query*.pdf-Grafiken.
+Zu jedem Datenset gibt es drei Gruppen von Anfragen "small", "large" und "sequenced":
+    "small": Nur wenige passende Trajektorien bzw. trajectory units (~ wenige tausend).
+    "large": Viele Ergebnisse, bis zu etwa 10 % aller Einträge.
+    "sequenced": Mehrere "simple queries" pro Query, die Anfragen werden parallel ausgewertet,
+                 wobei ggf. ganze Teilbäume ausgeschlossen werden können (siehe [2, Algorithmus 1]).
+
+query.pdf zeigt die Anzahl der IOs pro Queryset und Dataset. Quickload hat im Verleich zu obo identische Performance.
+str und hilbert variieren stark (und haben beide Nachteile, siehe andere Experimente).
+
+query_beta_strategies.pdf zeigt die Ergebnisse für die "increasing"-, "decreasing"- und "normal"-Strategien (siehe oben).
+Leider wenig aufschlussreich. Ähnliches gilt für query_beta_values.pdf, wobei hier klar feststeht dass beta = 1,
+also die Vernachlässigung der Textkosten Nachteile mit sich bringt.
+
+In query_bloom_filters.pdf wird die Leistung von Intervall-Sets und Bloom-Filtern verglichen (nur für das
+Queryset sequenced, da die Sets nur bei der parallelen Auswertung von Queries eine Rolle spielen).
+Die Intervall-Sets sind deutlich besser, was daran liegt dass die IDs der Trajektorien dicht in [1, N] liegen.
+Verteilt man sie zufällig auf [1, 2^31 -1] (dataset geolife-shuffled) verschwinden die Vorteile.
+
+query_fanout.pdf zeigt die durschschnittliche Suchperformance der Bäume mit verschiedenen Fan-out-Werten.
+Rechts ist die Größe des R-Baums bzw. des gesamten Invertierten Index abgebildet.
+
+query_str_variants.pdf zeigt, dass der Algorithmus str-plain (vernachlässigt Label bei der Organisation)
+für große Datenmengen bzw. komplexe Anfragen beim Geolife-Datenset unterlegen ist.
+Beim osm-Datenset ist dies nicht der Fall; ich vermute, da die Label (Straßennahmen) mit den räuml.
+Koordianten zusammenhängen und daher automatisch gut organisiert sind, wenn nur räumliche
+Kriterien betrachtet werden.
+
+index_construction.pdf stellt dar, wie die verschiedenen Algorithmen mit steigender Anzahl
+von Labeln fertig werden. Die Anzahl der trajectory units bleibt dabei immer gleich.
+Getestet werden alle Bulk-Loading-Verfahren, aber einmal mit zusätzlichem
+Bulk-Loading des inv. Index und einmal ohne. Die Anzahl der IO Operationen kann teilweise stark verringert
+werden (allerdings nicht bei quickload). Dies schlägt sich aber nicht unbedingt in der Dauer nieder,
+vermutlich sowohl wegen des Caches des Betriebssystems und, weil das Bulk-Loading des inv. Index
+mehr Disk-Seeks verursacht.
+Auffällig ist die gewaltige Größe des invertierten Index beim hilbert-Algorithmus.
+Im random-walk-Dataset sind Label gleichmäßig im Raum verteilt, sodass bei hilbert jeder
+interne Knoten ungefähr jedes Label indizieren muss. str-lf und quickload sind etwas schlauer
+und können die Anzahl der Label pro Teilbaum reduzieren.
+
+Die anderen .pdf-Dateien dienen nur der Veranschaulichung.
+
+Zu ein paar Dingen habe ich keine Grafiken erstellt:
+
+node_building_others.txt enthält die Daten für das Bulk-Loading des inv.-Index für die anderen
+Datensets. Wegen der geringen Anzahl der Label gibt es dort keine oder fast keine Verbesserung.
+
+cheap_quickload.txt enthält die Performancedaten zu einer günstigeren Variante von Quickload,
+allerdings konnte ich die Laufzeit fast gar nicht reduzieren.
+
+large_dataset.txt zeigt, dass quickload nicht mit mehr Speicher im RAM skaliert.
+Ich habe absichtlich ein sehr großes Datenset genommen damit der Cache des Betriebssystems weniger
+Einfluss nimmt. Ein ausführliches Profil für die geolife und osm Datensets mit jeweils
+16 und 256 Megabyte RAM wird automatisch in quickload-DATASET-MEGABYTE.txt angelegt.
+Das Textformat modelliert einen Stack, beim Verlassen einer Frame wird immer die vergangene Zeit
+und die Anzahl der IOs angegeben. Die Zeit, die bei mehr Speicher in der Anzahl der nötigen
+rekursiven Schritte gespart wird fällt in bei der Konstruktion des nun größeren internen Baums wieder an.
+
+Die Datei tree_stats.json enthält für jeden Baum einige erfasste Werte.
+Unter anderem
+    - durchschnittliche Anzahl der Einträge im inv. Index pro Knoten (== Anzahl der verschiedenen Label im Teilbaum).
+    - den gleichen Wert, aber pro Level des Baums (erster Eintrag: Wurzel). Hier kann man gut erkennen, dass
+      "hilbert" so große Indizes hat.
+    - im Schlüssel "internal_area_ratio_level" wird das durschnittliche Verhältnis von dem Volumen der Vereinigung
+      und der Summe der Volumen pro Level erfasst. 0: größtmögliche Überlapppung, 1.0: alle Kinder des internen Knotens
+      haben disjunkte Boxen. Man sieht hier sich ändernde Werte für verschiedene Strategien oder Werte für beta.
+
+
+
+[1]     Jochen Van den Bercken and Bernhard Seeger. 2001. An Evaluation of Generic Bulk Loading Techniques.
+        http://dl.acm.org/citation.cfm?id=672197
+[2]     Hamza Issa, Maria Luisa Damiani:
+        Efficient Access to Temporally Overlaying Spatial and Textual Trajectories. MDM 2016: 262-271

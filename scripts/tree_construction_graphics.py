@@ -97,10 +97,9 @@ def plot_fanout_construction(output_path):
         ax.set_title(title)
         ax.legend(loc="best", fancybox=True, ncol=1)
 
-    fig, axis = plt.subplots(2, 2, figsize=(12, 9))
-    plot(axis[0][0], "total_io", "IO Operations", "Fanout -> IO Operations")
-    plot(axis[0][1], "duration", "Seconds", "Fanout -> Duration")
-    plot_index(axis[1][0])
+    fig, axis = plt.subplots(1, 2, figsize=(12, 5))
+    plot(axis[0], "total_io", "IO Operations", "Fan-out -> IO Operations")
+    plot(axis[1], "duration", "Seconds", "Fan-out -> Duration")
 
     fig.tight_layout()
     fig.suptitle("Building a tree with different algorithms and different values for \"fan-out\". "

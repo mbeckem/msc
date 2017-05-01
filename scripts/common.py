@@ -96,6 +96,7 @@ OSM_GENERATOR = BUILD_PATH / "osm_generator"
 HILBERT_CURVE = BUILD_PATH / "hilbert_curve"
 LOADER = BUILD_PATH / "loader"
 QUERY = BUILD_PATH / "query"
+STATS = BUILD_PATH / "stats"
 
 # Random walk with fixed size and growing number of labels (~evenly
 # distributed). More labels == more load in the inverted indices and significantly more

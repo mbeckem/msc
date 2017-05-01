@@ -161,7 +161,7 @@ def plot_main_algorithms(output_path):
     plot_querysets(axes, datasets)
 
     fig.tight_layout()
-    fig.suptitle("Verschiedene Anfragetypen")
+    fig.suptitle("Query-Performance von Bäumen pro Algorithmus.")
     fig.subplots_adjust(top=0.85)
     fig.savefig(str(output_path), bbox_inches="tight")
 

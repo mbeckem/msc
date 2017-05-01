@@ -5,7 +5,7 @@ import subprocess
 import random
 
 import common
-from common import OUTPUT_PATH, RESULT_PATH, TMP_PATH, QUERY
+from common import OUTPUT_PATH, RESULT_PATH, TMP_PATH, QUERY, STATS
 from common import compile
 from lib.prettytable import PrettyTable
 
@@ -422,6 +422,14 @@ def run_query(tree, query, results=None, logfile=None):
         return json.load(stats_file)
 
 
+def tree_stats(tree):
+    output = subprocess.check_output([
+        str(STATS),
+        "--tree", str(tree),
+    ])
+    return json.loads(output.decode("utf-8"))
+
+
 def measure_queries(tree, query_set, logfile=None):
     # Evaluate every query for the given tree and return the individual
     # results as well as the average.
@@ -493,10 +501,11 @@ if __name__ == "__main__":
     ]
     random_walk_queries = get_random_walk_queries()
 
-    def handle_tree(tree, query_set, results):
+    def handle_tree(tree, query_set, results, stats):
         tree_name = tree.name
         print("Running queries on tree {}.".format(tree_name))
         results[tree_name] = measure_queries(tree, query_set, logfile)
+        stats[tree_name] = tree_stats(tree)
 
     with (OUTPUT_PATH / "eval_query.log").open("w") as logfile:
         datasets = [
@@ -510,28 +519,38 @@ if __name__ == "__main__":
             "osm": {},
             "random-walk": {},
         }
+        stats = {
+            "geolife": {},
+            "osm": {},
+            "random-walk": {},
+        }
         for dataset_name, tree_set, query_set in datasets:
             for tree in tree_set:
-                handle_tree(tree, query_set, result[dataset_name])
+                handle_tree(tree, query_set, result[
+                            dataset_name], stats[dataset_name])
 
         # bloom filters need special treatment.
         compile(bloom_filters=True, debug_stats=True)
         for tree in [OUTPUT_PATH / "variants" / "geolife-obo-bloom",
                      OUTPUT_PATH / "variants" / "geolife-quickload-bloom"]:
-            handle_tree(tree, geolife_queries, result["geolife"])
+            handle_tree(tree, geolife_queries,
+                        result["geolife"], stats["geolife"])
 
         for tree in [OUTPUT_PATH / "variants" / "osm-obo-bloom",
                      OUTPUT_PATH / "variants" / "osm-quickload-bloom"]:
-            handle_tree(tree, osm_queries, result["osm"])
+            handle_tree(tree, osm_queries, result["osm"], stats["osm"])
 
         # as do trees with different fanout.
         for fanout in [32, 50, 64]:
             compile(leaf_fanout=fanout, internal_fanout=fanout, debug_stats=True)
             handle_tree(OUTPUT_PATH / "variants" / "geolife-quickload-fanout-{}".format(fanout),
-                        geolife_queries, result["geolife"])
+                        geolife_queries, result["geolife"], stats["geolife"])
 
-        # Destore default config to avoid errors.
+        # Restore default config to avoid errors.
         compile()
 
     with (RESULT_PATH / "queries.json").open("w") as outfile:
         json.dump(result, outfile, sort_keys=True, indent=4)
+
+    with (RESULT_PATH / "tree_stats.json").open("w") as outfile:
+        json.dump(stats, outfile, sort_keys=True, indent=4)
