@@ -1,0 +1,9 @@
+1. Von OpenStreetMaps eine Kartendatei herunterladen (hier: germany-latest.osm.bz2).
+2. Auf die Kartendatei die Tools von OSRM (im Sourcetree enhalten, dazu osm_generator bauen) anwenden:
+	$ osrm-extract germany-latest.osm.bz2 -p OSRM_SOURCE_TREE/profiles/car.lua
+	$ osrm-contract ...
+	$ osrm-routed ...
+	$ osrm-partition ...
+
+3. Danach kann der osm_generator auf das Datenset angewendet werden, indem auf die .osrm Datei verwiesen wird:
+	$ osm_generator -m germany-latest.osrm [...]

@@ -54,6 +54,9 @@ all:
 	@truncate -s 0 make.log
 	@echo "Note: Log will be written into make.log"
 
+	@echo "Creating directory structure"
+	@$(MAKE) folders >> make.log
+
 	@echo "Making sure that the project is compiled ..."
 	@$(MAKE) compile >> make.log
 
@@ -96,6 +99,11 @@ compile:
 	cd build && cmake -DCMAKE_BUILD_TYPE=Release ../code && $(MAKE) -j5
 
 .PHONY: compile
+
+folders:
+	mkdir -p build data output results tmp
+
+.PHONY: folders
 
 trees:
 	@$(MAKE) $(EVAL_TREE_BUILDING)
