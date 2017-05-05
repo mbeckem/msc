@@ -12,14 +12,13 @@ import subprocess
 from common import ALGORITHM_EXAMPLES, RESULT_PATH
 
 
-def get_leaves(points, leaf_size, algorithm, skewed=False, seed=None, heuristic=False):
+def get_leaves(points, algorithm, skewed=False, seed=None, heuristic=False):
     fn_args = locals()
 
     args = [
         str(ALGORITHM_EXAMPLES),
         "--algorithm", algorithm,
         "--points", str(points),
-        "--leaf-size", str(leaf_size),
     ]
     if skewed:
         args.append("--skewed")
@@ -62,12 +61,12 @@ def save(fig, path):
 def make_hilbert():
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4))
     draw_leaves(ax1, "a)",
-                get_leaves(1000, 16, algorithm="hilbert", seed=1380799046))
+                get_leaves(1000, algorithm="hilbert", seed=1380799046))
     draw_leaves(ax2, "b)",
-                get_leaves(1000, 16, algorithm="hilbert",
+                get_leaves(1000, algorithm="hilbert",
                            skewed=True, seed=1821311943))
     draw_leaves(ax3, "c)",
-                get_leaves(1000, 16, algorithm="hilbert", skewed=True,
+                get_leaves(1000, algorithm="hilbert", skewed=True,
                            seed=1821311943, heuristic=True))
     return fig
 
@@ -75,10 +74,20 @@ def make_hilbert():
 def make_str():
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
     draw_leaves(ax1, "a)",
-                get_leaves(1000, 16, algorithm="str", seed=1380799046))
+                get_leaves(1000, algorithm="str", seed=1380799046))
     draw_leaves(ax2, "b)",
-                get_leaves(1000, 16, algorithm="str", skewed=True, seed=1821311943))
+                get_leaves(1000, algorithm="str", skewed=True, seed=1821311943))
+    return fig
+
+
+def make_quickload():
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
+    draw_leaves(ax1, "a)", get_leaves(
+        1000, algorithm="quickload", seed="1380799046"))
+    draw_leaves(ax2, "b)", get_leaves(
+        1000, algorithm="quickload", skewed=True, seed=1821311943))
     return fig
 
 save(make_hilbert(), RESULT_PATH / "hilbert_leaves.pdf")
 save(make_str(), RESULT_PATH / "str_leaves.pdf")
+save(make_quickload(), RESULT_PATH / "quickload_leaves.pdf")
