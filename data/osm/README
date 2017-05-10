@@ -1,9 +1,49 @@
-1. Von OpenStreetMaps eine Kartendatei herunterladen (hier: germany-latest.osm.bz2).
-2. Auf die Kartendatei die Tools von OSRM (im Sourcetree enhalten, dazu osm_generator bauen) anwenden:
-	$ osrm-extract germany-latest.osm.bz2 -p OSRM_SOURCE_TREE/profiles/car.lua
-	$ osrm-contract ...
-	$ osrm-routed ...
-	$ osrm-partition ...
+1. Aus diesem Verzeichnis die Datei "germany-latest.osm.bz2" herunterladen und
+   in diesem Verzeichnis speichern:
 
-3. Danach kann der osm_generator auf das Datenset angewendet werden, indem auf die .osrm Datei verwiesen wird:
-	$ osm_generator -m germany-latest.osrm [...]
+		http://ftp5.gwdg.de/pub/misc/openstreetmap/download.geofabrik.de/
+
+   Sie enthält das deutsche Straßennetz von OpenStreetMaps.
+
+2. Auf die Kartendatei die Tools von OSRM anwenden.
+   Nach dem erstmaligen Bauen des Projekts ("make compile") befinden sie sich unter build/deps/osrm/bin.
+
+	$ osrm-extract germany-latest.osm.bz2 -p PROJEKTVERZEICHNIS/code/deps/osrm/profiles/car.lua
+	$ osrm-contract germany-latest.osrm
+	$ osrm-routed germany-latest.osrm
+	$ osrm-partition germany-latest.osrm
+
+3. Der Ordner sollte nun wie folgt aussehen:
+
+	.
+	├── germany-latest.osm.bz2
+	├── germany-latest.osrm
+	├── germany-latest.osrm.cells
+	├── germany-latest.osrm.cnbg
+	├── germany-latest.osrm.cnbg_to_ebg
+	├── germany-latest.osrm.core
+	├── germany-latest.osrm.datasource_names
+	├── germany-latest.osrm.ebg
+	├── germany-latest.osrm.edges
+	├── germany-latest.osrm.enw
+	├── germany-latest.osrm.fileIndex
+	├── germany-latest.osrm.geometry
+	├── germany-latest.osrm.hsgr
+	├── germany-latest.osrm.icd
+	├── germany-latest.osrm.level
+	├── germany-latest.osrm.names
+	├── germany-latest.osrm.nodes
+	├── germany-latest.osrm.partition
+	├── germany-latest.osrm.properties
+	├── germany-latest.osrm.ramIndex
+	├── germany-latest.osrm.restrictions
+	├── germany-latest.osrm.timestamp
+	├── germany-latest.osrm.tld
+	├── germany-latest.osrm.tls
+	├── germany-latest.osrm.turn_duration_penalties
+	├── germany-latest.osrm.turn_penalties_index
+	├── germany-latest.osrm.turn_weight_penalties
+	└── README
+
+Alles weitere sollte automatisch erledigt werden (von "make all").
+
