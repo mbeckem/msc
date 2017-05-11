@@ -73,31 +73,31 @@ TEST_CASE("interval set contains", "[interval-set]") {
 TEST_CASE("interval set at capacity", "[interval-set]") {
     SECTION("merge first (1)") {
         small_set set{5, 6, 11};
-        set.add(12);
+        set.add(13);
 
         REQUIRE(set.size() == 3);
         REQUIRE(set[0] == interval<int>(5, 6));
         REQUIRE(set[1] == 11);
-        REQUIRE(set[2] == 12);
+        REQUIRE(set[2] == 13);
     }
 
     SECTION("merge first (2)") {
         small_set set{5, 6, 11};
-        set.add(7);
+        set.add(8);
 
         REQUIRE(set.size() == 3);
         REQUIRE(set[0] == interval<int>(5, 6));
-        REQUIRE(set[1] == 7);
+        REQUIRE(set[1] == 8);
         REQUIRE(set[2] == 11);
     }
 
     SECTION("merge first (3)") {
-        small_set set{5, 6, 11};
+        small_set set{5, 7, 11};
         set.add(4);
 
         REQUIRE(set.size() == 3);
         REQUIRE(set[0] == interval<int>(4, 5));
-        REQUIRE(set[1] == interval<int>(6));
+        REQUIRE(set[1] == interval<int>(7));
         REQUIRE(set[2] == interval<int>(11));
     }
 
@@ -177,7 +177,7 @@ TEST_CASE("interval events for multiple ranges", "[interval-set]") {
     REQUIRE(boost::range::equal(expected, result));
 }
 
-TEST_CASE("correct merging of gaps between intervals", "[interval-set]") {
+TEST_CASE("correct merging of intervals between gaps", "[interval-set]") {
     using iterator = typename std::vector<interval<int>>::iterator;
 
     std::vector<interval<int>> intervals{
@@ -187,8 +187,11 @@ TEST_CASE("correct merging of gaps between intervals", "[interval-set]") {
     {
         auto result = intervals;
         auto expected = intervals;
-        std::vector<iterator> empty;
-        detail::merge_positions(result, empty);
+
+        std::vector<iterator> noop;
+        for (auto pos = result.begin(); pos != result.end() - 1; ++pos)
+            noop.push_back(pos);
+        detail::merge_positions(result, noop);
 
         REQUIRE(boost::equal(result, expected));
     }
@@ -199,7 +202,7 @@ TEST_CASE("correct merging of gaps between intervals", "[interval-set]") {
             {1, 4}, 9, {11, 61}, 81
         };
         std::vector<iterator> iters{
-            result.begin(), result.begin() + 3, result.begin() + 4
+            result.begin() + 1, result.begin() + 2, result.begin() + 5
         };
         detail::merge_positions(result, iters);
         REQUIRE(boost::equal(result, expected));
@@ -210,7 +213,11 @@ TEST_CASE("correct merging of gaps between intervals", "[interval-set]") {
         std::vector<interval<int>> expected{
             1, {3, 4}, 9, {11, 55}, 57, {60, 81}
         };
-        std::vector<iterator> iters{result.end() - 2};
+        std::vector<iterator> iters{
+            result.begin(), result.begin() + 1,
+            result.begin() + 2, result.begin() + 3,
+            result.begin() + 4
+        };
         detail::merge_positions(result, iters);
         REQUIRE(boost::equal(result, expected));
     }
@@ -221,9 +228,6 @@ TEST_CASE("correct merging of gaps between intervals", "[interval-set]") {
             {1, 81}
         };
         std::vector<iterator> iters;
-        for (auto i = result.begin(), e = result.end() - 1; i != e; ++i) {
-            iters.push_back(i);
-        }
         detail::merge_positions(result, iters);
         REQUIRE(boost::equal(result, expected));
     }
@@ -233,17 +237,16 @@ TEST_CASE("correct merging of gaps between intervals", "[interval-set]") {
         std::vector<interval<int>> expected{
             1, {3, 61}, 81
         };
-        std::vector<iterator> iters;
-        for (auto i = result.begin() + 1, e = result.end() - 2; i != e; ++i) {
-            iters.push_back(i);
-        }
+        std::vector<iterator> iters{
+            result.begin(), result.end() - 2,
+        };
         detail::merge_positions(result, iters);
         REQUIRE(boost::equal(result, expected));
     }
     {
         std::vector<interval<int>> result{3, 8, 10};
         std::vector<interval<int>> expected{{3, 10}};
-        std::vector<iterator> iters{result.begin(), result.begin() + 1};
+        std::vector<iterator> iters{};
         detail::merge_positions(result, iters);
         REQUIRE(boost::equal(result, expected));
     }

@@ -146,54 +146,44 @@ namespace detail {
     }
 
     /// Takes a vector of intervals and a range of iterators into that vector.
-    /// Every element pointed to by an interator in `remove` will be merged with its
-    /// immediate successor.
-    /// \pre `remove` must be sorted.
-    /// \warning the last interval does *not* have a successor.
+    /// Every iterator in `gaps` gives the position after which a new merged interval begins.
+    /// \pre `gaps` must be sorted.
+    /// \warning `gaps` must not contain the last iterator.
     template<typename T, typename IteratorRange>
-    void merge_positions(std::vector<interval<T>>& intervals, const IteratorRange& remove) {
+    void merge_positions(std::vector<interval<T>>& intervals, const IteratorRange& gaps) {
         using iterator = typename std::vector<interval<T>>::iterator;
 
-        auto remove_pos = boost::begin(remove); // points to next iterator to be removed
-        auto remove_end = boost::end(remove);
+        auto gaps_pos = boost::begin(gaps);
+        auto gaps_end = boost::end(gaps);
 
-        if (remove_pos == remove_end) {
+        if (intervals.empty()) {
             return;
         }
 
-        // 1.   Jump directly to the first interval that should be merged with its successor.
-        //      Any interval before that one can be left untouched.
-        // 2.   Update the successor of the item with the begin value to merge the intervals.
-        // 3.   Copy intervals until the next element to be removed in found.
-        // 4.   Repeat until all intervals in `remove` have been handled.
-        // 5.   Copy any remaining intervals at the end.
-        const iterator last = intervals.end();
-        iterator in = *remove_pos++;    // Points to the current read position.
-        iterator out = in;              // Points to the current write position.
-        iterator next;
-        while (1) {
-            T begin = in->begin();
-            ++in;
-            *in = interval<T>(begin, in->end());
+        auto write_merged = [](iterator out, iterator a, iterator b) {
+            geodb_assert(a <= b, "iterator ordering violated");
+            T begin = a->begin();
+            T end = b->end();
+            *out = interval<T>(begin, end);
+        };
 
-            if (remove_pos == remove_end) {
-                // No more elements to be removed.
-                break;
-            }
+        // Merge intervals until a new gap is encountered, at which point a new interval begins.
+        iterator in = intervals.begin();
+        iterator out = in;
+        iterator last = intervals.end();
+        while (gaps_pos != gaps_end) {
+            // Note: in != last because there are valid iterators in gaps remaining.
+            iterator gap = *gaps_pos++;
+            geodb_assert(gap != last - 1, "the last interval has no successor.");
 
-            // There is at least one more item to be removed.
-            // Copy all items in [in, next), then update the `in` pointer
-            // for the next loop iteration.
-            next = *remove_pos++;
-            for (; in != next; ++in, ++out) {
-                *out = *in;
-            }
+            write_merged(out, in, gap);
+            ++out;
+            in = gap + 1;
         }
 
-        // Copy the items after the last removed interval.
-        for (; in != last; ++in, ++out) {
-            *out = *in;
-        }
+        // The interval after the last gap.
+        write_merged(out, in, last - 1);
+        ++out;
         intervals.erase(out, last);
     }
 
@@ -212,18 +202,18 @@ namespace detail {
             return;
         }
 
-        // Compute the k smallest gaps.
-        // After closing the gaps, the size of the interval vector will
-        // be equal to the caspacity.
-        // An iterator represents the interval it points to and its successor.
-        const size_t k = size - capacity;
+        // Compute the `capacity - 1` largest gaps.
+        // We will keep these gaps and merge all other intervals between them.
+        // Then, the size of the new set will have the size `capacity`.
+        const size_t k = capacity - 1;
         std::vector<iterator> gaps(k);
         k_smallest(boost::counting_range(intervals.begin(), intervals.end() - 1), k, gaps,
             // Compare the distances between the interval pairs.
             [](const iterator& pos1, const iterator& pos2) {
                 geodb_assert(pos1[1].begin() > pos1[0].end(), "intervals must be ordered");
                 geodb_assert(pos2[1].begin() > pos2[0].end(), "intervals must be ordered");
-                return pos1[1].begin() - pos1[0].end() < pos2[1].begin() - pos2[0].end();
+                // ">": compute largest instead of k_smallest.
+                return pos1[1].begin() - pos1[0].end() > pos2[1].begin() - pos2[0].end();
             }
         );
 
