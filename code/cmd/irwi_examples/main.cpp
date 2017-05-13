@@ -43,7 +43,7 @@ static std::vector<std::string> labels_2{
 };
 
 static std::vector<std::string> labels_3{
-    "walk", "walk", "walk", "walk"
+    "car", "walk", "walk", "walk"
 };
 
 static std::vector<trajectory_unit> units(internal_strings& strings,
