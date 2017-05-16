@@ -2,6 +2,7 @@
 
 #include "geodb/hilbert.hpp"
 #include "geodb/str.hpp"
+#include "geodb/irwi/bulk_load_quickload.hpp"
 
 #include <boost/program_options.hpp>
 #include <fmt/format.h>
@@ -22,9 +23,10 @@ using std::flush;
 static std::string algorithm;
 static u32 seed;
 static u32 num_points;
-static u32 leaf_size;
 static bool skewed;
 static bool heuristic;
+
+static constexpr size_t leaf_size = 16;
 
 struct vec2 {
     double x = 0, y = 0;
@@ -101,9 +103,7 @@ void parse_options(int argc, char** argv) {
             ("seed", po::value(&seed),
              "The seed used by the random number generator. Defaults to a truly random seed.")
             ("algorithm", po::value(&algorithm),
-             "The leaf packing algorithm. Either \"hilbert\" or \"str\".")
-            ("leaf-size,l", po::value(&leaf_size)->default_value(64),
-             "The number of entries per leaf.")
+             "The leaf packing algorithm. Either \"hilbert\", \"str\" or \"quickload\".")
             ("heuristic", po::bool_switch(&heuristic),
              "Enable the leaf size heuristic (hilbert only).")
             ("help,h", "Show this message.");
@@ -117,8 +117,8 @@ void parse_options(int argc, char** argv) {
         if (vm.count("help")) {
             fmt::print(cerr, "Usage: {0}\n"
                              "\n"
-                             "Visualizes the hilbert loading algorithm for a generated set of points in 2d.\n"
-                             "The real algorithm works in 3d and is implemented in the bulk loader tool.\n"
+                             "Visualizes the bulk loading algorithm for a generated set of points in 2d.\n"
+                             "The real algorithm works in 3d and is implemented in the loader tool.\n"
                              "\n"
                              "{1}",
                        argv[0], options);
@@ -232,7 +232,7 @@ box2 get_bounding_box(Iter first, Iter last) {
 }
 
 
-std::vector<leaf> create_hilbert_leaves(std::vector<vec2>& points, size_t leaf_size) {
+std::vector<leaf> create_hilbert_leaves(std::vector<vec2>& points) {
     geodb_assert(leaf_size > 1, "invalid leaf size");
 
     sort_hilbert(points);
@@ -254,7 +254,7 @@ std::vector<leaf> create_hilbert_leaves(std::vector<vec2>& points, size_t leaf_s
     return leaves;
 }
 
-std::vector<leaf> create_hilbert_leaves_heuristic(std::vector<vec2>& points, size_t leaf_size) {
+std::vector<leaf> create_hilbert_leaves_heuristic(std::vector<vec2>& points) {
     geodb_assert(leaf_size > 1, "invalid leaf size");
 
     sort_hilbert(points);
@@ -296,7 +296,7 @@ std::vector<leaf> create_hilbert_leaves_heuristic(std::vector<vec2>& points, siz
     return leaves;
 }
 
-std::vector<leaf> create_str_leaves(std::vector<vec2>& points, size_t leaf_size) {
+std::vector<leaf> create_str_leaves(std::vector<vec2>& points) {
     geodb_assert(leaf_size > 1, "invalid leaf size");
 
     auto cmp_x = [](const vec2& a, const vec2& b) {
@@ -324,6 +324,54 @@ std::vector<leaf> create_str_leaves(std::vector<vec2>& points, size_t leaf_size)
     return leaves;
 }
 
+std::vector<leaf> create_quickload_leaves(const std::vector<vec2>& points) {
+    geodb_assert(leaf_size > 1, "invalid leaf size");
+
+    struct vec2_accessor {
+        trajectory_id_type get_id(const vec2& e) const {
+            (void) e;
+            return 0;
+        }
+
+        bounding_box get_mbb(const vec2& e) const {
+            return bounding_box(vector3(e.x, e.y, 0),
+                                vector3(e.x, e.y, 1));
+        }
+
+        constexpr u64 get_total_count(const vec2& e) const {
+            (void) e;
+            return 1;
+        }
+
+        std::array<label_count, 1> get_label_counts(const vec2& e) const {
+            (void) e;
+            return { label_count(0, 1) };
+        }
+    };
+
+    // quickload implementation currently requires a file stream.
+    tpie::file_stream<vec2> entries;
+    entries.open();
+    for (const auto& point : points) {
+        entries.write(point);
+    }
+
+    std::vector<leaf> leaves;
+
+    // 16 leaves in memory.
+    quick_load_pass<vec2, vec2_accessor,
+            block_size, leaf_size, leaf_size
+    > pass(16, 16, vec2_accessor(), 1.0);
+    pass.run(entries, [&](gsl::span<const vec2> entries) {
+        leaf l;
+        l.mbb = get_bounding_box(entries.begin(), entries.end());
+        l.points.assign(entries.begin(), entries.end());
+        leaves.push_back(std::move(l));
+    });
+
+    return leaves;
+}
+
 int main(int argc, char** argv) {
     return tpie_main([&]{
         parse_options(argc, argv);
@@ -337,10 +385,12 @@ int main(int argc, char** argv) {
         std::vector<leaf> leaves = [&] {
             if (algorithm == "hilbert") {
                 return heuristic
-                        ? create_hilbert_leaves_heuristic(points, leaf_size)
-                        : create_hilbert_leaves(points, leaf_size);
+                        ? create_hilbert_leaves_heuristic(points)
+                        : create_hilbert_leaves(points);
             } else if (algorithm == "str") {
-                return create_str_leaves(points, leaf_size);
+                return create_str_leaves(points);
+            } else if (algorithm == "quickload") {
+                return create_quickload_leaves(points);
             } else {
                 fmt::print(cerr, "Invalid algorithm: {}.\n", algorithm);
                 throw exit_main(1);

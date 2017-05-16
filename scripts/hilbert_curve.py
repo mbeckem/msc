@@ -46,6 +46,8 @@ def plot2d(fig, gridpos, precision, title):
     ax.locator_params(integer=True)
     ax.axis("equal")
     ax.set_title(title)
+    ax.set_xticks([])
+    ax.set_yticks([])
     ax.set_xticklabels([])
     ax.set_yticklabels([])
 
@@ -77,9 +79,14 @@ def plot3d(fig, gridpos, precision, title):
 
     ax.quiver(X, Y, Z, U, V, W, color=cmap(C), length=1)
     ax.locator_params(integer=True)
+
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_zticks([])
     ax.set_xticklabels([])
     ax.set_yticklabels([])
     ax.set_zticklabels([])
+
     ax.set_xlim(0, MAX)
     ax.set_ylim(0, MAX)
     ax.set_zlim(0, MAX)
