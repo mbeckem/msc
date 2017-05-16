@@ -19,13 +19,14 @@ def get_curve(dimension, precision):
     for curve in curves:
         if curve["dimension"] == dimension and curve["precision"] == precision:
             points = curve["points"]
-            return np.array(points)
+            return np.array(points) + 0.5
     raise KeyError("No curve with dimension {} and precision {}"
                    .format(dimension, precision))
 
 
 def plot2d(fig, gridpos, precision, title):
     MAX = 2 ** precision - 1
+    MAX = MAX + 1
 
     ax = fig.add_subplot(gridpos)
     points = get_curve(2, precision)
@@ -50,10 +51,13 @@ def plot2d(fig, gridpos, precision, title):
     ax.set_yticks([])
     ax.set_xticklabels([])
     ax.set_yticklabels([])
+    ax.set_xlim(0, MAX)
+    ax.set_ylim(0, MAX)
 
 
 def plot3d(fig, gridpos, precision, title):
     MAX = 2 ** precision - 1
+    MAX = MAX + 1
 
     ax = fig.add_subplot(gridpos, projection="3d")
     points = get_curve(3, precision)
