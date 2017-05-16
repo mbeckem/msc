@@ -4,6 +4,7 @@
 import json
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import subprocess
@@ -23,10 +24,10 @@ def get_curve(dimension, precision):
                    .format(dimension, precision))
 
 
-def plot2d(fig, id, precision, title):
+def plot2d(fig, gridpos, precision, title):
     MAX = 2 ** precision - 1
 
-    ax = fig.add_subplot(id)
+    ax = fig.add_subplot(gridpos)
     points = get_curve(2, precision)
 
     # Every x,y coordiante (excluding the last point)
@@ -37,19 +38,22 @@ def plot2d(fig, id, precision, title):
     U = points[1:, 0] - X
     V = points[1:, 1] - Y
 
-    ax.quiver(X, Y, U, V, color="black", units="xy", scale=1)
+    cmap = matplotlib.cm.get_cmap("gist_rainbow")
+    C = np.linspace(0, 1, len(X))
+    C = np.concatenate((C, np.repeat(C, 2)))
+
+    ax.quiver(X, Y, U, V, color=cmap(C), units="xy", scale=1)
     ax.locator_params(integer=True)
     ax.axis("equal")
-
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
     ax.set_title(title)
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
 
 
-def plot3d(fig, id, precision, title):
+def plot3d(fig, gridpos, precision, title):
     MAX = 2 ** precision - 1
 
-    ax = fig.add_subplot(id, projection="3d")
+    ax = fig.add_subplot(gridpos, projection="3d")
     points = get_curve(3, precision)
 
     X = points[:-1, 0]
@@ -73,18 +77,22 @@ def plot3d(fig, id, precision, title):
 
     ax.quiver(X, Y, Z, U, V, W, color=cmap(C), length=1)
     ax.locator_params(integer=True)
-
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("z")
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    ax.set_zticklabels([])
     ax.set_xlim(0, MAX)
     ax.set_ylim(0, MAX)
     ax.set_zlim(0, MAX)
     ax.set_title(title)
 
-fig = plt.figure(figsize=(16, 16))
-plot2d(fig, 221, 1, "2D, Precision = 1")
-plot2d(fig, 222, 2, "2D, Precision = 2")
-plot3d(fig, 223, 1, "3D, Precision = 1")
-plot3d(fig, 224, 2, "3D, Precision = 2")
+fig = plt.figure(figsize=(12, 8))
+g = gridspec.GridSpec(2, 3)
+g.update(wspace=0.05, hspace=0.05)
+
+plot2d(fig, g[0], 1, "a)")
+plot2d(fig, g[1], 2, "b)")
+plot2d(fig, g[2], 3, "c)")
+plot3d(fig, g[3], 1, "d)")
+plot3d(fig, g[4], 2, "e)")
+plot3d(fig, g[5], 3, "f)")
 fig.savefig(str(RESULT_PATH / "hilbert_curves.pdf"), bbox_inches="tight")
