@@ -16,10 +16,10 @@ using std::cout;
 using std::cerr;
 
 struct raw_bounding_box {
-    double x_min = 0;
-    double x_max = 0;
-    double y_min = 0;
-    double y_max = 0;
+    float x_min = 0;
+    float x_max = 0;
+    float y_min = 0;
+    float y_max = 0;
     u32 t_min = 0;
     u32 t_max = 0;
 };
@@ -36,14 +36,63 @@ BOOST_FUSION_ADAPT_STRUCT(
 namespace grammar {
     using namespace boost::spirit::x3;
 
-    const auto bounding_box =
-            double_ > lit(',')      // x min
-            > double_ > lit(',')    // x max
-            > double_ > lit(',')    // y min
-            > double_ > lit(',')    // y max
-            > uint32 > lit(',')     // t min
-            > uint32;               // t max
 
+//rule<class date_time_tag, time::ptime> date_time = "date time";
+
+//rule<class row_tag, geolife_activity> row = "label row";
+
+//rule<class file_tag, std::vector<geolife_activity>> file = "labels file";
+
+//auto set_time = [](auto& ctx) {
+//    using boost::fusion::at_c;
+
+//    const auto& attr = _attr(ctx);
+//    gregorian::date date(at_c<0>(attr), at_c<1>(attr), at_c<2>(attr));
+//    time::time_duration tod(at_c<3>(attr), at_c<4>(attr), at_c<5>(attr));
+//    _val(ctx) = time::ptime(date, tod);
+//};
+
+//// Year/Month/Day Hour:Minute:Second
+//const auto date_time_def = (int_ > '/' > int_ > '/' > int_ > int_> ':' > int_ > ':' > int_)[set_time];
+
+//// Each row contains a time interval and a transportation mode.
+//const auto row_def = date_time > date_time > mode;
+
+//// The first line is ignored (colum headers) and the rest must specify
+//// the current transportation mode.
+//const auto file_def = omit[line > eol] > line_list(row) > -eol > eoi;
+
+//BOOST_SPIRIT_DEFINE(date_time, row, file)
+
+    template<typename T>
+    auto set_min() {
+        return [](auto& ctx) {
+            _val(ctx) = std::numeric_limits<T>::lowest();
+        };
+    }
+
+    template<typename T>
+    auto set_max() {
+        return [](auto& ctx) {
+            _val(ctx) = std::numeric_limits<T>::max();
+        };
+    }
+
+    const auto coord
+        = rule<class coord, float>("coord")
+        = lit("MIN")[set_min<float>()] | lit("MAX")[set_max<float>()] | float_;
+
+    const auto time
+        = rule<class time, u32>("time")
+        = lit("MIN")[set_min<u32>()] | lit("MAX")[set_max<u32>()] | uint32;
+
+    const auto bounding_box =
+            coord > lit(',')        // x min
+            > coord > lit(',')      // x max
+            > coord > lit(',')      // y min
+            > coord > lit(',')      // y max
+            > time > lit(',')       // t min
+            > time;                 // t max
 }
 
 static std::string tree_path;
@@ -110,8 +159,9 @@ static void parse_options(int argc, char** argv) {
             ("stats", po::value(&stats_path)->value_name("PATH"),
              "The path to the stats file on disk (optional).")
             ("rect,r", po::value(&rects)->value_name("RECT"),
-             "Add a rectangle to the query."
-             "The syntax is \"xmin, xmax, ymin, ymax, tmin, tmax\".")
+             "Add a rectangle to the query.\n"
+             "The syntax is \"xmin, xmax, ymin, ymax, tmin, tmax\".\n"
+             "Supports placeholders MIN and MAX.")
             ("label,l", po::value(&labels)->value_name("LIST"),
              "Add a list of comma separated labels to the query. Use zero labels to express \"any\".")
             ;

@@ -5,9 +5,8 @@
 import itertools
 
 import common
-from common import OUTPUT_PATH, RESULT_PATH
+from common import OUTPUT_PATH, RESULT_PATH, RANDOM_WALK_SMALL
 from common import compile
-from datasets import RANDOM_WALK_SMALL
 
 if __name__ == "__main__":
     compile(internal_fanout=16, leaf_fanout=16)

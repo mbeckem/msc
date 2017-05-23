@@ -13,7 +13,7 @@
 namespace geodb {
 
 /// Identifies child entries of an internal node (by index).
-using entry_id_type = u32;
+using entry_id_type = u16;
 
 template<u32 Lambda>
 class posting_data;
