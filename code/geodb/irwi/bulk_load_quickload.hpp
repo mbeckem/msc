@@ -624,8 +624,10 @@ class quick_loader : public bulk_load_common<Tree, quick_loader<Tree>> {
 
             // Total leaf cost (including additional cost for internal nodes).
             double leaf_cost = 1 + (double(internal_cost) / double(min_fanout - 1));
+            double leaves = blocks / leaf_cost;
+            double leaf_log = std::ceil(std::log(leaves) / std::log(min_fanout));
 
-            max_leaves = blocks / leaf_cost;
+            max_leaves = leaves - internal_cost * leaf_log;
             max_internal = max_leaves / (min_fanout - 1);
             total_cache_blocks = max_internal * blocks_per_internal;
         }

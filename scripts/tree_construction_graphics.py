@@ -32,13 +32,15 @@ def get_sequence(dataset, algorithm):
 
 
 def plot_tree_construction(logscale, output_path):
-    fig, axis = plt.subplots(3, 2, figsize=(14, 8))
+    fig, axis = plt.subplots(3, 2, figsize=(10, 10))
 
     datasets = ["geolife", "osm", "random-walk"]
     algorithms = ["hilbert", "str-lf", "quickload", "obo"]
     markers = ["*", "o", "^", "+"]
 
     def plot(ax, dataset, key, ylabel, title):
+        ax.locator_params(nbins=4, min_n_ticks=4, axis='x')
+
         for algorithm, marker in zip(algorithms, markers):
             seq = get_sequence(dataset, algorithm)
             x = [r["entries"] for r in seq]
@@ -52,28 +54,26 @@ def plot_tree_construction(logscale, output_path):
                         for algorithm in algorithms if algorithm != "obo"])
             ax.set_ylim(bottom=0, top=maxy * 2)
 
-        ax.set_xlabel("Items")
+        ax.set_xlabel("Einträge")
         ax.set_ylabel(ylabel)
         ax.set_title(title)
-
+        ax.get_xaxis().get_major_formatter().set_scientific(False)
         ax.legend(loc='best', fancybox=True, ncol=2)
 
     plot(axis[0, 0], "geolife", "total_io",
-         "IO Operations", "Geolife (IO)")
+         "I/Os", "geolife (I/O)")
     plot(axis[0, 1], "geolife", "duration",
-         "Seconds", "Geolife (Duration)")
+         "Sekunden", "geolife (Zeit)")
     plot(axis[1, 0], "osm", "total_io",
-         "IO Operations", "osm (IO)")
+         "I/Os", "osm (I/O)")
     plot(axis[1, 1], "osm", "duration",
-         "Seconds", "osm (Duration)")
+         "Sekunden", "osm (Zeit)")
     plot(axis[2, 0], "random-walk", "total_io",
-         "IO Operations", "Random walk (IO)")
+         "I/Os", "random-walk (I/O)")
     plot(axis[2, 1], "random-walk", "duration",
-         "Seconds", "Random walk (Duration)")
+         "Sekunden", "random-walk (Zeit)")
 
     fig.tight_layout()
-    fig.suptitle("Building a tree from scratch with different algorithms.")
-    fig.subplots_adjust(top=0.93)
     fig.savefig(str(output_path), bbox_inches="tight")
 
 
@@ -97,14 +97,11 @@ def plot_fanout_construction(output_path):
         ax.set_title(title)
         ax.legend(loc="best", fancybox=True, ncol=1)
 
-    fig, axis = plt.subplots(1, 2, figsize=(12, 5))
-    plot(axis[0], "total_io", "IO Operations", "Fan-out -> IO Operations")
-    plot(axis[1], "duration", "Seconds", "Fan-out -> Duration")
+    fig, axis = plt.subplots(1, 2, figsize=(10, 4))
+    plot(axis[0], "total_io", "I/Os", "I/O")
+    plot(axis[1], "duration", "Sekunden", "Zeit")
 
     fig.tight_layout()
-    fig.suptitle("Building a tree with different algorithms and different values for \"fan-out\". "
-                 "Dataset: Geolife (10%).")
-    fig.subplots_adjust(top=0.85)
     fig.savefig(str(output_path), bbox_inches="tight")
 
 

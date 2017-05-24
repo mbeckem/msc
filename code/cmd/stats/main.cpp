@@ -40,6 +40,7 @@ struct tree_stats {
     averager leaf_area;     // Volume of leaf nodes
 
     averager index_size;    // Number of postings lists per index
+    averager list_size;     // Number of entries per posting list
     std::map<size_t, averager> index_size_level;
 
     averager internal_volume_ratio;
@@ -53,6 +54,7 @@ struct analyze_result {
 
     double index_size = 0;
     std::vector<double> index_size_level;
+    double list_size = 0;
 
     double internal_volume_ratio = 0;
     std::vector<double> internal_volume_ratio_level;
@@ -168,14 +170,22 @@ static void analyze(external_tree::cursor& node, tree_stats& stats) {
 
         stats.leaf_area.push(node.mbb().size());
     } else {
-        size_t index_size = node.inverted_index()->size();
+        auto index = node.inverted_index();
+
+        size_t index_size = index->size();
         stats.index_size.push(index_size);
         stats.index_size_level[node.level()].push(index_size);
+        // does not count the "total" list (its full anyway).
+        for (const auto& entry : *index) {
+            auto list = entry.postings_list();
+            stats.list_size.push(list->size());
+        }
 
         double ratio = volume_ratio(node);
-
         stats.internal_volume_ratio.push(ratio);
         stats.internal_volume_ratio_level[node.level()].push(ratio);
+
+
 
         for (size_t i = 0; i < node.size(); ++i) {
             node.move_child(i);
@@ -202,6 +212,7 @@ static analyze_result analyze(const external_tree& tree) {
         for (const auto& pair : stats.index_size_level) {
             result.index_size_level.push_back(pair.second.average());
         }
+        result.list_size = stats.list_size.average();
 
         result.internal_volume_ratio = stats.internal_volume_ratio.average();
         for (const auto& pair : stats.internal_volume_ratio_level) {
@@ -239,6 +250,7 @@ int main(int argc, char** argv) {
         result["internal_area_ratio_level"] = stats.internal_volume_ratio_level;
         result["internal_index_size"] = stats.index_size;
         result["internal_index_size_level"] = stats.index_size_level;
+        result["internal_list_size"] = stats.list_size;
 
         std::cout << result.dump(4) << std::endl;
         return 0;
