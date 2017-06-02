@@ -2,7 +2,7 @@
 
 import common
 
-from common import OUTPUT_PATH, GEOLIFE, OSM_ROUTES, GEOLIFE_SHUFFLED, OSM_ROUTES_SHUFFLED
+from common import OUTPUT_PATH, GEOLIFE, OSM_ROUTES, RANDOM_WALK, GEOLIFE_SHUFFLED, OSM_ROUTES_SHUFFLED
 from common import compile
 
 # Build trees for different values of beta.
@@ -64,6 +64,13 @@ if __name__ == "__main__":
                                          entries_path=data_path, beta=beta,
                                          limit=entries, logfile=logfile)
 
+                dataset, entries, data_path = ("random-walk", *RANDOM_WALK)
+                algorithm = "quickload"
+                build_if_missing(algorithm,
+                                 tree_path=tree_path(dataset, algorithm, beta),
+                                 entries_path=data_path, beta=beta,
+                                 limit=entries, logfile=logfile)
+
         def build_beta_modes():
             def tree_path(dataset, algorithm, mode):
                 return tree_dir / "{}-{}-beta-{}".format(dataset, algorithm, mode)
@@ -74,6 +81,13 @@ if __name__ == "__main__":
                         build_if_missing(algorithm, tree_path=tree_path(dataset, algorithm, mode),
                                          entries_path=data_path, logfile=logfile, limit=entries,
                                          compile_flags=dict(beta=mode))
+
+                dataset, entries, data_path = ("random-walk", *RANDOM_WALK)
+                algorithm = "quickload"
+                build_if_missing(algorithm,
+                                 tree_path=tree_path(dataset, algorithm, mode),
+                                 entries_path=data_path, logfile=logfile, limit=entries,
+                                 compile_flags=dict(beta=mode))
 
         def build_bloom_filters():
             def tree_path(dataset, algorithm):

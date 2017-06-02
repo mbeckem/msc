@@ -42,13 +42,13 @@ def build_tree(algorithm, entries_path):
 
 
 def run_random_walk(naive_node_building, logfile):
-    compile(naive_node_building=naive_node_building)
+    compile(naive_node_building=naive_node_building, debug_stats=True)
 
     results = []
     for algorithm in ["hilbert", "str-lf", "quickload"]:
         for entries, labels, entries_path in RANDOM_WALK_VARYING_LABELS:
-            print("random walk: algorithm = {}, entries = {}, labels = {}"
-                  .format(algorithm, entries, labels))
+            print("random walk: algorithm = {}, entries = {}, labels = {}, naive = {}"
+                  .format(algorithm, entries, labels, naive_node_building))
             result = build_tree(algorithm, entries_path)
             result["type"] = "naive" if naive_node_building else "bulk"
             result["dataset"] = "random-walk"
@@ -58,7 +58,7 @@ def run_random_walk(naive_node_building, logfile):
 
 
 def run_others(naive_node_building, logfile):
-    compile(naive_node_building=naive_node_building)
+    compile(naive_node_building=naive_node_building, debug_stats=True)
 
     results = []
     algorithms = ["hilbert", "str-plain", "str-lf", "str-ll", "quickload"]

@@ -94,7 +94,7 @@ def barplot(ax, dpoints):
     # plt.setp(plt.xticks()[1], rotation=90)
 
     # Add the axis labels
-    ax.set_ylabel("Average IO Operations")
+    ax.set_ylabel("Durchschnittliche I/Os")
 
     # Add a legend
     handles, labels = ax.get_legend_handles_labels()
@@ -119,8 +119,19 @@ results = load_results()
 def tree_result(dataset, tree, query_set):
     return results[dataset][tree][query_set]["avg"]
 
+names = {
+    "small": "Kleine Anfragen",
+    "large": "Große Anfragen",
+    "sequenced": "Sequentielle Anfragen"
+}
+
+
+def queryset_name(qs):
+    return names[qs]
 
 # 3 axes, one for every query set
+
+
 def plot_querysets(axes, datasets):
     for query_set, ax in zip(["small", "large", "sequenced"], axes):
         datapoints = []
@@ -132,11 +143,11 @@ def plot_querysets(axes, datasets):
                     tree_result(dataset_name, tree_name, query_set)
                 ])
         barplot(ax, np.array(datapoints))
-        ax.set_title("Queryset {}".format(query_set))
+        ax.set_title("{}".format(queryset_name(query_set)))
 
 
 def plot_main_algorithms(output_path):
-    fig, axes = plt.subplots(1, 3, figsize=(14, 5))
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 
     datasets = [
         (("Geolife", "geolife"), [
@@ -145,13 +156,13 @@ def plot_main_algorithms(output_path):
             ("quickload", "geolife-quickload"),
             ("obo", "geolife-obo")
         ]),
-        (("OpenStreetMaps", "osm"), [
+        (("OSM", "osm"), [
             ("hilbert", "osm-hilbert"),
             ("str-lf", "osm-str-lf"),
             ("quickload", "osm-quickload"),
             ("obo", "osm-obo")
         ]),
-        (("Random-Walk", "random-walk"), [
+        (("Random-walk", "random-walk"), [
             ("hilbert", "random-walk-hilbert"),
             ("str-lf", "random-walk-str-lf"),
             ("quickload", "random-walk-quickload"),
@@ -161,16 +172,14 @@ def plot_main_algorithms(output_path):
     plot_querysets(axes, datasets)
 
     fig.tight_layout()
-    fig.suptitle("Query-Performance von Bäumen pro Algorithmus.")
-    fig.subplots_adjust(top=0.85)
     fig.savefig(str(output_path), bbox_inches="tight")
 
 
 def plot_beta_values(output_path):
-    fig, axes = plt.subplots(3, 1, figsize=(8, 12))
+    fig, axes = plt.subplots(3, 1, figsize=(6, 11))
 
     datasets = [
-        (("Geolife", "geolife"), [
+        (("Geolife (OBO)", "geolife"), [
             ("$\\beta=0.25$", "geolife-obo-beta-0.25"),
             ("$\\beta=0.5$", "geolife-obo"),
             ("$\\beta=0.75$", "geolife-obo-beta-0.25"),
@@ -182,7 +191,7 @@ def plot_beta_values(output_path):
             ("$\\beta=0.75$", "geolife-quickload-beta-0.25"),
             ("$\\beta=1$", "geolife-quickload-beta-1.0")
         ]),
-        (("OSM", "osm"), [
+        (("OSM (OBO)", "osm"), [
             ("$\\beta=0.25$", "osm-obo-beta-0.25"),
             ("$\\beta=0.5$", "osm-obo"),
             ("$\\beta=0.75$", "osm-obo-beta-0.25"),
@@ -198,16 +207,14 @@ def plot_beta_values(output_path):
     plot_querysets(axes, datasets)
 
     fig.tight_layout()
-    fig.suptitle("Verschiedene Werte für $\\beta$")
-    fig.subplots_adjust(top=0.93)
     fig.savefig(str(output_path), bbox_inches="tight")
 
 
 def plot_beta_strategies(output_path):
-    fig, axes = plt.subplots(3, 1, figsize=(8, 12))
+    fig, axes = plt.subplots(3, 1, figsize=(6, 11))
 
     datasets = [
-        (("Geolife", "geolife"), [
+        (("Geolife (OBO)", "geolife"), [
             ("normal", "geolife-obo"),
             ("increasing", "geolife-obo-beta-increasing"),
             ("decreasing", "geolife-obo-beta-decreasing"),
@@ -217,7 +224,7 @@ def plot_beta_strategies(output_path):
             ("increasing", "geolife-quickload-beta-increasing"),
             ("decreasing", "geolife-quickload-beta-decreasing"),
         ]),
-        (("OSM", "osm"), [
+        (("OSM (OBO)", "osm"), [
             ("normal", "osm-obo"),
             ("increasing", "osm-obo-beta-increasing"),
             ("decreasing", "osm-obo-beta-decreasing"),
@@ -231,13 +238,11 @@ def plot_beta_strategies(output_path):
     plot_querysets(axes, datasets)
 
     fig.tight_layout()
-    fig.suptitle("Verschiedene Strategien für $\\beta$")
-    fig.subplots_adjust(top=0.93)
     fig.savefig(str(output_path), bbox_inches="tight")
 
 
 def plot_str_variants(output_path):
-    fig, axes = plt.subplots(1, 3, figsize=(12, 5))
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 
     datasets = [
         (("Geolife", "geolife"), [
@@ -283,11 +288,9 @@ def plot_bloom_filters(output_path):
                 tree_result(dataset_name, tree_name, "sequenced")
             ])
     barplot(ax, np.array(datapoints))
-    ax.set_title("Queryset {}".format("sequenced"))
+    ax.set_title("Suchkosten für seq. Anfragen")
 
     fig.tight_layout()
-    fig.suptitle("Vergleich von Intervall-Set und Bloom-Filter (Quickload)")
-    fig.subplots_adjust(top=0.85)
     fig.savefig(str(output_path), bbox_inches="tight")
 
 
@@ -298,7 +301,7 @@ def plot_fanout(output_path):
                 for queryset in querysets)
         return s / len(querysets)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(9, 4))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
 
     trees = ["geolife-quickload-fanout-32",
              "geolife-quickload-fanout-50",
@@ -312,10 +315,10 @@ def plot_fanout(output_path):
         y = [tree_result("geolife", tree, queryset) for tree in trees]
         ax1.plot(x, y, label=queryset, marker=marker, linestyle="dashed")
 
-    ax1.set_title("Query Performance.")
+    ax1.set_title("Suchkosten")
     ax1.set_xticks(x)
     ax1.set_xlabel("Fan-out")
-    ax1.set_ylabel("Average IO Operations")
+    ax1.set_ylabel("Durchschnittliche I/Os")
     ax1.legend(loc="best")
 
     tree_paths = [
@@ -330,17 +333,15 @@ def plot_fanout(output_path):
     index_size = [ts - rs for ts, rs in zip(total_size, rtree_size)]
 
     ax2.plot(x, rtree_size, marker="o", linestyle="dashed", label="R-Baum")
-    ax2.plot(x, index_size, marker="^", linestyle="dashed", label="Index")
+    ax2.plot(x, index_size, marker="^", linestyle="dashed", label="inv. Index")
 
-    ax2.set_title("Größe des Baums.")
+    ax2.set_title("Größe der Datenstruktur")
     ax2.set_xticks(x)
     ax2.set_xlabel("Fan-out")
     ax2.set_ylabel("Megabyte")
     ax2.legend(loc="best")
 
     fig.tight_layout()
-    fig.suptitle("Performance mit variierendem Fan-out. Quickload / Geolife.")
-    fig.subplots_adjust(top=0.88)
     fig.savefig(str(output_path), bbox_inches="tight")
 
 

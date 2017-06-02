@@ -152,9 +152,6 @@ static double volume_ratio(external_tree::cursor& node) {
     geodb_assert(usum >= max && usum <= sum,
                  "union volume must be in range");
 
-    usum -= max;
-    sum -= max;
-
     // 1.   Sum of volumes equals maximum volume, thus
     //      usum must be 0 or very small too.
     // 2.   Default case.

@@ -26,6 +26,11 @@ QUICKLOAD_PROFILES := \
 EXAMPLE_LEAVES := results/hilbert_leaves.pdf results/str_leaves.pdf
 IRWI_EXAMPLE_BOXES := results/irwi_example_boxes.pdf
 
+BETA_STATS := \
+	results/geolife-beta.stats \
+	results/osm-beta.stats \
+	results/random-walk-beta.stats
+
 QUERY_GRAPHICS := \
 	results/query.pdf \
 	results/query_beta_strategies.pdf \
@@ -49,7 +54,7 @@ EXAMPLES := \
 
 
 # Note: delete any of the result files (e.g. results/tree_building.txt)
-# to repeat the associated experiment. 
+# to repeat the associated experiment.
 all:
 	@truncate -s 0 make.log
 	@echo "Note: Log will be written into make.log"
@@ -108,6 +113,7 @@ folders:
 trees:
 	@$(MAKE) $(EVAL_TREE_BUILDING)
 	scripts/build_tree_variants.py
+	@$(MAKE) $(BETA_STATS)
 
 .PHONY: trees
 
@@ -162,6 +168,8 @@ $(eval $(call multi_target,$(EVAL_LARGE_DATASET),scripts/eval_large_dataset.py,l
 $(eval $(call multi_target,$(EVAL_QUERIES),scripts/eval_query.py,queries,))
 
 $(eval $(call multi_target,$(EVAL_CHEAP_QUICKLOAD),scripts/eval_cheap_quickload.py,cheap-quickload,))
+
+$(eval $(call multi_target,$(BETA_STATS),scripts/tree_stats.py,beta-stats,))
 
 $(EVAL_FANOUT_CONSTRUCTION):
 	scripts/eval_fanout.py

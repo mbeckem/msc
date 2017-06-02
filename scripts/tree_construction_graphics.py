@@ -98,8 +98,8 @@ def plot_fanout_construction(output_path):
         ax.legend(loc="best", fancybox=True, ncol=1)
 
     fig, axis = plt.subplots(1, 2, figsize=(10, 4))
-    plot(axis[0], "total_io", "I/Os", "I/O")
-    plot(axis[1], "duration", "Sekunden", "Zeit")
+    plot(axis[0], "total_io", "I/Os", "Konstruktionkosten (I/O)")
+    plot(axis[1], "duration", "Sekunden", "Konstruktionskosten (Zeit)")
 
     fig.tight_layout()
     fig.savefig(str(output_path), bbox_inches="tight")
