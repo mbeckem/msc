@@ -16,13 +16,13 @@ Trajectory Units ergeben eine Trajektorie. Siehe dazu die Struktur \ref geodb::t
 
 Der IRWI-Baum selbst lebt als \ref geodb::tree im Verzeichnis `geodb/irwi`.
 Zur Compile-Zeit kann angegeben werden,
-ob der Baum den internen Speicher oder den Sekundärspeicher nutzen soll. 
-Außerdem ist der Parameter "Lambda" anpassbar: dieser gibt an, wie groß ein Eintrag 
+ob der Baum den internen Speicher oder den Sekundärspeicher nutzen soll.
+Außerdem ist der Parameter "Lambda" anpassbar: dieser gibt an, wie groß ein Eintrag
 zu einem Kindknoten im invertierten Index ist (siehe \ref geodb::posting).
 
 \code{.cpp}
     // Ein interner Baum mit Lambda == 10
-    tree<tree_internal, 10> ta;  
+    tree<tree_internal, 10> ta;
 
     // Ein Baum auf der Festplatte mit Lambda == 40.
     tree<tree_external, 40> tb(tree_external("directory/on/disk"));
@@ -57,7 +57,7 @@ Dabei gelten die folgenden Konventionen:
 \section bausteine Einzelne Bausteine
 
 Intervall-Sets, einschließlich effizienter Sweep-Line-Verfahren zum Bilden von Vereinigungen und Schnittmengen
-sind mit der Klasse \ref geodb::interval_set implementiert. Sie kommen in den Invertierten Indizes zum Einsatz, 
+sind mit der Klasse \ref geodb::interval_set implementiert. Sie kommen in den Invertierten Indizes zum Einsatz,
 um die Trajektorien-IDs grob zu erfassen.
 Ein \ref geodb::bloom_filter erfüllt den gleichen Zweck und implementiert das selbe Interface.
 Die Set-Typen können durch build-Parameter ausgetauscht werden.
@@ -67,10 +67,16 @@ Die Set-Typen können durch build-Parameter ausgetauscht werden.
 Siehe \ref geodb::hilbert_curve. Der \ref geodb::hilbert_loader nutzt diese Klasse,
 um Objekte nach ihrem Hilbert-Index zu sortieren.
 
-\section str Sort-Tile-Recursive:
+\section str Sort-Tile-Recursive
 
 Die eigentlich rekursive Sortierfunktion wird von \ref geodb::sort_tile_recursive()
 ausgeführt (sowohl für Dateien wie auch für `std::vector`-Instanzen).
 Die dazugehörige Klasse \ref geodb::str_loader implementiert damit das Bulkloading für einen IRWI-Baum.
+
+\section quickload Quickload
+
+Implementiert in \ref geodb::quick_loader. Für die Erstellung der temporären Bäume
+wird ein angepasstes Speicherbackend verwendet: \ref geodb::quickload::tree_storage_impl.
+
 
 */
