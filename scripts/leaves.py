@@ -42,6 +42,9 @@ def draw_leaves(ax, title, leaves):
     cmap = matplotlib.cm.get_cmap("gist_rainbow")
     colors = cmap(np.linspace(0, 1, len(leaves)))
 
+    avg = sum(len(leaf["points"]) for leaf in leaves) / len(leaves)
+    print(title, avg)
+
     for color, leaf in zip(colors, leaves):
         color[3] = 0.5
 
@@ -81,10 +84,14 @@ def make_str():
 
 
 def make_quickload():
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
+    fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(16, 4))
     draw_leaves(ax1, "a)", get_leaves(
-        1000, algorithm="quickload", seed="1380799046"))
+        1000, algorithm="obo", seed="1380799046"))
     draw_leaves(ax2, "b)", get_leaves(
+        1000, algorithm="obo", skewed=True, seed=1821311943))
+    draw_leaves(ax3, "c)", get_leaves(
+        1000, algorithm="quickload", seed="1380799046"))
+    draw_leaves(ax4, "d)", get_leaves(
         1000, algorithm="quickload", skewed=True, seed=1821311943))
     return fig
 

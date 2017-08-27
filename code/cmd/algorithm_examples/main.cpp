@@ -2,6 +2,8 @@
 
 #include "geodb/hilbert.hpp"
 #include "geodb/str.hpp"
+#include "geodb/irwi/tree.hpp"
+#include "geodb/irwi/tree_internal.hpp"
 #include "geodb/irwi/bulk_load_quickload.hpp"
 
 #include <boost/program_options.hpp>
@@ -103,7 +105,7 @@ void parse_options(int argc, char** argv) {
             ("seed", po::value(&seed),
              "The seed used by the random number generator. Defaults to a truly random seed.")
             ("algorithm", po::value(&algorithm),
-             "The leaf packing algorithm. Either \"hilbert\", \"str\" or \"quickload\".")
+             "The leaf packing algorithm. Either \"hilbert\", \"str\", \"quickload\" or \"obo\".")
             ("heuristic", po::bool_switch(&heuristic),
              "Enable the leaf size heuristic (hilbert only).")
             ("help,h", "Show this message.");
@@ -324,30 +326,30 @@ std::vector<leaf> create_str_leaves(std::vector<vec2>& points) {
     return leaves;
 }
 
+struct vec2_accessor {
+    trajectory_id_type get_id(const vec2& e) const {
+        (void) e;
+        return 0;
+    }
+
+    bounding_box get_mbb(const vec2& e) const {
+        return bounding_box(vector3(e.x, e.y, 0),
+                            vector3(e.x, e.y, 1));
+    }
+
+    constexpr u64 get_total_count(const vec2& e) const {
+        (void) e;
+        return 1;
+    }
+
+    std::array<label_count, 1> get_label_counts(const vec2& e) const {
+        (void) e;
+        return { label_count(0, 1) };
+    }
+};
+
 std::vector<leaf> create_quickload_leaves(const std::vector<vec2>& points) {
     geodb_assert(leaf_size > 1, "invalid leaf size");
-
-    struct vec2_accessor {
-        trajectory_id_type get_id(const vec2& e) const {
-            (void) e;
-            return 0;
-        }
-
-        bounding_box get_mbb(const vec2& e) const {
-            return bounding_box(vector3(e.x, e.y, 0),
-                                vector3(e.x, e.y, 1));
-        }
-
-        constexpr u64 get_total_count(const vec2& e) const {
-            (void) e;
-            return 1;
-        }
-
-        std::array<label_count, 1> get_label_counts(const vec2& e) const {
-            (void) e;
-            return { label_count(0, 1) };
-        }
-    };
 
     // quickload implementation currently requires a file stream.
     tpie::file_stream<vec2> entries;
@@ -372,6 +374,49 @@ std::vector<leaf> create_quickload_leaves(const std::vector<vec2>& points) {
     return leaves;
 }
 
+std::vector<leaf> create_obo_leaves(const std::vector<vec2>& points) {
+    geodb_assert(leaf_size > 1, "invalid leaf size");
+
+    using internal = geodb::tree_internal<leaf_size, leaf_size>;
+    using tree_t = geodb::tree<internal, 1>;
+
+    tree_t tree(internal(), 1.0);
+    for (const auto& p : points) {
+        tree_entry e;
+        e.trajectory_id = 1;
+        e.unit_index = 1;
+        e.unit.label = 1;
+        e.unit.start = vector3(p.x, p.y, 0);
+        e.unit.end = vector3(p.x, p.y, 1);
+        tree.insert(e);
+    }
+
+    struct leaf_visitor {
+        std::vector<leaf> leaves;
+
+        void operator()(tree_t::cursor& c) {
+            if (c.is_leaf()) {
+                leaf l;
+                for (size_t i = 0; i < c.size(); ++i) {
+                    tree_entry e = c.value(i);
+                    l.points.push_back({e.unit.start.x(), e.unit.start.y()});
+                }
+                l.mbb = get_bounding_box(l.points.begin(), l.points.end());
+                leaves.push_back(std::move(l));
+            } else {
+                for (size_t i = 0; i < c.size(); ++i) {
+                    c.move_child(i);
+                    (*this)(c);
+                    c.move_parent();
+                }
+            }
+        }
+    } visitor;
+    auto cursor = tree.root();
+    visitor(cursor);
+    return std::move(visitor.leaves);
+}
+
 int main(int argc, char** argv) {
     return tpie_main([&]{
         parse_options(argc, argv);
@@ -391,6 +436,8 @@ int main(int argc, char** argv) {
                 return create_str_leaves(points);
             } else if (algorithm == "quickload") {
                 return create_quickload_leaves(points);
+            } else if (algorithm == "obo") {
+                return create_obo_leaves(points);
             } else {
                 fmt::print(cerr, "Invalid algorithm: {}.\n", algorithm);
                 throw exit_main(1);
