@@ -81,6 +81,7 @@ CODE_PATH = make_dir("code")
 DATA_PATH = make_dir("data")
 OUTPUT_PATH = make_dir("output")
 RESULT_PATH = make_dir("results")
+SCRIPTS_PATH = make_dir("scripts")
 TMP_PATH = make_dir("tmp")
 
 # Change this when the programs are not in the PATH
