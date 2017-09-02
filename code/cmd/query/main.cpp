@@ -36,58 +36,21 @@ BOOST_FUSION_ADAPT_STRUCT(
 namespace grammar {
     using namespace boost::spirit::x3;
 
-
-//rule<class date_time_tag, time::ptime> date_time = "date time";
-
-//rule<class row_tag, geolife_activity> row = "label row";
-
-//rule<class file_tag, std::vector<geolife_activity>> file = "labels file";
-
-//auto set_time = [](auto& ctx) {
-//    using boost::fusion::at_c;
-
-//    const auto& attr = _attr(ctx);
-//    gregorian::date date(at_c<0>(attr), at_c<1>(attr), at_c<2>(attr));
-//    time::time_duration tod(at_c<3>(attr), at_c<4>(attr), at_c<5>(attr));
-//    _val(ctx) = time::ptime(date, tod);
-//};
-
-//// Year/Month/Day Hour:Minute:Second
-//const auto date_time_def = (int_ > '/' > int_ > '/' > int_ > int_> ':' > int_ > ':' > int_)[set_time];
-
-//// Each row contains a time interval and a transportation mode.
-//const auto row_def = date_time > date_time > mode;
-
-//// The first line is ignored (colum headers) and the rest must specify
-//// the current transportation mode.
-//const auto file_def = omit[line > eol] > line_list(row) > -eol > eoi;
-
-//BOOST_SPIRIT_DEFINE(date_time, row, file)
-
-    template<typename T>
-    auto set_min() {
-        return [](auto& ctx) {
-            _val(ctx) = std::numeric_limits<T>::lowest();
-        };
-    }
-
-    template<typename T>
-    auto set_max() {
-        return [](auto& ctx) {
-            _val(ctx) = std::numeric_limits<T>::max();
-        };
-    }
-
     const auto coord
         = rule<class coord, float>("coord")
-        = lit("MIN")[set_min<float>()] | lit("MAX")[set_max<float>()] | float_;
+        =     (lit("MIN") > attr(std::numeric_limits<float>::lowest()))
+            | (lit("MAX") > attr(std::numeric_limits<float>::max()))
+            | float_;
 
     const auto time
         = rule<class time, u32>("time")
-        = lit("MIN")[set_min<u32>()] | lit("MAX")[set_max<u32>()] | uint32;
+        =     (lit("MIN") > attr(std::numeric_limits<u32>::min()))
+            | (lit("MAX") > attr(std::numeric_limits<u32>::max()))
+            | uint32;
 
-    const auto bounding_box =
-            coord > lit(',')        // x min
+    const auto bounding_box
+        = rule<class bounding_box, raw_bounding_box>("bounding_box")
+        =     coord > lit(',')      // x min
             > coord > lit(',')      // x max
             > coord > lit(',')      // y min
             > coord > lit(',')      // y max
@@ -115,6 +78,7 @@ void validate(boost::any& v,
     raw_bounding_box result;
     auto iter = s.begin();
     auto end = s.end();
+
     bool ok = x3::phrase_parse(iter, end,
                                grammar::bounding_box,
                                x3::ascii::space, result);

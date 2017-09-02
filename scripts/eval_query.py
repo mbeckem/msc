@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import json
+import os
 import subprocess
 import random
 
 import common
-from common import OUTPUT_PATH, RESULT_PATH, TMP_PATH, QUERY, STATS
+from common import OUTPUT_PATH, RESULT_PATH, SCRIPTS_PATH, TMP_PATH, QUERY, STATS
 from common import compile
 from lib.prettytable import PrettyTable
 
@@ -412,6 +413,10 @@ def run_query(tree, query, results=None, logfile=None):
         labels = ",".join(map(str, sq.labels))
         args.extend(["-r", mbb, "-l", labels])
 
+    # Clear OS cache before querying the tree.
+    # See the comment at the top of drop_cache for permissions.
+    subprocess.check_call([str(SCRIPTS_PATH / "drop_cache")])
+
     print("Running query {} on tree {}:".format(
         query.name, tree), file=logfile, flush=True)
     print("============================\n", file=logfile, flush=True)
@@ -434,13 +439,14 @@ def measure_queries(tree, query_set, logfile=None):
     # Evaluate every query for the given tree and return the individual
     # results as well as the average.
     def measure_set(queries):
-        query_stats = {
-            query: run_query(tree, query, logfile=logfile)["total_io"]
-            for query in queries
-        }
-        average = sum(query_stats[query]
-                      for query in queries) / (max(len(queries), 1))
-        return {"stats": map_keys(query_stats, lambda q: q.name), "avg": average}
+        query_stats = {query: run_query(tree, query, logfile=logfile) for query in queries}
+
+        def get_stats(key):
+            query_values = {query: stats[key] for query, stats in query_stats.items()}
+            average = sum(query_values.values()) / max(len(query_values), 1)
+            return {"values": map_keys(query_values, lambda q: q.name), "avg": average}
+
+        return {"duration": get_stats("duration"), "total_io": get_stats("total_io")}
 
     # For every query set: Evaluate every query.
     return {
