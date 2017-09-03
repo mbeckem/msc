@@ -56,7 +56,7 @@ kelly_colors = [
 
 # Taken from
 # http://emptypipes.org/2013/11/09/matplotlib-multicategory-barchart/
-def barplot(ax, dpoints):
+def barplot(ax, ylabel, dpoints):
     '''
     Create a barchart for data across different categories with
     multiple algorithms for each category.
@@ -94,7 +94,7 @@ def barplot(ax, dpoints):
     # plt.setp(plt.xticks()[1], rotation=90)
 
     # Add the axis labels
-    ax.set_ylabel("Durchschnittliche I/Os")
+    ax.set_ylabel(ylabel)
 
     # Add a legend
     handles, labels = ax.get_legend_handles_labels()
@@ -112,12 +112,12 @@ def load_results():
 # Which in turn have an average number of block io operations (and more
 # specific stats per query).
 #
-# Dataset -> Tree -> Query Set -> [avg | Query]
+# Dataset -> Tree -> Query Set -> Type (duration or total i/o) -> [avg | Query]
 results = load_results()
 
 
-def tree_result(dataset, tree, query_set):
-    return results[dataset][tree][query_set]["avg"]
+def tree_result(dataset, tree, query_set, key):
+    return results[dataset][tree][query_set][key]["avg"]
 
 names = {
     "small": "Kleine Anfragen",
@@ -129,10 +129,16 @@ names = {
 def queryset_name(qs):
     return names[qs]
 
-# 3 axes, one for every query set
+
+def key_ylabel(key):
+    if key == "duration":
+        return "Durchschnittliche Dauer (s)"
+    if key == "total_io":
+        return "Durchschnittliche I/Os"
+    raise RuntimeError("Invalid key")
 
 
-def plot_querysets(axes, datasets):
+def plot_querysets(axes, key, datasets):
     for query_set, ax in zip(["small", "large", "sequenced"], axes):
         datapoints = []
         for (dataset_title, dataset_name), tree_set in datasets:
@@ -140,14 +146,14 @@ def plot_querysets(axes, datasets):
                 datapoints.append([
                     dataset_title,
                     tree_title,
-                    tree_result(dataset_name, tree_name, query_set)
+                    tree_result(dataset_name, tree_name, query_set, key)
                 ])
-        barplot(ax, np.array(datapoints))
+        barplot(ax, key_ylabel(key), np.array(datapoints))
         ax.set_title("{}".format(queryset_name(query_set)))
 
 
 def plot_main_algorithms(output_path):
-    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+    fig, [axes1, axes2] = plt.subplots(2, 3, figsize=(13, 7))
 
     datasets = [
         (("Geolife", "geolife"), [
@@ -169,14 +175,15 @@ def plot_main_algorithms(output_path):
             ("obo", "random-walk-obo")
         ]),
     ]
-    plot_querysets(axes, datasets)
+    plot_querysets(axes1, "total_io", datasets)
+    plot_querysets(axes2, "duration", datasets)
 
     fig.tight_layout()
     fig.savefig(str(output_path), bbox_inches="tight")
 
 
 def plot_beta_values(output_path):
-    fig, axes = plt.subplots(3, 1, figsize=(6, 11))
+    fig, [axes1, axes2] = plt.subplots(2, 3, figsize=(18, 8))
 
     datasets = [
         (("Geolife (OBO)", "geolife"), [
@@ -204,14 +211,15 @@ def plot_beta_values(output_path):
             ("$\\beta=1$", "osm-quickload-beta-1.0")
         ]),
     ]
-    plot_querysets(axes, datasets)
+    plot_querysets(axes1, "total_io", datasets)
+    plot_querysets(axes2, "duration", datasets)
 
     fig.tight_layout()
     fig.savefig(str(output_path), bbox_inches="tight")
 
 
 def plot_beta_strategies(output_path):
-    fig, axes = plt.subplots(3, 1, figsize=(6, 11))
+    fig, [axes1, axes2] = plt.subplots(2, 3, figsize=(18, 8))
 
     datasets = [
         (("Geolife (OBO)", "geolife"), [
@@ -235,14 +243,15 @@ def plot_beta_strategies(output_path):
             ("decreasing", "osm-quickload-beta-decreasing"),
         ]),
     ]
-    plot_querysets(axes, datasets)
+    plot_querysets(axes1, "total_io", datasets)
+    plot_querysets(axes2, "duration", datasets)
 
     fig.tight_layout()
     fig.savefig(str(output_path), bbox_inches="tight")
 
 
 def plot_str_variants(output_path):
-    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+    fig, [axes1, axes2] = plt.subplots(2, 3, figsize=(12, 8))
 
     datasets = [
         (("Geolife", "geolife"), [
@@ -256,7 +265,8 @@ def plot_str_variants(output_path):
             ("str-ll", "osm-str-ll"),
         ]),
     ]
-    plot_querysets(axes, datasets)
+    plot_querysets(axes1, "total_io", datasets)
+    plot_querysets(axes2, "duration", datasets)
 
     fig.tight_layout()
     fig.suptitle("Verschiedene Varianten von STR")
@@ -265,7 +275,7 @@ def plot_str_variants(output_path):
 
 
 def plot_bloom_filters(output_path):
-    fig, ax = plt.subplots(1, 1, figsize=(5, 4))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
 
     datasets = [
         (("Geolife", "geolife"), [
@@ -279,25 +289,28 @@ def plot_bloom_filters(output_path):
             ("bloom filters", "osm-quickload-bloom"),
         ]),
     ]
-    datapoints = []
-    for (dataset_title, dataset_name), tree_set in datasets:
-        for tree_title, tree_name in tree_set:
-            datapoints.append([
-                dataset_title,
-                tree_title,
-                tree_result(dataset_name, tree_name, "sequenced")
-            ])
-    barplot(ax, np.array(datapoints))
-    ax.set_title("Suchkosten für seq. Anfragen")
+    for ax, key in zip([ax1, ax2], ["total_io", "duration"]):
+        datapoints = []
+        for (dataset_title, dataset_name), tree_set in datasets:
+            for tree_title, tree_name in tree_set:
+                datapoints.append([
+                    dataset_title,
+                    tree_title,
+                    tree_result(dataset_name, tree_name,
+                                "sequenced", key)
+                ])
+        barplot(ax, key_ylabel(key), np.array(datapoints))
 
     fig.tight_layout()
+    fig.suptitle("Suchkosten für seq. Anfragen")
+    fig.subplots_adjust(top=0.85)
     fig.savefig(str(output_path), bbox_inches="tight")
 
 
 def plot_fanout(output_path):
     def avg_result(dataset, tree):
         querysets = ["small", "large", "sequenced"]
-        s = sum(tree_result(dataset, tree, queryset)
+        s = sum(tree_result(dataset, tree, queryset, "total_io")
                 for queryset in querysets)
         return s / len(querysets)
 
@@ -312,7 +325,8 @@ def plot_fanout(output_path):
     markers = ["o", "^", "*"]
     x = [32, 50, 64, 113]
     for queryset, marker in zip(querysets, markers):
-        y = [tree_result("geolife", tree, queryset) for tree in trees]
+        y = [tree_result("geolife", tree, queryset, "total_io")
+             for tree in trees]
         ax1.plot(x, y, label=queryset, marker=marker, linestyle="dashed")
 
     ax1.set_title("Suchkosten")
