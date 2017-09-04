@@ -153,6 +153,10 @@ public:
         bool operator==(const node_ptr& other) const {
             return handle == other.handle;
         }
+
+        bool operator<(const node_ptr& other) const {
+            return handle.index() < other.handle.index();
+        }
     };
 
     /// Points to the location of an internal node on disk.
