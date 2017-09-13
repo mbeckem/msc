@@ -58,6 +58,7 @@ def draw_leaves(ax, title, leaves):
 
 
 def save(fig, path):
+    fig.tight_layout()
     fig.savefig(str(path), bbox_inches="tight")
 
 
@@ -84,7 +85,7 @@ def make_str():
 
 
 def make_quickload():
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(16, 4))
+    fig, [[ax1, ax2], [ax3, ax4]] = plt.subplots(2, 2, figsize=(8, 8))
     draw_leaves(ax1, "a)", get_leaves(
         1000, algorithm="obo", seed="1380799046"))
     draw_leaves(ax2, "b)", get_leaves(

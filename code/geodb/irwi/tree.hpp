@@ -278,6 +278,8 @@ private:
                     STATS_PRINT(query_guard, "No more nodes.");
                     return {}; // This query has no further nodes.
                 }
+
+                std::sort(state.nodes.begin(), state.nodes.end());
             }
         }
 
