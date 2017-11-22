@@ -35,7 +35,8 @@ def get_sequence(type, algorithm):
 def plot_index_construction(output_path):
     fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 
-    types = ["bulk", "naive"]
+    # types = ["bulk", "naive"]
+    types = ["bulk"]
     algorithms = ["hilbert", "str-lf", "quickload"]
     markers = ["*", "o", "^"]
 

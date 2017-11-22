@@ -177,6 +177,21 @@ std::string container_to_string(const Container& c) {
     return ss.str();
 }
 
+struct output_t :  measure_t {
+    u64 units = 0;
+    u64 trajectories;
+
+    output_t(measure_t measure)
+        : measure_t(measure)
+    {}
+
+    friend void to_json(json& j, const output_t& m) {
+        to_json(j, static_cast<const measure_t&>(m));
+        j["units"] = m.units;
+        j["trajectories"] = m.trajectories;
+    }
+};
+
 int main(int argc, char** argv) {
     return tpie_main([&]{
         parse_options(argc, argv);
@@ -226,6 +241,10 @@ int main(int argc, char** argv) {
         }
         fmt::print("Found {} trajectories that satisfy the query with a total of {} matching units.\n", result.size(), units);
 
+        output_t output(stats);
+        output.trajectories = result.size();
+        output.units = units;
+
         fmt::print("\n"
                    "Blocks read: {}\n"
                    "Blocks written: {}\n"
@@ -234,7 +253,7 @@ int main(int argc, char** argv) {
                    stats.read_io, stats.write_io, stats.total_io, stats.duration);
 
         if (!stats_path.empty()) {
-            write_json(stats_path, stats);
+            write_json(stats_path, output);
         }
 
         if (!results_path.empty()) {

@@ -415,7 +415,7 @@ def run_query(tree, query, results=None, logfile=None):
 
     # Clear OS cache before querying the tree.
     # See the comment at the top of drop_cache for permissions.
-    subprocess.check_call([str(SCRIPTS_PATH / "drop_cache")])
+    # subprocess.check_call([str(SCRIPTS_PATH / "drop_cache")])
 
     print("Running query {} on tree {}:".format(
         query.name, tree), file=logfile, flush=True)
@@ -454,56 +454,77 @@ def measure_queries(tree, query_set, logfile=None):
     }
 
 
+def print_query_selectivity():
+    with (RESULT_PATH / "query_selectivity.txt").open("w") as outfile:
+        for dataset, tree, querysets in [("geolife", "geolife-quickload", get_geolife_queries()),
+                                         ("osm", "osm-quickload", get_osm_queries()),
+                                         ("random-walk", "random-walk-quickload", get_random_walk_queries())]:
+            print("Dataset {}".format(dataset), file=outfile)
+            print("===================", file=outfile)
+
+            for set_name, queries in querysets.items():
+                print("  Queryset {}".format(set_name), file=outfile)
+
+                for query in queries:
+                    result = run_query(OUTPUT_PATH / tree, query)
+                    print("    Query {}: {} Units ({} Trajectories)".format(
+                        query.name, result["units"], result["trajectories"]), file=outfile)
+
+
 if __name__ == "__main__":
-    compile(debug_stats=True)
+    compile()
+    print_query_selectivity()
+    exit()
+
+    # compile(debug_stats=True)
 
     geolife_trees = [
-        OUTPUT_PATH / "geolife-obo",
-        OUTPUT_PATH / "geolife-hilbert",
-        OUTPUT_PATH / "geolife-str-lf",
-        OUTPUT_PATH / "geolife-quickload",
-        OUTPUT_PATH / "variants" / "geolife-str-plain",
-        OUTPUT_PATH / "variants" / "geolife-str-ll",
-        OUTPUT_PATH / "variants" / "geolife-obo-beta-increasing",
-        OUTPUT_PATH / "variants" / "geolife-obo-beta-decreasing",
-        OUTPUT_PATH / "variants" / "geolife-quickload-beta-increasing",
-        OUTPUT_PATH / "variants" / "geolife-quickload-beta-decreasing",
-        OUTPUT_PATH / "variants" / "geolife-obo-beta-0.25",
-        OUTPUT_PATH / "variants" / "geolife-obo-beta-0.75",
-        OUTPUT_PATH / "variants" / "geolife-obo-beta-1.0",
-        OUTPUT_PATH / "variants" / "geolife-quickload-beta-0.25",
-        OUTPUT_PATH / "variants" / "geolife-quickload-beta-0.75",
-        OUTPUT_PATH / "variants" / "geolife-quickload-beta-1.0",
-        OUTPUT_PATH / "variants" / "geolife-shuffled-quickload",
+        # OUTPUT_PATH / "geolife-obo-beta-0.9",
+        # OUTPUT_PATH / "geolife-hilbert-beta-0.9",
+        # OUTPUT_PATH / "geolife-str-lf-beta-0.9",
+        # OUTPUT_PATH / "geolife-quickload-beta-0.9",
+        # OUTPUT_PATH / "variants" / "geolife-str-plain",
+        # OUTPUT_PATH / "variants" / "geolife-str-ll",
+        # OUTPUT_PATH / "variants" / "geolife-obo-beta-increasing",
+        # OUTPUT_PATH / "variants" / "geolife-obo-beta-decreasing",
+        # OUTPUT_PATH / "variants" / "geolife-quickload-beta-increasing",
+        # OUTPUT_PATH / "variants" / "geolife-quickload-beta-decreasing",
+        # OUTPUT_PATH / "variants" / "geolife-obo-beta-0.25",
+        # OUTPUT_PATH / "variants" / "geolife-obo-beta-0.75",
+        # OUTPUT_PATH / "variants" / "geolife-obo-beta-1.0",
+        # OUTPUT_PATH / "variants" / "geolife-quickload-beta-0.25",
+        # OUTPUT_PATH / "variants" / "geolife-quickload-beta-0.75",
+        # OUTPUT_PATH / "variants" / "geolife-quickload-beta-1.0",
+        # OUTPUT_PATH / "variants" / "geolife-shuffled-quickload",
     ]
     geolife_queries = get_geolife_queries()
 
     osm_trees = [
-        OUTPUT_PATH / "osm-obo",
-        OUTPUT_PATH / "osm-hilbert",
-        OUTPUT_PATH / "osm-str-lf",
-        OUTPUT_PATH / "osm-quickload",
-        OUTPUT_PATH / "variants" / "osm-str-plain",
-        OUTPUT_PATH / "variants" / "osm-str-ll",
-        OUTPUT_PATH / "variants" / "osm-obo-beta-increasing",
-        OUTPUT_PATH / "variants" / "osm-obo-beta-decreasing",
-        OUTPUT_PATH / "variants" / "osm-quickload-beta-increasing",
-        OUTPUT_PATH / "variants" / "osm-quickload-beta-decreasing",
-        OUTPUT_PATH / "variants" / "osm-obo-beta-0.25",
-        OUTPUT_PATH / "variants" / "osm-obo-beta-0.75",
-        OUTPUT_PATH / "variants" / "osm-obo-beta-1.0",
-        OUTPUT_PATH / "variants" / "osm-quickload-beta-0.25",
-        OUTPUT_PATH / "variants" / "osm-quickload-beta-0.75",
-        OUTPUT_PATH / "variants" / "osm-quickload-beta-1.0",
-        OUTPUT_PATH / "variants" / "osm-shuffled-quickload",
+        OUTPUT_PATH / "osm-obo-beta-0.9",
+        OUTPUT_PATH / "osm-hilbert-beta-0.9",
+        OUTPUT_PATH / "osm-str-lf-beta-0.9",
+        OUTPUT_PATH / "osm-quickload-beta-0.9",
+        # OUTPUT_PATH / "variants" / "osm-str-plain",
+        # OUTPUT_PATH / "variants" / "osm-str-ll",
+        # OUTPUT_PATH / "variants" / "osm-obo-beta-increasing",
+        # OUTPUT_PATH / "variants" / "osm-obo-beta-decreasing",
+        # OUTPUT_PATH / "variants" / "osm-quickload-beta-increasing",
+        # OUTPUT_PATH / "variants" / "osm-quickload-beta-decreasing",
+        # OUTPUT_PATH / "variants" / "osm-obo-beta-0.25",
+        # OUTPUT_PATH / "variants" / "osm-obo-beta-0.75",
+        # OUTPUT_PATH / "variants" / "osm-obo-beta-1.0",
+        # OUTPUT_PATH / "variants" / "osm-quickload-beta-0.25",
+        # OUTPUT_PATH / "variants" / "osm-quickload-beta-0.75",
+        # OUTPUT_PATH / "variants" / "osm-quickload-beta-1.0",
+        # OUTPUT_PATH / "variants" / "osm-shuffled-quickload",
     ]
     osm_queries = get_osm_queries()
 
     random_walk_trees = [
-        OUTPUT_PATH / "random-walk-obo",
-        OUTPUT_PATH / "random-walk-hilbert",
-        OUTPUT_PATH / "random-walk-str-lf",
-        OUTPUT_PATH / "random-walk-quickload",
+        #     OUTPUT_PATH / "random-walk-obo",
+        #     OUTPUT_PATH / "random-walk-hilbert",
+        #     OUTPUT_PATH / "random-walk-str-lf",
+        #     OUTPUT_PATH / "random-walk-quickload",
     ]
     random_walk_queries = get_random_walk_queries()
 
@@ -535,28 +556,28 @@ if __name__ == "__main__":
                 handle_tree(tree, query_set, result[
                             dataset_name], stats[dataset_name])
 
-        # bloom filters need special treatment.
-        compile(bloom_filters=True, debug_stats=True)
-        for tree in [OUTPUT_PATH / "variants" / "geolife-obo-bloom",
-                     OUTPUT_PATH / "variants" / "geolife-quickload-bloom"]:
-            handle_tree(tree, geolife_queries,
-                        result["geolife"], stats["geolife"])
+        # # bloom filters need special treatment.
+        # compile(bloom_filters=True, debug_stats=True)
+        # for tree in [OUTPUT_PATH / "variants" / "geolife-obo-bloom",
+        #              OUTPUT_PATH / "variants" / "geolife-quickload-bloom"]:
+        #     handle_tree(tree, geolife_queries,
+        #                 result["geolife"], stats["geolife"])
 
-        for tree in [OUTPUT_PATH / "variants" / "osm-obo-bloom",
-                     OUTPUT_PATH / "variants" / "osm-quickload-bloom"]:
-            handle_tree(tree, osm_queries, result["osm"], stats["osm"])
+        # for tree in [OUTPUT_PATH / "variants" / "osm-obo-bloom",
+        #              OUTPUT_PATH / "variants" / "osm-quickload-bloom"]:
+        #     handle_tree(tree, osm_queries, result["osm"], stats["osm"])
 
-        # as do trees with different fanout.
-        for fanout in [32, 50, 64]:
-            compile(leaf_fanout=fanout, internal_fanout=fanout, debug_stats=True)
-            handle_tree(OUTPUT_PATH / "variants" / "geolife-quickload-fanout-{}".format(fanout),
-                        geolife_queries, result["geolife"], stats["geolife"])
+        # # as do trees with different fanout.
+        # for fanout in [32, 50, 64]:
+        #     compile(leaf_fanout=fanout, internal_fanout=fanout, debug_stats=True)
+        #     handle_tree(OUTPUT_PATH / "variants" / "geolife-quickload-fanout-{}".format(fanout),
+        #                 geolife_queries, result["geolife"], stats["geolife"])
 
         # Restore default config to avoid errors.
         compile()
 
-    with (RESULT_PATH / "queries.json").open("w") as outfile:
+    with (RESULT_PATH / "queries_beta_09.json").open("w") as outfile:
         json.dump(result, outfile, sort_keys=True, indent=4)
 
-    with (RESULT_PATH / "tree_stats.json").open("w") as outfile:
+    with (RESULT_PATH / "tree_stats_beta_09.json").open("w") as outfile:
         json.dump(stats, outfile, sort_keys=True, indent=4)

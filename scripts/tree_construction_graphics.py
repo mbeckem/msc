@@ -12,7 +12,7 @@ from common import OUTPUT_PATH, RESULT_PATH
 
 
 def load_results():
-    with (RESULT_PATH / "tree_building.json").open("r") as file:
+    with (RESULT_PATH / "tree_building_beta_0.9.json").open("r") as file:
         results = json.load(file)
 
     # Group by dataset -> algorithm -> entries
@@ -32,9 +32,9 @@ def get_sequence(dataset, algorithm):
 
 
 def plot_tree_construction(logscale, output_path):
-    fig, axis = plt.subplots(3, 2, figsize=(10, 10))
+    fig, axis = plt.subplots(2, 2, figsize=(10, 7))
 
-    datasets = ["geolife", "osm", "random-walk"]
+    datasets = ["geolife", "osm"]
     algorithms = ["hilbert", "str-lf", "quickload", "obo"]
     markers = ["*", "o", "^", "+"]
 
@@ -68,10 +68,10 @@ def plot_tree_construction(logscale, output_path):
          "I/Os", "osm (I/O)")
     plot(axis[1, 1], "osm", "duration",
          "Sekunden", "osm (Zeit)")
-    plot(axis[2, 0], "random-walk", "total_io",
-         "I/Os", "random-walk (I/O)")
-    plot(axis[2, 1], "random-walk", "duration",
-         "Sekunden", "random-walk (Zeit)")
+    # plot(axis[2, 0], "random-walk", "total_io",
+    #      "I/Os", "random-walk (I/O)")
+    # plot(axis[2, 1], "random-walk", "duration",
+    #      "Sekunden", "random-walk (Zeit)")
 
     fig.tight_layout()
     fig.savefig(str(output_path), bbox_inches="tight")
@@ -105,6 +105,6 @@ def plot_fanout_construction(output_path):
     fig.savefig(str(output_path), bbox_inches="tight")
 
 
-plot_tree_construction(True, RESULT_PATH / "construction_logscale.pdf")
-plot_tree_construction(False, RESULT_PATH / "construction.pdf")
-plot_fanout_construction(RESULT_PATH / "construction_fanout.pdf")
+plot_tree_construction(True, RESULT_PATH / "construction_logscale_beta_0.9.pdf")
+plot_tree_construction(False, RESULT_PATH / "construction_beta_0.9.pdf")
+#plot_fanout_construction(RESULT_PATH / "construction_fanout.pdf")
