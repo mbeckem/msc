@@ -454,7 +454,7 @@ private:
 
 /// Bulk loading support for internal tree nodes.
 /// The performance of building a single node becomes
-/// importand when the size of the inverted index is large,
+/// important when the size of the inverted index is large,
 /// i.e. when there are many labels in that subtree.
 template<typename Storage>
 class tree_external_builder {
